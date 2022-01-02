@@ -50,6 +50,9 @@
 //! shave-yaks: true
 //! ```
 #![warn(missing_docs)]
+use crate::health::panics::PanicsHealthCheck;
+use crate::health::service_dependency::ServiceDependencyHealthCheck;
+use crate::health::HealthCheckRegistry;
 use crate::shutdown::ShutdownHooks;
 use config::install::InstallConfig;
 use config::runtime::RuntimeConfig;
@@ -71,6 +74,7 @@ use witchcraft_metrics::MetricRegistry;
 pub use witchcraft_server_config as config;
 
 mod configs;
+pub mod health;
 mod logging;
 mod shutdown;
 mod witchcraft;
@@ -120,10 +124,11 @@ where
         .build()
         .map_err(Error::internal_safe)?;
 
-    let runtime_config = configs::load_runtime::<R>(&runtime)?;
+    let health_checks = Arc::new(HealthCheckRegistry::new(runtime.handle()));
+
+    let runtime_config = configs::load_runtime::<R>(&runtime, &health_checks)?;
 
     let metrics = Arc::new(MetricRegistry::new());
-
     let mut shutdown_hooks = ShutdownHooks::new();
 
     runtime.block_on(async {
@@ -141,7 +146,10 @@ where
     install_config.ignored.log();
     runtime_config.ignored.log();
 
+    health_checks.register(PanicsHealthCheck::new());
+
     let host_metrics = Arc::new(HostMetricsRegistry::new());
+    health_checks.register(ServiceDependencyHealthCheck::new(host_metrics.clone()));
 
     let mut client_factory = ClientFactory::new(
         runtime_config
@@ -162,6 +170,7 @@ where
         runtime_config: Arc::new(runtime_config.value),
         runtime,
         metrics,
+        health_checks,
         client_factory,
     };
 

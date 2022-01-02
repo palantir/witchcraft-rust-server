@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::health::config_reload::ConfigReloadHealthCheck;
+use crate::HealthCheckRegistry;
 use conjure_error::Error;
 use refreshable::{RefreshHandle, Refreshable};
 use serde::de::DeserializeOwned;
@@ -18,6 +20,8 @@ use serde_encrypted_value::{Key, ReadOnly};
 use serde_path_to_error::Track;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 use tokio::{task, time};
@@ -39,7 +43,10 @@ where
     parse(&path, &bytes, key.as_ref())
 }
 
-pub fn load_runtime<T>(runtime: &Runtime) -> Result<ParsedConfig<Refreshable<T, Error>>, Error>
+pub fn load_runtime<T>(
+    runtime: &Runtime,
+    health_checks: &HealthCheckRegistry,
+) -> Result<ParsedConfig<Refreshable<T, Error>>, Error>
 where
     T: DeserializeOwned + PartialEq + 'static + Sync + Send,
 {
@@ -55,7 +62,10 @@ where
     let config = parse(&path, &bytes, key.as_ref())?;
     let (value, handle) = Refreshable::new(config.value);
 
-    runtime.spawn(runtime_reload(path, bytes, key, handle));
+    let config_ok = Arc::new(AtomicBool::new(true));
+
+    runtime.spawn(runtime_reload(path, bytes, key, handle, config_ok.clone()));
+    health_checks.register(ConfigReloadHealthCheck::new(config_ok));
 
     Ok(ParsedConfig {
         value,
@@ -109,6 +119,7 @@ async fn runtime_reload<T>(
     mut bytes: Vec<u8>,
     key: Option<Key<ReadOnly>>,
     mut handle: RefreshHandle<T, Error>,
+    config_ok: Arc<AtomicBool>,
 ) where
     T: DeserializeOwned + PartialEq + 'static + Sync + Send,
 {
@@ -118,6 +129,7 @@ async fn runtime_reload<T>(
         let new_bytes = match tokio::fs::read(&path).await {
             Ok(bytes) => bytes,
             Err(e) => {
+                config_ok.store(false, Ordering::Relaxed);
                 error!("error reading runtime config", safe: { file: path }, error: Error::internal_safe(e));
                 continue;
             }
@@ -131,6 +143,7 @@ async fn runtime_reload<T>(
         let value = match parse(&path, &bytes, key.as_ref()) {
             Ok(value) => value,
             Err(e) => {
+                config_ok.store(false, Ordering::Relaxed);
                 error!("error parsing runtime config", safe: { file: path }, error: e);
                 continue;
             }
@@ -139,9 +152,13 @@ async fn runtime_reload<T>(
         value.ignored.log();
 
         // it's okay to use block_in_place here since we know this future is running as its own task.
-        if let Err(errors) = task::block_in_place(|| handle.refresh(value.value)) {
-            for error in errors {
-                error!("error reloading runtime config", safe: { file: path }, error: error);
+        match task::block_in_place(|| handle.refresh(value.value)) {
+            Ok(()) => config_ok.store(true, Ordering::Relaxed),
+            Err(errors) => {
+                config_ok.store(false, Ordering::Relaxed);
+                for error in errors {
+                    error!("error reloading runtime config", safe: { file: path }, error: error);
+                }
             }
         }
 

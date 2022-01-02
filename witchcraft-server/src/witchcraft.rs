@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::health::HealthCheckRegistry;
 use conjure_error::Error;
 use conjure_runtime::ClientFactory;
 use refreshable::Refreshable;
@@ -24,6 +25,7 @@ pub struct Witchcraft<I, R> {
     pub(crate) runtime_config: Arc<Refreshable<R, Error>>,
     pub(crate) runtime: Runtime,
     pub(crate) metrics: Arc<MetricRegistry>,
+    pub(crate) health_checks: Arc<HealthCheckRegistry>,
     pub(crate) client_factory: ClientFactory,
 }
 
@@ -50,6 +52,12 @@ impl<I, R> Witchcraft<I, R> {
     #[inline]
     pub fn metrics(&self) -> &Arc<MetricRegistry> {
         &self.metrics
+    }
+
+    /// Returns the server's health check registry.
+    #[inline]
+    pub fn health_checks(&self) -> &Arc<HealthCheckRegistry> {
+        &self.health_checks
     }
 
     /// Returns the server's HTTP client factory.

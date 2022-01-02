@@ -13,6 +13,16 @@ fn main() {
         "com.palantir.witchcraft.api.logging",
         "witchcraft-server/src/logging/api",
     );
+
+    let health_api_url = format!(
+        "https://repo1.maven.org/maven2/com/palantir/witchcraft/api/witchcraft-health-api/{0}/witchcraft-health-api-{0}.conjure.json",
+        API_VERSION,
+   );
+    render(
+        &health_api_url,
+        "com.palantir.witchcraft.api.health",
+        "witchcraft-server/src/health/api",
+    );
 }
 
 fn render(url: &str, prefix: &str, out_dir: &str) {
