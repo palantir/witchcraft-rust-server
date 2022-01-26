@@ -1,0 +1,11 @@
+[package]
+name = "witchcraft-server-config"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+conjure-runtime-config = "1"
+humantime-serde = "1"
+num_cpus = "1"
+serde = { version = "1", features = ["derive"] }
+witchcraft-log = "0.3"
