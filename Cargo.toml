@@ -1,0 +1,13 @@
+[workspace]
+members = ["render-conjure"]
+
+[patch.crates-io]
+conjure-runtime-config = { git = "https://github.com/palantir/conjure-rust-runtime" }
+conjure-runtime = { git = "https://github.com/palantir/conjure-rust-runtime" }
+conjure-http = { git = "https://github.com/palantir/conjure-rust" }
+conjure-error = { git = "https://github.com/palantir/conjure-rust" }
+conjure-object = { git = "https://github.com/palantir/conjure-rust" }
+conjure-serde = { git = "https://github.com/palantir/conjure-rust" }
+conjure-codegen = { git = "https://github.com/palantir/conjure-rust" }
+witchcraft-log = { git = "https://github.com/palantir/witchcraft-rust-logging", branch = "more-mdc" }
+witchcraft-metrics = { git = "https://github.com/palantir/witchcraft-rust-logging", branch = "more-mdc" }
