@@ -4,6 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+conjure-error = "0.7"
+conjure-object = "0.7"
+conjure-runtime = "1.2"
+futures-util = "0.3"
+pin-project = "1"
+refreshable = "1"
 serde = "1"
+serde-encrypted-value = "0.4"
+serde_yaml = "0.8"
+tokio = { version = "1", features = [
+    "fs",
+    "macros",
+    "rt-multi-thread",
+    "signal",
+    "time",
+] }
+witchcraft-log = "0.3"
+witchcraft-metrics = "0.2"
 
 witchcraft-server-config = { path = "../witchcraft-server-config" }
