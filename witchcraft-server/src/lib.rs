@@ -175,7 +175,7 @@ where
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
-    handle.block_on(server::start(&base_install_config))?;
+    handle.block_on(server::start(&base_install_config, &mut witchcraft))?;
 
     handle.block_on(shutdown(
         shutdown_hooks,

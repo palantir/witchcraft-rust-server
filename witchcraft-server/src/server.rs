@@ -12,30 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::accept::AcceptService;
+use crate::service::connection_limit::ConnectionLimitLayer;
+use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
 use crate::service::tls::TlsLayer;
+use crate::service::tls_metrics::TlsMetricsLayer;
 use crate::service::{Service, ServiceBuilder};
+use crate::Witchcraft;
 use conjure_error::Error;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
 use witchcraft_server_config::install::InstallConfig;
 
-pub async fn start(config: &InstallConfig) -> Result<(), Error> {
+pub async fn start(config: &InstallConfig, witchcraft: &mut Witchcraft) -> Result<(), Error> {
     // This service handles invididual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new().service(HandlerService);
 
     // This layer handles invididual TCP connections, each running concurrently.
     let handle_service = ServiceBuilder::new()
         .layer(TlsLayer::new(config)?)
+        .layer(TlsMetricsLayer::new(&witchcraft.metrics))
         .layer(IdleConnectionLayer::new(config))
         .service(HyperService::new(request_service));
     let handle_service = Arc::new(handle_service);
 
     // This layer produces TCP connections, running serially.
-    let accept_service = ServiceBuilder::new().service(AcceptService::new(config)?);
+    let accept_service = ServiceBuilder::new()
+        .layer(ConnectionLimitLayer::new(config))
+        .layer(ConnectionMetricsLayer::new(config, &witchcraft.metrics))
+        .service(AcceptService::new(config)?);
 
     task::spawn(async move {
         loop {

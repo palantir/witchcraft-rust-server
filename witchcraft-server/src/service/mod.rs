@@ -15,10 +15,13 @@ use std::future::Future;
 use std::sync::Arc;
 
 pub mod accept;
+pub mod connection_limit;
+pub mod connection_metrics;
 pub mod handler;
 pub mod hyper;
 pub mod idle_connection;
 pub mod tls;
+pub mod tls_metrics;
 
 // This infrastructure is adapted from `tower`, with a few changes:
 //
