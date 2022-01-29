@@ -136,9 +136,16 @@ where
 
     let metrics = Arc::new(MetricRegistry::new());
 
-    let shutdown_hooks = ShutdownHooks::new();
+    let mut shutdown_hooks = ShutdownHooks::new();
 
-    handle.block_on(logging::init())?;
+    handle.block_on(logging::init(
+        &metrics,
+        install_config.as_ref(),
+        &runtime_config.map(|c| c.as_ref().logging().clone()),
+        &mut shutdown_hooks,
+    ))?;
+
+    info!("server starting");
 
     let host_metrics = Arc::new(HostMetricsRegistry::new());
 
@@ -172,7 +179,7 @@ async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<()
     }
 
     signals.next().await;
-    info!("shutting down");
+    info!("server shutting down");
 
     select! {
         _ = shutdown_hooks => {}
