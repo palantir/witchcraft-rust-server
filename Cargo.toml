@@ -4,10 +4,10 @@ members = ["render-conjure", "witchcraft-server", "witchcraft-server-config"]
 [patch.crates-io]
 conjure-runtime-config = { git = "https://github.com/palantir/conjure-rust-runtime" }
 conjure-runtime = { git = "https://github.com/palantir/conjure-rust-runtime" }
-conjure-http = { git = "https://github.com/palantir/conjure-rust" }
-conjure-error = { git = "https://github.com/palantir/conjure-rust" }
-conjure-object = { git = "https://github.com/palantir/conjure-rust" }
-conjure-serde = { git = "https://github.com/palantir/conjure-rust" }
-conjure-codegen = { git = "https://github.com/palantir/conjure-rust" }
+conjure-http = { git = "https://github.com/palantir/conjure-rust", branch = "server-trait" }
+conjure-error = { git = "https://github.com/palantir/conjure-rust", branch = "server-trait" }
+conjure-object = { git = "https://github.com/palantir/conjure-rust", branch = "server-trait" }
+conjure-serde = { git = "https://github.com/palantir/conjure-rust", branch = "server-trait" }
+conjure-codegen = { git = "https://github.com/palantir/conjure-rust", branch = "server-trait" }
 witchcraft-log = { git = "https://github.com/palantir/witchcraft-rust-logging", branch = "more-mdc" }
 witchcraft-metrics = { git = "https://github.com/palantir/witchcraft-rust-logging", branch = "more-mdc" }

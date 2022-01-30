@@ -74,6 +74,7 @@ use witchcraft_metrics::MetricRegistry;
 pub use witchcraft_server_config as config;
 
 mod configs;
+mod endpoint;
 mod logging;
 mod metrics;
 mod server;
