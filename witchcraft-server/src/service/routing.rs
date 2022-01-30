@@ -236,6 +236,7 @@ where
 mod test {
     use super::*;
     use crate::server::RawBody;
+    use crate::service::endpoint_metrics::EndpointMetrics;
     use crate::service::handler::BodyWriteAborted;
     use crate::service::test_util::service_fn;
     use async_trait::async_trait;
@@ -278,6 +279,10 @@ mod test {
 
     #[async_trait]
     impl WitchcraftEndpoint for TestEndpoint {
+        fn metrics(&self) -> Option<&EndpointMetrics> {
+            None
+        }
+
         async fn handle(&self, _: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
             unimplemented!()
         }

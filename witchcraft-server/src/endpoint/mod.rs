@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::server::RawBody;
+use crate::service::endpoint_metrics::EndpointMetrics;
 use crate::service::handler::BodyWriteAborted;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -21,5 +22,7 @@ use http_body::combinators::BoxBody;
 
 #[async_trait]
 pub trait WitchcraftEndpoint: EndpointMetadata {
+    fn metrics(&self) -> Option<&EndpointMetrics>;
+
     async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>>;
 }

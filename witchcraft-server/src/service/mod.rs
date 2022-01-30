@@ -18,6 +18,7 @@ pub mod accept;
 pub mod connection_limit;
 pub mod connection_metrics;
 pub mod deprecation_header;
+pub mod endpoint_metrics;
 pub mod handler;
 pub mod hyper;
 pub mod idle_connection;
@@ -28,6 +29,7 @@ pub mod request_id;
 pub mod request_log;
 pub mod routing;
 pub mod server_header;
+pub mod server_metrics;
 pub mod spans;
 #[cfg(test)]
 mod test_util;
