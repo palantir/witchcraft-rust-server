@@ -15,10 +15,12 @@ use std::future::Future;
 use std::sync::Arc;
 
 pub mod accept;
+pub mod catch_unwind;
 pub mod connection_limit;
 pub mod connection_metrics;
 pub mod deprecation_header;
 pub mod endpoint_metrics;
+pub mod error_log;
 pub mod handler;
 pub mod hyper;
 pub mod idle_connection;
