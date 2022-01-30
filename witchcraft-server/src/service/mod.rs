@@ -20,9 +20,14 @@ pub mod connection_metrics;
 pub mod handler;
 pub mod hyper;
 pub mod idle_connection;
+pub mod request_id;
 pub mod routing;
+pub mod spans;
+#[cfg(test)]
+mod test_util;
 pub mod tls;
 pub mod tls_metrics;
+pub mod trace_propagation;
 
 // This infrastructure is adapted from `tower`, with a few changes:
 //
@@ -111,26 +116,5 @@ impl<L> ServiceBuilder<L> {
         L: Layer<S>,
     {
         self.layer.layer(service)
-    }
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-fn service_fn<F>(f: F) -> ServiceFn<F> {
-    ServiceFn(f)
-}
-
-struct ServiceFn<F>(F);
-
-impl<T, F, I, O> Service<I> for ServiceFn<T>
-where
-    T: Fn(I) -> F,
-    F: Future<Output = O>,
-{
-    type Response = O;
-
-    type Future = F;
-
-    fn call(&self, req: I) -> Self::Future {
-        self.0(req)
     }
 }

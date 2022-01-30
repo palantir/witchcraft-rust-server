@@ -235,8 +235,9 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::server::RawBody;
     use crate::service::handler::BodyWriteAborted;
-    use crate::service::service_fn;
+    use crate::service::test_util::service_fn;
     use async_trait::async_trait;
     use bytes::Bytes;
     use conjure_http::server::EndpointMetadata;
@@ -277,10 +278,7 @@ mod test {
 
     #[async_trait]
     impl WitchcraftEndpoint for TestEndpoint {
-        async fn handle(
-            &self,
-            _: Request<hyper::Body>,
-        ) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
+        async fn handle(&self, _: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
             unimplemented!()
         }
     }
@@ -295,15 +293,14 @@ mod test {
 
     #[tokio::test]
     async fn empty() {
-        let service =
-            RoutingLayer::new(vec![]).layer(service_fn(|req: Request<hyper::Body>| async { req }));
+        let service = RoutingLayer::new(vec![]).layer(service_fn(|req| async { req }));
 
         let req = service
             .call(
                 Request::builder()
                     .method(Method::OPTIONS)
                     .uri("*")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;
@@ -317,7 +314,7 @@ mod test {
                 Request::builder()
                     .method(Method::OPTIONS)
                     .uri("/foo/bar?a=b")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;
@@ -331,7 +328,7 @@ mod test {
                 Request::builder()
                     .method(Method::GET)
                     .uri("/foo/bar?a=b")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;
@@ -364,14 +361,14 @@ mod test {
                 "b",
             ),
         ])
-        .layer(service_fn(|req: Request<hyper::Body>| async { req }));
+        .layer(service_fn(|req| async { req }));
 
         let req = service
             .call(
                 Request::builder()
                     .method(Method::OPTIONS)
                     .uri("/foo/bar?a=b")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;
@@ -385,7 +382,7 @@ mod test {
                 Request::builder()
                     .method(Method::GET)
                     .uri("/foo/bar?a=b")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;
@@ -399,7 +396,7 @@ mod test {
                 Request::builder()
                     .method(Method::POST)
                     .uri("/foo/bar?a=b")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;
@@ -414,7 +411,7 @@ mod test {
                 Request::builder()
                     .method(Method::PUT)
                     .uri("/foo/bar?a=b")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;
@@ -430,7 +427,7 @@ mod test {
                 Request::builder()
                     .method(Method::POST)
                     .uri("/foo/bar/baz?a=b")
-                    .body(hyper::Body::empty())
+                    .body(())
                     .unwrap(),
             )
             .await;

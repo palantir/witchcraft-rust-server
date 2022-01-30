@@ -17,9 +17,12 @@ use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
+use crate::service::request_id::RequestIdLayer;
 use crate::service::routing::RoutingLayer;
+use crate::service::spans::{SpannedBody, SpansLayer};
 use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
+use crate::service::trace_propagation::TracePropagationLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;
@@ -28,10 +31,15 @@ use tokio::task;
 use witchcraft_log::debug;
 use witchcraft_server_config::install::InstallConfig;
 
+pub type RawBody = SpannedBody<hyper::Body>;
+
 pub async fn start(config: &InstallConfig, witchcraft: &mut Witchcraft) -> Result<(), Error> {
     // This service handles invididual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
         .layer(RoutingLayer::new(vec![]))
+        .layer(RequestIdLayer)
+        .layer(TracePropagationLayer)
+        .layer(SpansLayer)
         .service(HandlerService);
 
     // This layer handles invididual TCP connections, each running concurrently.

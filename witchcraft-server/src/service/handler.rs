@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::server::RawBody;
 use crate::service::routing::Route;
 use crate::service::Service;
 use bytes::Bytes;
@@ -29,12 +30,12 @@ use std::{error, fmt};
 /// It must be installed after routing.
 pub struct HandlerService;
 
-impl Service<Request<hyper::Body>> for HandlerService {
+impl Service<Request<RawBody>> for HandlerService {
     type Response = Response<BoxBody<Bytes, BodyWriteAborted>>;
 
     type Future = BoxFuture<'static, Self::Response>;
 
-    fn call(&self, mut req: Request<hyper::Body>) -> Self::Future {
+    fn call(&self, mut req: Request<RawBody>) -> Self::Future {
         let route = req
             .extensions_mut()
             .remove::<Route>()
