@@ -142,7 +142,7 @@ where
 
     let mut shutdown_hooks = ShutdownHooks::new();
 
-    handle.block_on(logging::init(
+    let loggers = handle.block_on(logging::init(
         &metrics,
         install_config.as_ref(),
         &runtime_config.map(|c| c.as_ref().logging().clone()),
@@ -176,7 +176,11 @@ where
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
-    handle.block_on(server::start(&base_install_config, &mut witchcraft))?;
+    handle.block_on(server::start(
+        &base_install_config,
+        &mut witchcraft,
+        loggers.request_logger,
+    ))?;
 
     handle.block_on(shutdown(
         shutdown_hooks,

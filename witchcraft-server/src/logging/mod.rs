@@ -11,8 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::logging::api::RequestLogV2;
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
+pub use logger::Appender;
 use refreshable::Refreshable;
 use std::sync::Arc;
 use witchcraft_metrics::MetricRegistry;
@@ -32,17 +34,25 @@ pub const UID_MDC_KEY: &str = "\0witchcraft-uid";
 pub const SID_MDC_KEY: &str = "\0witchcraft-sid";
 pub const TOKEN_ID_MDC_KEY: &str = "\0witchcraft-token-id";
 pub const TRACE_ID_MDC_KEY: &str = "\0witchcraft-trace-id";
+pub const REQUEST_ID_KEY: &str = "_requestId";
+pub const SAMPLED_KEY: &str = "_sampled";
+
+pub struct Loggers {
+    pub request_logger: Appender<RequestLogV2>,
+}
 
 pub async fn init(
     metrics: &Arc<MetricRegistry>,
     install: &InstallConfig,
     runtime: &Refreshable<LoggingConfig, Error>,
     hooks: &mut ShutdownHooks,
-) -> Result<(), Error> {
+) -> Result<Loggers, Error> {
     metric::init(metrics, install, hooks).await?;
     service::init(metrics, install, runtime, hooks).await?;
     trace::init(metrics, install, runtime, hooks).await?;
+    let request_logger = logger::appender(install, metrics, hooks).await?;
 
     cleanup::cleanup_logs().await;
-    Ok(())
+
+    Ok(Loggers { request_logger })
 }

@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::logging::api::RequestLogV2;
+use crate::logging::Appender;
 use crate::service::accept::AcceptService;
 use crate::service::connection_limit::ConnectionLimitLayer;
 use crate::service::connection_metrics::ConnectionMetricsLayer;
@@ -22,6 +24,7 @@ use crate::service::keep_alive_header::KeepAliveHeaderLayer;
 use crate::service::mdc::MdcLayer;
 use crate::service::no_caching::NoCachingLayer;
 use crate::service::request_id::RequestIdLayer;
+use crate::service::request_log::{RequestLogLayer, RequestLogRequestBody};
 use crate::service::routing::RoutingLayer;
 use crate::service::server_header::ServerHeaderLayer;
 use crate::service::spans::{SpannedBody, SpansLayer};
@@ -40,9 +43,13 @@ use tokio::task;
 use witchcraft_log::debug;
 use witchcraft_server_config::install::InstallConfig;
 
-pub type RawBody = SpannedBody<hyper::Body>;
+pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 
-pub async fn start(config: &InstallConfig, witchcraft: &mut Witchcraft) -> Result<(), Error> {
+pub async fn start(
+    config: &InstallConfig,
+    witchcraft: &mut Witchcraft,
+    request_logger: Appender<RequestLogV2>,
+) -> Result<(), Error> {
     // This service handles invididual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
         .layer(RoutingLayer::new(vec![]))
@@ -52,6 +59,7 @@ pub async fn start(config: &InstallConfig, witchcraft: &mut Witchcraft) -> Resul
         .layer(UnverifiedJwtLayer)
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
+        .layer(RequestLogLayer::new(request_logger))
         .layer(DeprecationHeaderLayer)
         .layer(KeepAliveHeaderLayer::new(config))
         .layer(ServerHeaderLayer::new(config)?)
