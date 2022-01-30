@@ -17,19 +17,25 @@ use std::sync::Arc;
 pub mod accept;
 pub mod connection_limit;
 pub mod connection_metrics;
+pub mod deprecation_header;
 pub mod handler;
 pub mod hyper;
 pub mod idle_connection;
+pub mod keep_alive_header;
 pub mod mdc;
+pub mod no_caching;
 pub mod request_id;
 pub mod routing;
+pub mod server_header;
 pub mod spans;
 #[cfg(test)]
 mod test_util;
 pub mod tls;
 pub mod tls_metrics;
+pub mod trace_id_header;
 pub mod trace_propagation;
 pub mod unverified_jwt;
+pub mod web_security;
 pub mod witchcrafft_mdc;
 
 // This infrastructure is adapted from `tower`, with a few changes:
