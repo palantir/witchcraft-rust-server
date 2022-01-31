@@ -15,6 +15,7 @@ use crate::logging::api::RequestLogV2;
 use crate::logging::Appender;
 use crate::service::accept::AcceptService;
 use crate::service::catch_unwind::CatchUnwindLayer;
+use crate::service::client_certificate::ClientCertificateLayer;
 use crate::service::connection_limit::ConnectionLimitLayer;
 use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::deprecation_header::DeprecationHeaderLayer;
@@ -22,7 +23,7 @@ use crate::service::endpoint_metrics::EndpointMetricsLayer;
 use crate::service::error_log::ErrorLogLayer;
 use crate::service::gzip::GzipLayer;
 use crate::service::handler::HandlerService;
-use crate::service::hyper::HyperService;
+use crate::service::hyper::{HyperService, NewConnection};
 use crate::service::idle_connection::IdleConnectionLayer;
 use crate::service::keep_alive_header::KeepAliveHeaderLayer;
 use crate::service::mdc::MdcLayer;
@@ -82,6 +83,7 @@ pub async fn start(
     let handle_service = ServiceBuilder::new()
         .layer(TlsLayer::new(config)?)
         .layer(TlsMetricsLayer::new(&witchcraft.metrics))
+        .layer(ClientCertificateLayer)
         .layer(IdleConnectionLayer::new(config))
         .service(HyperService::new(request_service));
     let handle_service = Arc::new(handle_service);
@@ -94,12 +96,16 @@ pub async fn start(
 
     task::spawn(async move {
         loop {
-            let socket = accept_service.call(()).await;
+            let stream = accept_service.call(()).await;
+            let connection = NewConnection {
+                stream,
+                service_builder: ServiceBuilder::new(),
+            };
 
             task::spawn({
                 let handle_service = handle_service.clone();
                 async move {
-                    if let Err(e) = handle_service.call(socket).await {
+                    if let Err(e) = handle_service.call(connection).await {
                         debug!("http connection terminated", error: e);
                     }
                 }

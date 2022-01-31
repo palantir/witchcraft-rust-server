@@ -1,4 +1,4 @@
-// Copyright 2021 Palantir Technologies, Inc.
+// Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,6 +80,7 @@ mod metrics;
 mod server;
 mod service;
 mod shutdown_hooks;
+pub mod tls;
 mod witchcraft;
 
 /// Initializes a Witchcraft server.
