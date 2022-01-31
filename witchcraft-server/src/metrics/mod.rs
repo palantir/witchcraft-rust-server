@@ -11,24 +11,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::metrics::rlimit::Rlimit;
 use crate::metrics::rusage::Rusage;
-use procinfo::pid;
+use std::panic;
 use std::time::Instant;
-use std::{fs, io, panic};
-use witchcraft_log::info;
 use witchcraft_metrics::MetricRegistry;
 
 #[cfg(feature = "jemalloc")]
 mod jemalloc;
-mod rlimit;
+#[cfg(target_os = "linux")]
+mod proc;
 mod rusage;
 
 pub fn init(metrics: &MetricRegistry) {
     register_uptime_metric(metrics);
     register_panic_metric(metrics);
     register_rusage_metrics(metrics);
-    register_proc_metrics(metrics);
+    #[cfg(target_os = "linux")]
+    proc::register_metrics(metrics);
     #[cfg(feature = "jemalloc")]
     jemalloc::register_metrics(metrics);
 }
@@ -70,29 +69,4 @@ fn register_rusage_metrics(metrics: &MetricRegistry) {
     metrics.gauge("process.blocks-written", || {
         Rusage::get_self().map_or(0, |r| r.blocks_written())
     });
-}
-
-fn register_proc_metrics(metrics: &MetricRegistry) {
-    if cfg!(not(target_os = "linux")) {
-        info!("skipping /proc metric registration since this isn't Linux");
-        return;
-    }
-
-    metrics.gauge("process.threads", || {
-        pid::stat_self().map_or(0, |s| s.num_threads)
-    });
-
-    metrics.gauge("process.filedescriptor", || filedescriptor().unwrap_or(0.));
-}
-
-fn filedescriptor() -> io::Result<f32> {
-    let mut files = 0;
-    for r in fs::read_dir("/proc/self/fd")? {
-        r?;
-        files += 1;
-    }
-
-    let max_files = Rlimit::nofile()?.cur();
-
-    Ok(files as f32 / max_files as f32)
 }

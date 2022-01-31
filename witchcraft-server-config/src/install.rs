@@ -26,6 +26,7 @@ pub struct InstallConfig {
     port: u16,
     #[serde(default)]
     keystore: KeystoreConfig,
+    client_auth_truststore: Option<ClientAuthTruststoreConfig>,
     #[serde(
         default = "default_install_config_context_path",
         deserialize_with = "deserialize_install_config_context_path"
@@ -73,6 +74,18 @@ impl InstallConfig {
     #[inline]
     pub fn keystore(&self) -> &KeystoreConfig {
         &self.keystore
+    }
+
+    /// Returns the server's TLS client authentication truststore configuration.
+    ///
+    /// If set, the server will request (but not require) the client to authenticate itself during the TLS handshake.
+    /// If a certificate is present and validated against the trust roots, all requests made over that connection will
+    /// include a `ClientCertificate` extension.
+    ///
+    /// Defaults to `None`.
+    #[inline]
+    pub fn client_auth_truststore(&self) -> Option<&ClientAuthTruststoreConfig> {
+        self.client_auth_truststore.as_ref()
     }
 
     /// Returns the server's context path.
@@ -161,6 +174,33 @@ impl Default for KeystoreConfig {
         KeystoreConfig {
             key_path: PathBuf::from("var/security/key.pem"),
             cert_path: PathBuf::from("var/security/cert.cer"),
+        }
+    }
+}
+
+/// TLS client authentication configuration.
+#[derive(Deserialize, Clone, PartialEq, Debug)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct ClientAuthTruststoreConfig {
+    path: PathBuf,
+}
+
+impl ClientAuthTruststoreConfig {
+    /// Returns the path to a file containg X.509 certificates (i.e. blocks of `-----BEGIN CERTIFICATE-----`) that will
+    /// act as the trust roots for validating the client's identity.
+    ///
+    /// Defaults to `var/security/cert.cer`.
+    #[inline]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Default for ClientAuthTruststoreConfig {
+    #[inline]
+    fn default() -> Self {
+        ClientAuthTruststoreConfig {
+            path: PathBuf::from("var/security/cert.cer"),
         }
     }
 }

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::service::{Layer, Service};
+use crate::service::{Layer, Service, ServiceBuilder};
 use conjure_error::Error;
 use http::{Request, Response};
 use http_body::Body;
@@ -27,7 +27,7 @@ use tokio_openssl::SslStream;
 
 pub struct NewConnection<S, L> {
     pub stream: S,
-    pub layer: L,
+    pub service_builder: ServiceBuilder<L>,
 }
 
 pub trait GracefulShutdown {
@@ -74,7 +74,7 @@ where
             inner: http.serve_connection(
                 req.stream,
                 AdaptorService {
-                    inner: req.layer.layer(self.request_service.clone()),
+                    inner: req.service_builder.service(self.request_service.clone()),
                 },
             ),
         }

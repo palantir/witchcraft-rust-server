@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::hyper::{GracefulShutdown, NewConnection};
-use crate::service::{Layer, Service};
+use crate::service::{Layer, Service, Stack};
 use futures_util::ready;
 use http::{HeaderMap, Response};
 use http_body::Body;
@@ -62,16 +62,16 @@ pub struct IdleConnectionService<S> {
     idle_timeout: Duration,
 }
 
-impl<S, R> Service<R> for IdleConnectionService<S>
+impl<S, R, L> Service<NewConnection<R, L>> for IdleConnectionService<S>
 where
-    S: Service<NewConnection<R, RequestTrackerLayer>>,
+    S: Service<NewConnection<R, Stack<L, RequestTrackerLayer>>>,
     S::Future: GracefulShutdown,
 {
     type Response = S::Response;
 
     type Future = IdleConnectionFuture<S::Future>;
 
-    fn call(&self, req: R) -> Self::Future {
+    fn call(&self, req: NewConnection<R, L>) -> Self::Future {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 mode: Mode::Idle,
@@ -83,10 +83,10 @@ where
 
         IdleConnectionFuture {
             inner: self.inner.call(NewConnection {
-                stream: req,
-                layer: RequestTrackerLayer {
+                stream: req.stream,
+                service_builder: req.service_builder.layer(RequestTrackerLayer {
                     shared: shared.clone(),
-                },
+                }),
             }),
             shared,
         }
