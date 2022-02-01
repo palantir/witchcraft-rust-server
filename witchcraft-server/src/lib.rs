@@ -80,7 +80,7 @@ mod witchcraft;
 /// Initializes a Witchcraft server.
 ///
 /// `init` is invoked with the parsed install and runtime configs as well as the [`Witchcraft`] context object. It
-/// is expected to return quickly; any long runninig initialization should be spawned off into the background to run
+/// is expected to return quickly; any long running initialization should be spawned off into the background to run
 /// asynchronously.
 pub fn init<I, R, F>(init: F)
 where
