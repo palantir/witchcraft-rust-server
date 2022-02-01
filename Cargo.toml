@@ -1,5 +1,5 @@
 [workspace]
-members = ["render-conjure"]
+members = ["render-conjure", "witchcraft-server", "witchcraft-server-config"]
 
 [patch.crates-io]
 conjure-runtime-config = { git = "https://github.com/palantir/conjure-rust-runtime" }
