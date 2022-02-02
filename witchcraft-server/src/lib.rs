@@ -74,6 +74,7 @@ use witchcraft_metrics::MetricRegistry;
 #[doc(inline)]
 pub use witchcraft_server_config as config;
 
+pub mod blocking;
 mod body;
 mod configs;
 mod endpoint;
@@ -173,22 +174,18 @@ where
         metrics,
         client_factory,
         handle: handle.clone(),
+        install_config: install_config.as_ref().clone(),
+        thread_pool: None,
         endpoints: vec![],
     };
 
-    let base_install_config = install_config.as_ref().clone();
-
     init(install_config, runtime_config, &mut witchcraft)?;
 
-    handle.block_on(server::start(
-        &base_install_config,
-        &mut witchcraft,
-        loggers.request_logger,
-    ))?;
+    handle.block_on(server::start(&mut witchcraft, loggers.request_logger))?;
 
     handle.block_on(shutdown(
         shutdown_hooks,
-        base_install_config.server().shutdown_timeout(),
+        witchcraft.install_config.server().shutdown_timeout(),
     ))
 }
 

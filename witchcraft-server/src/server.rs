@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::endpoint::extended_path::ExtendedPathEndpoint;
 use crate::logging::api::RequestLogV2;
 use crate::logging::Appender;
 use crate::service::accept::AcceptService;
@@ -49,26 +48,16 @@ use std::mem;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
-use witchcraft_server_config::install::InstallConfig;
 
 pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 
 pub async fn start(
-    config: &InstallConfig,
     witchcraft: &mut Witchcraft,
     request_logger: Appender<RequestLogV2>,
 ) -> Result<(), Error> {
-    let mut endpoints = mem::take(&mut witchcraft.endpoints);
-    if config.context_path() != "/" {
-        endpoints = endpoints
-            .into_iter()
-            .map(|e| Box::new(ExtendedPathEndpoint::new(e, config.context_path())) as _)
-            .collect();
-    }
-
     // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
-        .layer(RoutingLayer::new(endpoints))
+        .layer(RoutingLayer::new(mem::take(&mut witchcraft.endpoints)))
         .layer(RequestIdLayer)
         .layer(TracePropagationLayer)
         .layer(SpansLayer)
@@ -76,10 +65,10 @@ pub async fn start(
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
         .layer(RequestLogLayer::new(request_logger))
-        .layer(GzipLayer::new(config))
+        .layer(GzipLayer::new(&witchcraft.install_config))
         .layer(DeprecationHeaderLayer)
-        .layer(KeepAliveHeaderLayer::new(config))
-        .layer(ServerHeaderLayer::new(config)?)
+        .layer(KeepAliveHeaderLayer::new(&witchcraft.install_config))
+        .layer(ServerHeaderLayer::new(&witchcraft.install_config)?)
         .layer(NoCachingLayer)
         .layer(WebSecurityLayer)
         .layer(TraceIdHeaderLayer)
@@ -91,18 +80,21 @@ pub async fn start(
 
     // This layer handles individual TCP connections, each running concurrently.
     let handle_service = ServiceBuilder::new()
-        .layer(TlsLayer::new(config)?)
+        .layer(TlsLayer::new(&witchcraft.install_config)?)
         .layer(TlsMetricsLayer::new(&witchcraft.metrics))
         .layer(ClientCertificateLayer)
-        .layer(IdleConnectionLayer::new(config))
+        .layer(IdleConnectionLayer::new(&witchcraft.install_config))
         .service(HyperService::new(request_service));
     let handle_service = Arc::new(handle_service);
 
     // This layer produces TCP connections, running serially.
     let accept_service = ServiceBuilder::new()
-        .layer(ConnectionLimitLayer::new(config))
-        .layer(ConnectionMetricsLayer::new(config, &witchcraft.metrics))
-        .service(AcceptService::new(config)?);
+        .layer(ConnectionLimitLayer::new(&witchcraft.install_config))
+        .layer(ConnectionMetricsLayer::new(
+            &witchcraft.install_config,
+            &witchcraft.metrics,
+        ))
+        .service(AcceptService::new(&witchcraft.install_config)?);
 
     task::spawn(async move {
         loop {
