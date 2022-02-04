@@ -15,7 +15,7 @@ use conjure_error::Error;
 use std::path::Path;
 use std::time::{Duration, SystemTime};
 use tokio::fs;
-use witchcraft_log::{error, info};
+use witchcraft_log::{error, info, warn};
 
 // Archived logs are retained for 30 days, so anything more than 31 days old is definitely eligible for cleanup
 const MAX_AGE: Duration = Duration::from_secs(31 * 24 * 60 * 60);
@@ -60,7 +60,7 @@ async fn cleanup_logs_inner(path: &Path, now: SystemTime) -> Result<(), Error> {
         let modified = match metadata.modified() {
             Ok(modified) => modified,
             Err(e) => {
-                info!(
+                warn!(
                     "file modification times are not supported by the filesystem, skipping log cleanup",
                     safe: {
                         directory: path,
