@@ -143,6 +143,8 @@ impl<T> AsyncAppender<T> {
         Ok(())
     }
 
+    // NB: the correctness of poll_flush and poll_close requires that only one task will ever call them (the shutdown
+    // hook)
     pub fn poll_flush(&self, cx: &mut Context<'_>) -> Poll<()> {
         let mut state = self.state.lock();
 
