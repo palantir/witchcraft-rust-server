@@ -144,13 +144,13 @@ where
 
     let metrics = Arc::new(MetricRegistry::new());
 
-    let mut shutdown_hooks = ShutdownHooks::new();
+    let mut logger_shutdown_hooks = ShutdownHooks::new();
 
     let loggers = handle.block_on(logging::init(
         &metrics,
         install_config.as_ref(),
         &runtime_config.map(|c| c.as_ref().logging().clone()),
-        &mut shutdown_hooks,
+        &mut logger_shutdown_hooks,
     ))?;
 
     info!("server starting");
@@ -181,15 +181,25 @@ where
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
-    handle.block_on(server::start(&mut witchcraft, loggers.request_logger))?;
+    let mut server_shutdown_hooks = ShutdownHooks::new();
+    handle.block_on(server::start(
+        &mut witchcraft,
+        &mut server_shutdown_hooks,
+        loggers.request_logger,
+    ))?;
 
     handle.block_on(shutdown(
-        shutdown_hooks,
+        logger_shutdown_hooks,
+        server_shutdown_hooks,
         witchcraft.install_config.server().shutdown_timeout(),
     ))
 }
 
-async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<(), Error> {
+async fn shutdown(
+    logger_shutdown_hooks: ShutdownHooks,
+    server_shutdown_hooks: ShutdownHooks,
+    timeout: Duration,
+) -> Result<(), Error> {
     pin! {
         let signals = signals()?;
     }
@@ -198,10 +208,19 @@ async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<()
     info!("server shutting down");
 
     select! {
-        _ = shutdown_hooks => {}
-        _ = signals.next() => {}
-        _ = time::sleep(timeout) => {}
+        _ = server_shutdown_hooks => {}
+        _ = signals.next() => info!("graceful shutdown interrupted by signal"),
+        _ = time::sleep(timeout) => {
+            info!(
+                "graceful shutdown timed out",
+                safe: {
+                    timeout: format_args!("{timeout:?}"),
+                },
+            );
+        }
     }
+
+    logger_shutdown_hooks.await;
 
     Ok(())
 }
