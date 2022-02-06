@@ -16,6 +16,7 @@ use crate::blocking::pool::ThreadPool;
 use crate::endpoint::conjure::ConjureEndpoint;
 use crate::endpoint::extended_path::ExtendedPathEndpoint;
 use crate::endpoint::WitchcraftEndpoint;
+use crate::health::HealthCheckRegistry;
 use crate::{blocking, RequestBody, ResponseWriter};
 use conjure_http::server::{AsyncEndpoint, AsyncService, Endpoint, Service};
 use conjure_runtime::ClientFactory;
@@ -27,6 +28,7 @@ use witchcraft_server_config::install::InstallConfig;
 /// The Witchcraft server context.
 pub struct Witchcraft {
     pub(crate) metrics: Arc<MetricRegistry>,
+    pub(crate) health_checks: Arc<HealthCheckRegistry>,
     pub(crate) client_factory: ClientFactory,
     pub(crate) handle: Handle,
     pub(crate) install_config: InstallConfig,
@@ -39,6 +41,12 @@ impl Witchcraft {
     #[inline]
     pub fn metrics(&self) -> &Arc<MetricRegistry> {
         &self.metrics
+    }
+
+    /// Returns a reference to the server's health check registry.
+    #[inline]
+    pub fn health_checks(&self) -> &Arc<HealthCheckRegistry> {
+        &self.health_checks
     }
 
     /// Returns a reference to the server's HTTP client factory.
