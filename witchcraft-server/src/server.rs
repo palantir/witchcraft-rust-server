@@ -19,6 +19,7 @@ use crate::service::client_certificate::ClientCertificateLayer;
 use crate::service::connection_limit::ConnectionLimitLayer;
 use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::deprecation_header::DeprecationHeaderLayer;
+use crate::service::endpoint_health::EndpointHealthLayer;
 use crate::service::endpoint_metrics::EndpointMetricsLayer;
 use crate::service::error_log::ErrorLogLayer;
 use crate::service::graceful_shutdown::GracefulShutdownLayer;
@@ -77,6 +78,7 @@ pub async fn start(
         .layer(TraceIdHeaderLayer)
         .layer(ServerMetricsLayer::new(&witchcraft.metrics))
         .layer(EndpointMetricsLayer)
+        .layer(EndpointHealthLayer)
         .layer(ErrorLogLayer)
         .layer(CatchUnwindLayer)
         .service(HandlerService);

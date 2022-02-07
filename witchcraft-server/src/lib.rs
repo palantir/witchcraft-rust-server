@@ -51,6 +51,10 @@
 //! ```
 #![warn(missing_docs)]
 
+use crate::health::config_reload::ConfigReloadHealthCheck;
+use crate::health::endpoint_500s::Endpoint500sHealthCheck;
+use crate::health::panics::PanicsHealthCheck;
+use crate::health::service_dependency::ServiceDependencyHealthCheck;
 use crate::health::HealthCheckRegistry;
 use crate::shutdown_hooks::ShutdownHooks;
 pub use body::{RequestBody, ResponseWriter};
@@ -63,7 +67,7 @@ use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
 use std::process;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -142,7 +146,8 @@ where
         runtime: Some(runtime),
     };
 
-    let runtime_config = configs::load_runtime::<R>(&handle)?;
+    let runtime_config_ok = Arc::new(AtomicBool::new(true));
+    let runtime_config = configs::load_runtime::<R>(&handle, &runtime_config_ok)?;
 
     let metrics = Arc::new(MetricRegistry::new());
 
@@ -159,8 +164,12 @@ where
 
     metrics::init(&metrics);
 
-    let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
     let host_metrics = Arc::new(HostMetricsRegistry::new());
+
+    let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
+    health_checks.register(ServiceDependencyHealthCheck::new(&host_metrics));
+    health_checks.register(PanicsHealthCheck::new());
+    health_checks.register(ConfigReloadHealthCheck::new(runtime_config_ok));
 
     let mut client_factory =
         ClientFactory::new(runtime_config.map(|c| c.as_ref().service_discovery().clone()));
@@ -184,6 +193,10 @@ where
     };
 
     init(install_config, runtime_config, &mut witchcraft)?;
+
+    witchcraft
+        .health_checks
+        .register(Endpoint500sHealthCheck::new(&witchcraft.endpoints));
 
     let mut server_shutdown_hooks = ShutdownHooks::new();
     handle.block_on(server::start(

@@ -13,6 +13,7 @@
 // limitations under the License.
 use crate::body::ClientIo;
 use crate::endpoint::{errors, WitchcraftEndpoint};
+use crate::health::endpoint_500s::EndpointHealth;
 use crate::server::RawBody;
 use crate::service::endpoint_metrics::EndpointMetrics;
 use crate::service::handler::BodyWriteAborted;
@@ -31,6 +32,7 @@ use http_body::{Body, SizeHint};
 use std::future::Future;
 use std::mem;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use sync_wrapper::SyncWrapper;
 use tokio::io::AsyncWriteExt;
@@ -42,6 +44,7 @@ use witchcraft_metrics::MetricRegistry;
 pub struct ConjureEndpoint {
     inner: Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>,
     metrics: Option<EndpointMetrics>,
+    health: Option<Arc<EndpointHealth>>,
 }
 
 impl ConjureEndpoint {
@@ -51,6 +54,7 @@ impl ConjureEndpoint {
     ) -> Self {
         ConjureEndpoint {
             metrics: metrics.map(|metrics| EndpointMetrics::new(metrics, &inner)),
+            health: metrics.map(|_| Arc::new(EndpointHealth::new())),
             inner,
         }
     }
@@ -86,6 +90,10 @@ impl EndpointMetadata for ConjureEndpoint {
 impl WitchcraftEndpoint for ConjureEndpoint {
     fn metrics(&self) -> Option<&EndpointMetrics> {
         self.metrics.as_ref()
+    }
+
+    fn health(&self) -> Option<&Arc<EndpointHealth>> {
+        self.health.as_ref()
     }
 
     async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
