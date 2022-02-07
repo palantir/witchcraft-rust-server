@@ -17,6 +17,7 @@ use crate::endpoint::conjure::ConjureEndpoint;
 use crate::endpoint::extended_path::ExtendedPathEndpoint;
 use crate::endpoint::WitchcraftEndpoint;
 use crate::health::HealthCheckRegistry;
+use crate::readiness::ReadinessCheckRegistry;
 use crate::{blocking, RequestBody, ResponseWriter};
 use conjure_http::server::{AsyncEndpoint, AsyncService, Endpoint, Service};
 use conjure_runtime::ClientFactory;
@@ -29,6 +30,7 @@ use witchcraft_server_config::install::InstallConfig;
 pub struct Witchcraft {
     pub(crate) metrics: Arc<MetricRegistry>,
     pub(crate) health_checks: Arc<HealthCheckRegistry>,
+    pub(crate) readiness_checks: Arc<ReadinessCheckRegistry>,
     pub(crate) client_factory: ClientFactory,
     pub(crate) handle: Handle,
     pub(crate) install_config: InstallConfig,
@@ -49,6 +51,12 @@ impl Witchcraft {
         &self.health_checks
     }
 
+    /// Returns a reference to the server's readiness check registry.
+    #[inline]
+    pub fn readiness_checks(&self) -> &Arc<ReadinessCheckRegistry> {
+        &self.readiness_checks
+    }
+
     /// Returns a reference to the server's HTTP client factory.
     #[inline]
     pub fn client_factory(&self) -> &ClientFactory {
@@ -66,7 +74,7 @@ impl Witchcraft {
     where
         T: AsyncService<RequestBody, ResponseWriter>,
     {
-        self.endpoints(None, service.endpoints())
+        self.endpoints(None, service.endpoints(), true)
     }
 
     /// Installs an async service under the server's `/api` prefix.
@@ -74,18 +82,25 @@ impl Witchcraft {
     where
         T: AsyncService<RequestBody, ResponseWriter>,
     {
-        self.endpoints(Some("/api"), service.endpoints())
+        self.endpoints(Some("/api"), service.endpoints(), true)
     }
 
-    fn endpoints(
+    pub(crate) fn endpoints(
         &mut self,
         prefix: Option<&str>,
         endpoints: Vec<Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>>,
+        track_metrics: bool,
     ) {
+        let metrics = if track_metrics {
+            Some(&*self.metrics)
+        } else {
+            None
+        };
+
         self.endpoints.extend(
             endpoints
                 .into_iter()
-                .map(|e| Box::new(ConjureEndpoint::new(Some(&self.metrics), e)))
+                .map(|e| Box::new(ConjureEndpoint::new(metrics, e)))
                 .map(|e| extend_path(e, self.install_config.context_path(), prefix)),
         )
     }

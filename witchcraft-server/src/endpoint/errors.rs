@@ -27,8 +27,7 @@ where
 {
     let mut response = match error.kind() {
         ErrorKind::Service(service) => {
-            let body = conjure_error::encode(service);
-            let body = json::to_vec(&body).unwrap();
+            let body = json::to_vec(service).unwrap();
             let mut response = Response::new(body_creator(Some(Bytes::from(body))));
             *response.status_mut() =
                 StatusCode::from_u16(service.error_code().status_code()).unwrap();

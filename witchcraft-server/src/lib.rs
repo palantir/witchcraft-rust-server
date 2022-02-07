@@ -56,11 +56,14 @@ use crate::health::endpoint_500s::Endpoint500sHealthCheck;
 use crate::health::panics::PanicsHealthCheck;
 use crate::health::service_dependency::ServiceDependencyHealthCheck;
 use crate::health::HealthCheckRegistry;
+use crate::readiness::ReadinessCheckRegistry;
 use crate::shutdown_hooks::ShutdownHooks;
+use crate::status::StatusEndpoints;
 pub use body::{RequestBody, ResponseWriter};
 use config::install::InstallConfig;
 use config::runtime::RuntimeConfig;
 use conjure_error::Error;
+use conjure_http::server::AsyncService;
 use conjure_object::Utc;
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
@@ -86,9 +89,11 @@ mod endpoint;
 pub mod health;
 mod logging;
 mod metrics;
+pub mod readiness;
 mod server;
 mod service;
 mod shutdown_hooks;
+mod status;
 pub mod tls;
 mod witchcraft;
 
@@ -171,6 +176,8 @@ where
     health_checks.register(PanicsHealthCheck::new());
     health_checks.register(ConfigReloadHealthCheck::new(runtime_config_ok));
 
+    let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
+
     let mut client_factory =
         ClientFactory::new(runtime_config.map(|c| c.as_ref().service_discovery().clone()));
     client_factory
@@ -185,12 +192,20 @@ where
     let mut witchcraft = Witchcraft {
         metrics,
         health_checks,
+        readiness_checks,
         client_factory,
         handle: handle.clone(),
         install_config: install_config.as_ref().clone(),
         thread_pool: None,
         endpoints: vec![],
     };
+
+    let status_endpoints = StatusEndpoints::new(
+        &runtime_config,
+        &witchcraft.health_checks,
+        &witchcraft.readiness_checks,
+    );
+    witchcraft.endpoints(None, status_endpoints.endpoints(), false);
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
