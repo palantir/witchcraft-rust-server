@@ -3,6 +3,10 @@ name = "witchcraft-server"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["jemalloc"]
+jemalloc = ["tikv-jemalloc-ctl", "tikv-jemallocator"]
+
 [dependencies]
 arc-swap = "1"
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
@@ -16,8 +20,10 @@ futures-sink = "0.3"
 futures-util = "0.3"
 libc = "0.2"
 log = "0.4"
+num_cpus = "1"
 parking_lot = "0.11"
 pin-project = "1"
+procinfo = "0.4"
 rand = "0.8"
 refreshable = "1"
 regex = "1"
@@ -25,6 +31,12 @@ serde = "1"
 serde-encrypted-value = "0.4"
 serde_yaml = "0.8"
 sequence_trie = "0.3"
+tikv-jemalloc-ctl = { version = "0.4", features = ["use_std"], optional = true }
+tikv-jemallocator = { version = "0.4", features = [
+    "unprefixed_malloc_on_supported_platforms",
+    "background_threads",
+    "profiling",
+], optional = true }
 tokio = { version = "1", features = [
     "fs",
     "macros",

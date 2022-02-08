@@ -75,6 +75,7 @@ pub use witchcraft_server_config as config;
 
 mod configs;
 mod logging;
+mod metrics;
 mod shutdown_hooks;
 mod witchcraft;
 
@@ -146,6 +147,8 @@ where
     ))?;
 
     info!("server starting");
+
+    metrics::init(&metrics);
 
     let host_metrics = Arc::new(HostMetricsRegistry::new());
 
