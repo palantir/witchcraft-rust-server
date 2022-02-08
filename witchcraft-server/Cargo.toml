@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+arc-swap = "1"
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 bytes = "1"
 conjure-error = "0.7"
@@ -12,6 +13,7 @@ conjure-runtime = "1.2"
 conjure-serde = "0.7"
 futures-sink = "0.3"
 futures-util = "0.3"
+log = "0.4"
 parking_lot = "0.11"
 pin-project = "1"
 refreshable = "1"
@@ -19,6 +21,7 @@ regex = "1"
 serde = "1"
 serde-encrypted-value = "0.4"
 serde_yaml = "0.8"
+sequence_trie = "0.3"
 tokio = { version = "1", features = [
     "fs",
     "macros",

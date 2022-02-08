@@ -11,16 +11,33 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
+use refreshable::Refreshable;
+use witchcraft_metrics::MetricRegistry;
+use witchcraft_server_config::install::InstallConfig;
+use witchcraft_server_config::runtime::LoggingConfig;
 
 #[allow(warnings)]
 pub mod api;
 mod cleanup;
 mod format;
 mod logger;
+mod service;
 
-pub async fn init() -> Result<(), Error> {
+pub const UID_MDC_KEY: &str = "\0witchcraft-uid";
+pub const SID_MDC_KEY: &str = "\0witchcraft-sid";
+pub const TOKEN_ID_MDC_KEY: &str = "\0witchcraft-token-id";
+pub const TRACE_ID_MDC_KEY: &str = "\0witchcraft-trace-id";
+
+pub async fn init(
+    metrics: &MetricRegistry,
+    install: &InstallConfig,
+    runtime: &Refreshable<LoggingConfig, Error>,
+    hooks: &mut ShutdownHooks,
+) -> Result<(), Error> {
+    service::init(metrics, install, runtime, hooks).await?;
+
     cleanup::cleanup_logs().await;
-
     Ok(())
 }
