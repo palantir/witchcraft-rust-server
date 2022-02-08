@@ -24,6 +24,7 @@ mod cleanup;
 mod format;
 mod logger;
 mod service;
+mod trace;
 
 pub const UID_MDC_KEY: &str = "\0witchcraft-uid";
 pub const SID_MDC_KEY: &str = "\0witchcraft-sid";
@@ -37,6 +38,7 @@ pub async fn init(
     hooks: &mut ShutdownHooks,
 ) -> Result<(), Error> {
     service::init(metrics, install, runtime, hooks).await?;
+    trace::init(metrics, install, runtime, hooks).await?;
 
     cleanup::cleanup_logs().await;
     Ok(())
