@@ -32,6 +32,7 @@ tokio = { version = "1", features = [
     "signal",
     "time",
 ] }
+tokio-util = "0.6"
 witchcraft-log = "0.3"
 witchcraft-metrics = "0.2"
 zipkin = "0.4"
