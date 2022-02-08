@@ -51,6 +51,16 @@
 //! ```
 #![warn(missing_docs)]
 
+use crate::debug::endpoint::DebugEndpoints;
+#[cfg(feature = "jemalloc")]
+use crate::debug::heap_stats::HeapStatsDiagnostic;
+use crate::debug::metric_names::MetricNamesDiagnostic;
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+use crate::debug::thread_dump::ThreadDumpDiagnostic;
+use crate::debug::DiagnosticRegistry;
 use crate::health::config_reload::ConfigReloadHealthCheck;
 use crate::health::endpoint_500s::Endpoint500sHealthCheck;
 use crate::health::panics::PanicsHealthCheck;
@@ -69,6 +79,11 @@ use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+use std::env;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -85,6 +100,7 @@ pub use witchcraft_server_config as config;
 pub mod blocking;
 mod body;
 mod configs;
+mod debug;
 mod endpoint;
 pub mod health;
 mod logging;
@@ -134,6 +150,12 @@ where
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
 {
+    #[cfg(target_os = "linux")]
+    if env::args_os().nth(1).map_or(false, |a| a == "rstack") {
+        let _ = rstack_self::child();
+        return Ok(());
+    }
+
     let install_config = configs::load_install::<I>()?;
 
     let thread_id = AtomicUsize::new(0);
@@ -178,6 +200,14 @@ where
 
     let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
 
+    let mut diagnostics = DiagnosticRegistry::new();
+    diagnostics.register(MetricNamesDiagnostic::new(&metrics));
+    #[cfg(feature = "jemalloc")]
+    diagnostics.register(HeapStatsDiagnostic);
+    #[cfg(target_os = "linux")]
+    diagnostics.register(ThreadDumpDiagnostic);
+    diagnostics.finalize();
+
     let mut client_factory =
         ClientFactory::new(runtime_config.map(|c| c.as_ref().service_discovery().clone()));
     client_factory
@@ -206,6 +236,9 @@ where
         &witchcraft.readiness_checks,
     );
     witchcraft.endpoints(None, status_endpoints.endpoints(), false);
+
+    let debug_endpoints = DebugEndpoints::new(&runtime_config, diagnostics);
+    witchcraft.app(debug_endpoints);
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
