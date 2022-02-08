@@ -74,6 +74,7 @@ use witchcraft_metrics::MetricRegistry;
 pub use witchcraft_server_config as config;
 
 mod configs;
+mod logging;
 mod shutdown_hooks;
 mod witchcraft;
 
@@ -136,6 +137,8 @@ where
     let metrics = Arc::new(MetricRegistry::new());
 
     let shutdown_hooks = ShutdownHooks::new();
+
+    handle.block_on(logging::init())?;
 
     let host_metrics = Arc::new(HostMetricsRegistry::new());
 
