@@ -36,7 +36,7 @@ pub mod trace_id_header;
 pub mod trace_propagation;
 pub mod unverified_jwt;
 pub mod web_security;
-pub mod witchcrafft_mdc;
+pub mod witchcraft_mdc;
 
 // This infrastructure is adapted from `tower`, with a few changes:
 //
