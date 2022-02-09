@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::server::RawBody;
 use crate::service::handler::BodyWriteAborted;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -20,6 +21,5 @@ use http_body::combinators::BoxBody;
 
 #[async_trait]
 pub trait WitchcraftEndpoint: EndpointMetadata {
-    async fn handle(&self, req: Request<hyper::Body>)
-        -> Response<BoxBody<Bytes, BodyWriteAborted>>;
+    async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>>;
 }
