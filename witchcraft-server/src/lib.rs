@@ -76,6 +76,8 @@ pub use witchcraft_server_config as config;
 mod configs;
 mod logging;
 mod metrics;
+mod server;
+mod service;
 mod shutdown_hooks;
 mod witchcraft;
 
@@ -169,11 +171,16 @@ where
         handle: handle.clone(),
     };
 
-    let shutdown_timeout = install_config.as_ref().server().shutdown_timeout();
+    let base_install_config = install_config.as_ref().clone();
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
-    handle.block_on(shutdown(shutdown_hooks, shutdown_timeout))
+    handle.block_on(server::start(&base_install_config))?;
+
+    handle.block_on(shutdown(
+        shutdown_hooks,
+        base_install_config.server().shutdown_timeout(),
+    ))
 }
 
 async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<(), Error> {
