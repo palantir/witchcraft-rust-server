@@ -25,7 +25,7 @@ use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
 use crate::service::trace_propagation::TracePropagationLayer;
 use crate::service::unverified_jwt::UnverifiedJwtLayer;
-use crate::service::witchcrafft_mdc::WitchcraftMdcLayer;
+use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;

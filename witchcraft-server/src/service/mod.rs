@@ -30,7 +30,7 @@ pub mod tls;
 pub mod tls_metrics;
 pub mod trace_propagation;
 pub mod unverified_jwt;
-pub mod witchcrafft_mdc;
+pub mod witchcraft_mdc;
 
 // This infrastructure is adapted from `tower`, with a few changes:
 //
