@@ -17,6 +17,7 @@ use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
+use crate::service::routing::RoutingLayer;
 use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
 use crate::service::{Service, ServiceBuilder};
@@ -29,7 +30,9 @@ use witchcraft_server_config::install::InstallConfig;
 
 pub async fn start(config: &InstallConfig, witchcraft: &mut Witchcraft) -> Result<(), Error> {
     // This service handles invididual HTTP requests, each running concurrently.
-    let request_service = ServiceBuilder::new().service(HandlerService);
+    let request_service = ServiceBuilder::new()
+        .layer(RoutingLayer::new(vec![]))
+        .service(HandlerService);
 
     // This layer handles invididual TCP connections, each running concurrently.
     let handle_service = ServiceBuilder::new()

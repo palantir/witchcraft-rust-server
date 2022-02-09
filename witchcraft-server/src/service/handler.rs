@@ -11,12 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::service::routing::Route;
 use crate::service::Service;
 use bytes::Bytes;
 use futures_util::future::BoxFuture;
-use http::{HeaderMap, Request, Response, StatusCode};
+use http::header::ALLOW;
+use http::{HeaderMap, HeaderValue, Method, Request, Response, StatusCode};
 use http_body::combinators::BoxBody;
 use http_body::{Body, SizeHint};
+use itertools::Itertools;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::{error, fmt};
@@ -31,11 +34,43 @@ impl Service<Request<hyper::Body>> for HandlerService {
 
     type Future = BoxFuture<'static, Self::Response>;
 
-    fn call(&self, _req: Request<hyper::Body>) -> Self::Future {
-        let mut response = Response::new(EmptyBody.boxed());
-        *response.status_mut() = StatusCode::NOT_FOUND;
-        Box::pin(async move { response })
+    fn call(&self, mut req: Request<hyper::Body>) -> Self::Future {
+        let route = req
+            .extensions_mut()
+            .remove::<Route>()
+            .expect("Route missing from request extensions");
+
+        match route {
+            Route::Resolved(endpoint) => Box::pin(async move { endpoint.handle(req).await }),
+            Route::MethodNotAllowed(methods) => {
+                let mut response = Response::new(EmptyBody.boxed());
+                *response.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
+                response.headers_mut().insert(ALLOW, allow_header(&methods));
+                Box::pin(async { response })
+            }
+            Route::StarOptions => {
+                let mut response = Response::new(EmptyBody.boxed());
+                *response.status_mut() = StatusCode::NO_CONTENT;
+                Box::pin(async { response })
+            }
+            Route::Options(methods) => {
+                let mut response = Response::new(EmptyBody.boxed());
+                *response.status_mut() = StatusCode::NO_CONTENT;
+                response.headers_mut().insert(ALLOW, allow_header(&methods));
+                Box::pin(async { response })
+            }
+            Route::Unresolved => {
+                let mut response = Response::new(EmptyBody.boxed());
+                *response.status_mut() = StatusCode::NOT_FOUND;
+                Box::pin(async { response })
+            }
+        }
     }
+}
+
+fn allow_header(methods: &[Method]) -> HeaderValue {
+    let header = methods.iter().map(|m| m.to_string()).join(", ");
+    HeaderValue::try_from(header).unwrap()
 }
 
 #[derive(Debug)]
