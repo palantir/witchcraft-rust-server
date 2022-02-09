@@ -25,7 +25,7 @@ use std::task::{Context, Poll};
 use zipkin::{Detached, Kind, OpenSpan};
 
 /// A layer which extracts Zipkin tracing information from a request and creates a top-level span which wraps the inner
-/// service. It additionally adds the trace ID as a header to the response.
+/// service.
 ///
 /// It must be installed after routing and request ID generation.
 pub struct TracePropagationLayer;

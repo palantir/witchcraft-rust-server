@@ -1,10 +1,3 @@
-use crate::logging;
-use crate::service::request_id::RequestId;
-use crate::service::unverified_jwt::UnverifiedJwt;
-use crate::service::{Layer, Service};
-use http::Request;
-use witchcraft_log::mdc;
-
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +11,13 @@ use witchcraft_log::mdc;
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+use crate::logging;
+use crate::service::request_id::RequestId;
+use crate::service::unverified_jwt::UnverifiedJwt;
+use crate::service::{Layer, Service};
+use http::Request;
+use witchcraft_log::mdc;
 
 /// A layer which injects Witchcraft-managed request state into the MDC.
 ///
