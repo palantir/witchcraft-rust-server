@@ -85,6 +85,8 @@ witchcraft-server-config = { path = "../witchcraft-server-config" }
 [target.'cfg(target_os = "linux")'.dependencies]
 procinfo = "0.4"
 rstack-self = { version = "0.3", features = ["dw"], default-features = false }
+rustc-demangle = "0.1"
+unwind = "0.4"
 
 [dev-dependencies]
 flate2 = "1"

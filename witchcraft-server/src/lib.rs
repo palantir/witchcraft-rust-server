@@ -100,6 +100,7 @@ pub use witchcraft_server_config as config;
 pub mod blocking;
 mod body;
 mod configs;
+mod crash;
 mod debug;
 mod endpoint;
 pub mod health;
@@ -188,6 +189,8 @@ where
     ))?;
 
     info!("server starting");
+
+    crash::init()?;
 
     metrics::init(&metrics);
 
