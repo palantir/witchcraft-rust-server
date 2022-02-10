@@ -14,10 +14,12 @@
 use crate::logging::api::RequestLogV2;
 use crate::logging::Appender;
 use crate::service::accept::AcceptService;
+use crate::service::catch_unwind::CatchUnwindLayer;
 use crate::service::connection_limit::ConnectionLimitLayer;
 use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::deprecation_header::DeprecationHeaderLayer;
 use crate::service::endpoint_metrics::EndpointMetricsLayer;
+use crate::service::error_log::ErrorLogLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
@@ -52,7 +54,7 @@ pub async fn start(
     witchcraft: &mut Witchcraft,
     request_logger: Appender<RequestLogV2>,
 ) -> Result<(), Error> {
-    // This service handles invididual HTTP requests, each running concurrently.
+    // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
         .layer(RoutingLayer::new(vec![]))
         .layer(RequestIdLayer)
@@ -70,9 +72,11 @@ pub async fn start(
         .layer(TraceIdHeaderLayer)
         .layer(ServerMetricsLayer::new(&witchcraft.metrics))
         .layer(EndpointMetricsLayer)
+        .layer(ErrorLogLayer)
+        .layer(CatchUnwindLayer)
         .service(HandlerService);
 
-    // This layer handles invididual TCP connections, each running concurrently.
+    // This layer handles individual TCP connections, each running concurrently.
     let handle_service = ServiceBuilder::new()
         .layer(TlsLayer::new(config)?)
         .layer(TlsMetricsLayer::new(&witchcraft.metrics))
