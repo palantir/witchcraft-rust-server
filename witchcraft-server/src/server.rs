@@ -17,6 +17,7 @@ use crate::service::accept::AcceptService;
 use crate::service::connection_limit::ConnectionLimitLayer;
 use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::deprecation_header::DeprecationHeaderLayer;
+use crate::service::endpoint_metrics::EndpointMetricsLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
@@ -27,6 +28,7 @@ use crate::service::request_id::RequestIdLayer;
 use crate::service::request_log::{RequestLogLayer, RequestLogRequestBody};
 use crate::service::routing::RoutingLayer;
 use crate::service::server_header::ServerHeaderLayer;
+use crate::service::server_metrics::ServerMetricsLayer;
 use crate::service::spans::{SpannedBody, SpansLayer};
 use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
@@ -66,6 +68,8 @@ pub async fn start(
         .layer(NoCachingLayer)
         .layer(WebSecurityLayer)
         .layer(TraceIdHeaderLayer)
+        .layer(ServerMetricsLayer::new(&witchcraft.metrics))
+        .layer(EndpointMetricsLayer)
         .service(HandlerService);
 
     // This layer handles invididual TCP connections, each running concurrently.
