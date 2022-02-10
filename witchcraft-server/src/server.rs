@@ -20,6 +20,7 @@ use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::deprecation_header::DeprecationHeaderLayer;
 use crate::service::endpoint_metrics::EndpointMetricsLayer;
 use crate::service::error_log::ErrorLogLayer;
+use crate::service::gzip::GzipLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
@@ -64,6 +65,7 @@ pub async fn start(
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
         .layer(RequestLogLayer::new(request_logger))
+        .layer(GzipLayer::new(config))
         .layer(DeprecationHeaderLayer)
         .layer(KeepAliveHeaderLayer::new(config))
         .layer(ServerHeaderLayer::new(config)?)
