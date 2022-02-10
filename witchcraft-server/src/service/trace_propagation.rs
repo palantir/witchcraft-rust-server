@@ -15,20 +15,17 @@ use crate::service::request_id::RequestId;
 use crate::service::routing::Route;
 use crate::service::{Layer, Service};
 use futures_util::ready;
-use http::header::{HeaderName, USER_AGENT};
-use http::{HeaderMap, HeaderValue, Request, Response};
+use http::header::USER_AGENT;
+use http::{HeaderMap, Request, Response};
 use http_body::Body;
-use once_cell::sync::Lazy;
 use pin_project::pin_project;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use zipkin::{Detached, Kind, OpenSpan};
 
-static TRACE_ID: Lazy<HeaderName> = Lazy::new(|| HeaderName::from_static("x-b3-traceid"));
-
 /// A layer which extracts Zipkin tracing information from a request and creates a top-level span which wraps the inner
-/// service. It additionally adds the trace ID as a header to the response.
+/// service.
 ///
 /// It must be installed after routing and request ID generation.
 pub struct TracePropagationLayer;
@@ -118,15 +115,10 @@ where
         let this = self.project();
         let _guard = zipkin::set_current(this.span.as_ref().unwrap().context());
 
-        let mut response = ready!(this.inner.poll(cx));
+        let response = ready!(this.inner.poll(cx));
 
         let mut span = this.span.take().unwrap();
         span.tag("http.status_code", response.status().as_str());
-
-        response.headers_mut().insert(
-            TRACE_ID.clone(),
-            HeaderValue::from_str(&span.context().trace_id().to_string()).unwrap(),
-        );
 
         Poll::Ready(response.map(|inner| TracePropagationBody { inner, span }))
     }

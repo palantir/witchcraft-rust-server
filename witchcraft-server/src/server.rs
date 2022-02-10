@@ -14,17 +14,23 @@
 use crate::service::accept::AcceptService;
 use crate::service::connection_limit::ConnectionLimitLayer;
 use crate::service::connection_metrics::ConnectionMetricsLayer;
+use crate::service::deprecation_header::DeprecationHeaderLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
+use crate::service::keep_alive_header::KeepAliveHeaderLayer;
 use crate::service::mdc::MdcLayer;
+use crate::service::no_caching::NoCachingLayer;
 use crate::service::request_id::RequestIdLayer;
 use crate::service::routing::RoutingLayer;
+use crate::service::server_header::ServerHeaderLayer;
 use crate::service::spans::{SpannedBody, SpansLayer};
 use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
+use crate::service::trace_id_header::TraceIdHeaderLayer;
 use crate::service::trace_propagation::TracePropagationLayer;
 use crate::service::unverified_jwt::UnverifiedJwtLayer;
+use crate::service::web_security::WebSecurityLayer;
 use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
@@ -46,6 +52,12 @@ pub async fn start(config: &InstallConfig, witchcraft: &mut Witchcraft) -> Resul
         .layer(UnverifiedJwtLayer)
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
+        .layer(DeprecationHeaderLayer)
+        .layer(KeepAliveHeaderLayer::new(config))
+        .layer(ServerHeaderLayer::new(config)?)
+        .layer(NoCachingLayer)
+        .layer(WebSecurityLayer)
+        .layer(TraceIdHeaderLayer)
         .service(HandlerService);
 
     // This layer handles invididual TCP connections, each running concurrently.
