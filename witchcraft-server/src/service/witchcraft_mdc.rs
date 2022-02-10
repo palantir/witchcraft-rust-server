@@ -58,14 +58,14 @@ where
         let context = zipkin::current().expect("zipkin trace not initialized");
         mdc::insert_safe(logging::TRACE_ID_MDC_KEY, context.trace_id().to_string());
         if let Some(sampled) = context.sampled() {
-            mdc::insert_safe("_sampled", sampled);
+            mdc::insert_safe(logging::SAMPLED_KEY, sampled);
         }
 
         let request_id = req
             .extensions()
             .get::<RequestId>()
             .expect("RequestId missing from request extensions");
-        mdc::insert_safe("_requestId", request_id.to_string());
+        mdc::insert_safe(logging::REQUEST_ID_KEY, request_id.to_string());
 
         self.inner.call(req)
     }

@@ -25,6 +25,7 @@ pub mod keep_alive_header;
 pub mod mdc;
 pub mod no_caching;
 pub mod request_id;
+pub mod request_log;
 pub mod routing;
 pub mod server_header;
 pub mod spans;
