@@ -20,6 +20,7 @@ pub mod connection_metrics;
 pub mod handler;
 pub mod hyper;
 pub mod idle_connection;
+pub mod mdc;
 pub mod request_id;
 pub mod routing;
 pub mod spans;
@@ -28,6 +29,8 @@ mod test_util;
 pub mod tls;
 pub mod tls_metrics;
 pub mod trace_propagation;
+pub mod unverified_jwt;
+pub mod witchcraft_mdc;
 
 // This infrastructure is adapted from `tower`, with a few changes:
 //

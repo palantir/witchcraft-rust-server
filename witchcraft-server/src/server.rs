@@ -17,12 +17,15 @@ use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::HyperService;
 use crate::service::idle_connection::IdleConnectionLayer;
+use crate::service::mdc::MdcLayer;
 use crate::service::request_id::RequestIdLayer;
 use crate::service::routing::RoutingLayer;
 use crate::service::spans::{SpannedBody, SpansLayer};
 use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
 use crate::service::trace_propagation::TracePropagationLayer;
+use crate::service::unverified_jwt::UnverifiedJwtLayer;
+use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;
@@ -40,6 +43,9 @@ pub async fn start(config: &InstallConfig, witchcraft: &mut Witchcraft) -> Resul
         .layer(RequestIdLayer)
         .layer(TracePropagationLayer)
         .layer(SpansLayer)
+        .layer(UnverifiedJwtLayer)
+        .layer(MdcLayer)
+        .layer(WitchcraftMdcLayer)
         .service(HandlerService);
 
     // This layer handles invididual TCP connections, each running concurrently.
