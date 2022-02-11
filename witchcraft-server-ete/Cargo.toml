@@ -1,0 +1,30 @@
+[package]
+name = "witchcraft-server-ete"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "witchcraft-server-ete"
+test = false
+
+[build-dependencies]
+conjure-codegen = "0.7"
+
+[dependencies]
+async-trait = "0.1"
+conjure-error = "0.7"
+conjure-http = "0.7"
+conjure-object = "0.7"
+refreshable = "1"
+tokio = "1"
+
+witchcraft-server = { path = "../witchcraft-server" }
+
+[dev-dependencies]
+conjure-serde = "0.7"
+hyper = "0.14"
+libc = "0.2"
+openssl = "0.10"
+tempfile = "3"
+tokio-openssl = "0.6"

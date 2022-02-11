@@ -1,0 +1,6 @@
+diagnostics:
+  debug-shared-secret: ${enc:wA7a0sDtfq7qyp7qHPQ4Nwg+bQA8pJMytrMeSr/6K5hx1khFYyel/rxBcZqOgUwi38G7Kow=}
+health-checks:
+  shared-secret: ${enc:tJzsI5Y8Y8DU4jqfib70s06/FSEtQ8JNT+b0UtAAr205SotjsUhU3NnMON0psZms1WunUmQw6rfwBBBK}
+logging:
+  trace-rate: 1

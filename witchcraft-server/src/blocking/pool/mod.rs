@@ -149,11 +149,12 @@ impl ThreadPool {
             move || shared.worker_loop()
         });
 
-        if let Err(e) = r {
-            error!(
+        match r {
+            Ok(_) => state.threads += 1,
+            Err(e) => error!(
                 "failed to spawn new worker thread",
-                error: Error::internal_safe(e)
-            );
+                error: Error::internal_safe(e),
+            ),
         }
     }
 

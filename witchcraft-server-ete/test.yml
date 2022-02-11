@@ -1,0 +1,47 @@
+services:
+  TestService:
+    name: Test Service
+    package: com.palantir.witchcraft.server.test
+    base-path: /test
+    endpoints:
+      safeParams:
+        http: GET /safeParams/{safePath}/{unsafePath}
+        args:
+          safePath:
+            type: string
+            tags:
+              - safe
+          unsafePath: string
+          safeQuery:
+            type: string
+            param-type: query
+            param-id: safeQueryId
+            tags:
+              - safe
+          unsafeQuery:
+            type: string
+            param-type: query
+            param-id: unsafeQueryId
+          safeHeader:
+            type: string
+            param-type: header
+            param-id: Safe-Header
+            tags:
+              - safe
+          unsafeHeader:
+            type: string
+            param-type: header
+            param-id: Unsafe-Header
+      slowHeaders:
+        http: GET /slowHeaders
+        args:
+          delayMillis:
+            type: integer
+            param-type: query
+      slowBody:
+        http: GET /slowBody
+        args:
+          delayMillis:
+            type: integer
+            param-type: query
+        returns: binary

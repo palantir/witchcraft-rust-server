@@ -1,0 +1,146 @@
+{
+  "version" : 1,
+  "errors" : [ ],
+  "types" : [ ],
+  "services" : [ {
+    "serviceName" : {
+      "name" : "TestService",
+      "package" : "com.palantir.witchcraft.server.test"
+    },
+    "endpoints" : [ {
+      "endpointName" : "safeParams",
+      "httpMethod" : "GET",
+      "httpPath" : "/test/safeParams/{safePath}/{unsafePath}",
+      "args" : [ {
+        "argName" : "safePath",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "STRING"
+        },
+        "paramType" : {
+          "type" : "path",
+          "path" : { }
+        },
+        "markers" : [ ],
+        "tags" : [ "safe" ]
+      }, {
+        "argName" : "unsafePath",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "STRING"
+        },
+        "paramType" : {
+          "type" : "path",
+          "path" : { }
+        },
+        "markers" : [ ],
+        "tags" : [ ]
+      }, {
+        "argName" : "safeQuery",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "STRING"
+        },
+        "paramType" : {
+          "type" : "query",
+          "query" : {
+            "paramId" : "safeQueryId"
+          }
+        },
+        "markers" : [ ],
+        "tags" : [ "safe" ]
+      }, {
+        "argName" : "unsafeQuery",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "STRING"
+        },
+        "paramType" : {
+          "type" : "query",
+          "query" : {
+            "paramId" : "unsafeQueryId"
+          }
+        },
+        "markers" : [ ],
+        "tags" : [ ]
+      }, {
+        "argName" : "safeHeader",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "STRING"
+        },
+        "paramType" : {
+          "type" : "header",
+          "header" : {
+            "paramId" : "Safe-Header"
+          }
+        },
+        "markers" : [ ],
+        "tags" : [ "safe" ]
+      }, {
+        "argName" : "unsafeHeader",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "STRING"
+        },
+        "paramType" : {
+          "type" : "header",
+          "header" : {
+            "paramId" : "Unsafe-Header"
+          }
+        },
+        "markers" : [ ],
+        "tags" : [ ]
+      } ],
+      "markers" : [ ],
+      "tags" : [ ]
+    }, {
+      "endpointName" : "slowHeaders",
+      "httpMethod" : "GET",
+      "httpPath" : "/test/slowHeaders",
+      "args" : [ {
+        "argName" : "delayMillis",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "INTEGER"
+        },
+        "paramType" : {
+          "type" : "query",
+          "query" : {
+            "paramId" : "delayMillis"
+          }
+        },
+        "markers" : [ ],
+        "tags" : [ ]
+      } ],
+      "markers" : [ ],
+      "tags" : [ ]
+    }, {
+      "endpointName" : "slowBody",
+      "httpMethod" : "GET",
+      "httpPath" : "/test/slowBody",
+      "args" : [ {
+        "argName" : "delayMillis",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "INTEGER"
+        },
+        "paramType" : {
+          "type" : "query",
+          "query" : {
+            "paramId" : "delayMillis"
+          }
+        },
+        "markers" : [ ],
+        "tags" : [ ]
+      } ],
+      "returns" : {
+        "type" : "primitive",
+        "primitive" : "BINARY"
+      },
+      "markers" : [ ],
+      "tags" : [ ]
+    } ]
+  } ],
+  "extensions" : { }
+}

@@ -1,0 +1,9 @@
+product-name: witchcraft-example
+product-version: 0.0.0
+port: <PORT>
+use-console-log: true
+context-path: /witchcraft-ete
+server:
+  io-threads: 1
+  min-threads: 1
+  idle-connection-timeout: 2s
