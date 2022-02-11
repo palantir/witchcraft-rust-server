@@ -74,7 +74,6 @@ use config::install::InstallConfig;
 use config::runtime::RuntimeConfig;
 use conjure_error::Error;
 use conjure_http::server::AsyncService;
-use conjure_object::Utc;
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
@@ -124,27 +123,21 @@ where
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
 {
-    match init_inner(init) {
-        Ok(()) => (),
+    let mut runtime_guard = None;
+
+    let ret = match init_inner(init, &mut runtime_guard) {
+        Ok(()) => 0,
         Err(e) => {
-            // we don't know if logging has been initialized, so both log and print the error.
             fatal!("error starting server", error: e);
-            eprintln!(
-                "[{}] - {} safe: {:?} unsafe: {:?}",
-                Utc::now(),
-                e.cause(),
-                e.safe_params(),
-                e.unsafe_params(),
-            );
-            for backtrace in e.backtraces() {
-                eprintln!("{:?}", backtrace);
-            }
-            process::exit(1)
+            1
         }
-    }
+    };
+    drop(runtime_guard);
+
+    process::exit(ret);
 }
 
-fn init_inner<I, R, F>(init: F) -> Result<(), Error>
+fn init_inner<I, R, F>(init: F, runtime_guard: &mut Option<RuntimeGuard>) -> Result<(), Error>
 where
     I: AsRef<InstallConfig> + DeserializeOwned,
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
@@ -155,6 +148,8 @@ where
         let _ = rstack_self::child();
         return Ok(());
     }
+
+    logging::early_init();
 
     let install_config = configs::load_install::<I>()?;
 
@@ -168,23 +163,21 @@ where
         .map_err(Error::internal_safe)?;
 
     let handle = runtime.handle().clone();
-    // ensure that we exit quickly even if there are stuck blocking tasks
-    let _runtime = QuickDropRuntime {
+    let runtime = runtime_guard.insert(RuntimeGuard {
         runtime: Some(runtime),
-    };
+        logger_shutdown: Some(ShutdownHooks::new()),
+    });
 
     let runtime_config_ok = Arc::new(AtomicBool::new(true));
     let runtime_config = configs::load_runtime::<R>(&handle, &runtime_config_ok)?;
 
     let metrics = Arc::new(MetricRegistry::new());
 
-    let mut logger_shutdown_hooks = ShutdownHooks::new();
-
     let loggers = handle.block_on(logging::init(
         &metrics,
         install_config.as_ref(),
         &runtime_config.map(|c| c.as_ref().logging().clone()),
-        &mut logger_shutdown_hooks,
+        runtime.logger_shutdown.as_mut().unwrap(),
     ))?;
 
     info!("server starting");
@@ -254,17 +247,12 @@ where
     ))?;
 
     handle.block_on(shutdown(
-        logger_shutdown_hooks,
         server_shutdown_hooks,
         witchcraft.install_config.server().shutdown_timeout(),
     ))
 }
 
-async fn shutdown(
-    logger_shutdown_hooks: ShutdownHooks,
-    server_shutdown_hooks: ShutdownHooks,
-    timeout: Duration,
-) -> Result<(), Error> {
+async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<(), Error> {
     pin! {
         let signals = signals()?;
     }
@@ -273,7 +261,7 @@ async fn shutdown(
     info!("server shutting down");
 
     select! {
-        _ = server_shutdown_hooks => {}
+        _ = shutdown_hooks => {}
         _ = signals.next() => info!("graceful shutdown interrupted by signal"),
         _ = time::sleep(timeout) => {
             info!(
@@ -284,8 +272,6 @@ async fn shutdown(
             );
         }
     }
-
-    logger_shutdown_hooks.await;
 
     Ok(())
 }
@@ -301,12 +287,15 @@ fn signal(kind: SignalKind) -> Result<impl Stream<Item = ()>, Error> {
     Ok(stream::poll_fn(move |cx| signal.poll_recv(cx)))
 }
 
-struct QuickDropRuntime {
+struct RuntimeGuard {
     runtime: Option<Runtime>,
+    logger_shutdown: Option<ShutdownHooks>,
 }
 
-impl Drop for QuickDropRuntime {
+impl Drop for RuntimeGuard {
     fn drop(&mut self) {
-        self.runtime.take().unwrap().shutdown_background()
+        let runtime = self.runtime.take().unwrap();
+        runtime.block_on(self.logger_shutdown.take().unwrap());
+        runtime.shutdown_background()
     }
 }
