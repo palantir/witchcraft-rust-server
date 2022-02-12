@@ -16,11 +16,15 @@ use crate::server::RawBody;
 use bytes::{Buf, Bytes, BytesMut};
 use conjure_error::Error;
 use futures_channel::mpsc;
-use futures_util::SinkExt;
+use futures_util::{Future, SinkExt};
 use http_body::Body;
 use std::io::{BufRead, Read, Write};
-use std::{io, mem};
+use std::time::Duration;
+use std::{error, io, mem};
 use tokio::runtime::Handle;
+use tokio::time;
+
+const IO_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// A streaming request body for blocking requests.
 pub struct RequestBody {
@@ -37,6 +41,15 @@ impl RequestBody {
             cur: Bytes::new(),
         }
     }
+
+    fn next_raw(&mut self) -> Result<Option<Bytes>, Box<dyn error::Error + Sync + Send>> {
+        let next = self
+            .handle
+            .block_on(async { time::timeout(IO_TIMEOUT, self.inner.data()).await })?
+            .transpose()?;
+
+        Ok(next)
+    }
 }
 
 impl Iterator for RequestBody {
@@ -47,9 +60,9 @@ impl Iterator for RequestBody {
             return Some(Ok(mem::take(&mut self.cur)));
         }
 
-        self.handle
-            .block_on(self.inner.data())
-            .map(|r| r.map_err(|e| Error::service_safe(e, ClientIo)))
+        self.next_raw()
+            .map_err(|e| Error::service_safe(e, ClientIo))
+            .transpose()
     }
 }
 
@@ -67,9 +80,7 @@ impl BufRead for RequestBody {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         while self.cur.is_empty() {
             match self
-                .handle
-                .block_on(self.inner.data())
-                .transpose()
+                .next_raw()
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
             {
                 Some(bytes) => self.cur = bytes,
@@ -106,23 +117,37 @@ impl ResponseWriter {
         }
     }
 
+    fn with_timeout<F, R, E>(
+        handle: &Handle,
+        future: F,
+    ) -> Result<R, Box<dyn error::Error + Sync + Send>>
+    where
+        F: Future<Output = Result<R, E>>,
+        E: Into<Box<dyn error::Error + Sync + Send>>,
+    {
+        handle
+            .block_on(async { time::timeout(IO_TIMEOUT, future).await })?
+            .map_err(Into::into)
+    }
+
     fn flush_shallow(&mut self) -> io::Result<()> {
         if self.buf.is_empty() {
             return Ok(());
         }
 
-        self.handle
-            .block_on(self.sender.feed(BodyPart::Data(self.buf.split().freeze())))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        Self::with_timeout(
+            &self.handle,
+            self.sender.feed(BodyPart::Data(self.buf.split().freeze())),
+        )
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Ok(())
     }
 
     pub(crate) fn finish(mut self) -> io::Result<()> {
-        self.flush()?;
+        self.flush_shallow()?;
 
-        self.handle
-            .block_on(self.sender.send(BodyPart::Done))
+        Self::with_timeout(&self.handle, self.sender.send(BodyPart::Done))
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Ok(())
@@ -143,8 +168,7 @@ impl Write for ResponseWriter {
     fn flush(&mut self) -> io::Result<()> {
         self.flush_shallow()?;
 
-        self.handle
-            .block_on(self.sender.flush())
+        Self::with_timeout(&self.handle, self.sender.flush())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Ok(())
