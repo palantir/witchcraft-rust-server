@@ -27,11 +27,8 @@ mod conjure {
     include!(concat!(env!("OUT_DIR"), "/conjure/mod.rs"));
 }
 
-fn main() {
-    witchcraft_server::init(init);
-}
-
-fn init(
+#[witchcraft_server::main]
+fn main(
     _: InstallConfig,
     _: Refreshable<RuntimeConfig, Error>,
     wc: &mut Witchcraft,

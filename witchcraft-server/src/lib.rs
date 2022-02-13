@@ -95,6 +95,8 @@ use witchcraft_log::{fatal, info};
 use witchcraft_metrics::MetricRegistry;
 #[doc(inline)]
 pub use witchcraft_server_config as config;
+#[doc(inline)]
+pub use witchcraft_server_macros::main;
 
 pub mod blocking;
 mod body;

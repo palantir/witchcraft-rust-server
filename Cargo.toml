@@ -4,6 +4,7 @@ members = [
     "witchcraft-server",
     "witchcraft-server-config",
     "witchcraft-server-ete",
+    "witchcraft-server-macros",
 ]
 
 [patch.crates-io]
