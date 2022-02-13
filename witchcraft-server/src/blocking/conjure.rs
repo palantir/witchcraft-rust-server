@@ -149,7 +149,12 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
     }
 }
 
-enum ResponseBody {
+struct ResponseBody {
+    state: State,
+    trailers: Option<HeaderMap>,
+}
+
+enum State {
     Empty,
     Fixed(Bytes),
     Streaming {
@@ -163,14 +168,14 @@ impl ResponseBody {
         body: server::ResponseBody<ResponseWriter>,
         handle: Handle,
     ) -> (Self, Option<StreamingWriter>) {
-        match body {
-            server::ResponseBody::Empty => (ResponseBody::Empty, None),
-            server::ResponseBody::Fixed(bytes) => (ResponseBody::Fixed(bytes), None),
+        let (state, writer) = match body {
+            server::ResponseBody::Empty => (State::Empty, None),
+            server::ResponseBody::Fixed(bytes) => (State::Fixed(bytes), None),
             server::ResponseBody::Streaming(writer) => {
                 let (context_sender, context_receiver) = oneshot::channel();
                 let (sender, receiver) = mpsc::channel(1);
                 (
-                    ResponseBody::Streaming {
+                    State::Streaming {
                         context_sender: Some(context_sender),
                         receiver,
                     },
@@ -182,7 +187,15 @@ impl ResponseBody {
                     }),
                 )
             }
-        }
+        };
+
+        (
+            ResponseBody {
+                state,
+                trailers: None,
+            },
+            writer,
+        )
     }
 }
 
@@ -195,10 +208,10 @@ impl Body for ResponseBody {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        match mem::replace(&mut *self, ResponseBody::Empty) {
-            ResponseBody::Empty => Poll::Ready(None),
-            ResponseBody::Fixed(bytes) => Poll::Ready(Some(Ok(bytes))),
-            ResponseBody::Streaming {
+        match mem::replace(&mut self.state, State::Empty) {
+            State::Empty => Poll::Ready(None),
+            State::Fixed(bytes) => Poll::Ready(Some(Ok(bytes))),
+            State::Streaming {
                 mut context_sender,
                 mut receiver,
             } => {
@@ -206,16 +219,26 @@ impl Body for ResponseBody {
                     let _ = context_sender.send(zipkin::current());
                 }
 
-                let poll = match Pin::new(&mut receiver).poll_next(cx) {
-                    Poll::Pending => Poll::Pending,
-                    Poll::Ready(Some(BodyPart::Data(bytes))) => Poll::Ready(Some(Ok(bytes))),
-                    Poll::Ready(Some(BodyPart::Done)) => return Poll::Ready(None),
-                    Poll::Ready(None) => return Poll::Ready(Some(Err(BodyWriteAborted))),
+                let poll = loop {
+                    match Pin::new(&mut receiver).poll_next(cx) {
+                        Poll::Pending => break Poll::Pending,
+                        Poll::Ready(Some(BodyPart::Data(bytes))) => {
+                            break Poll::Ready(Some(Ok(bytes)));
+                        }
+                        Poll::Ready(Some(BodyPart::Trailers(trailers))) => {
+                            self.trailers = Some(trailers);
+                        }
+                        Poll::Ready(Some(BodyPart::Done)) => break Poll::Ready(None),
+                        Poll::Ready(None) => break Poll::Ready(Some(Err(BodyWriteAborted))),
+                    }
                 };
-                *self = ResponseBody::Streaming {
-                    context_sender,
-                    receiver,
-                };
+
+                if !matches!(poll, Poll::Ready(None)) {
+                    self.state = State::Streaming {
+                        context_sender,
+                        receiver,
+                    };
+                }
 
                 poll
             }
@@ -223,21 +246,21 @@ impl Body for ResponseBody {
     }
 
     fn poll_trailers(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         _: &mut Context<'_>,
     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
+        Poll::Ready(Ok(self.trailers.take()))
     }
 
     fn is_end_stream(&self) -> bool {
-        matches!(self, ResponseBody::Empty)
+        matches!(self.state, State::Empty) && self.trailers.is_none()
     }
 
     fn size_hint(&self) -> SizeHint {
-        match self {
-            ResponseBody::Empty => SizeHint::with_exact(0),
-            ResponseBody::Fixed(bytes) => SizeHint::with_exact(bytes.len() as u64),
-            ResponseBody::Streaming { .. } => SizeHint::new(),
+        match &self.state {
+            State::Empty => SizeHint::with_exact(0),
+            State::Fixed(bytes) => SizeHint::with_exact(bytes.len() as u64),
+            State::Streaming { .. } => SizeHint::new(),
         }
     }
 }
@@ -259,9 +282,7 @@ impl StreamingWriter {
 
         let mut response_writer = ResponseWriter::new(self.sender, self.handle);
         self.writer.write_body(&mut response_writer)?;
-        response_writer
-            .finish()
-            .map_err(|e| Error::service_safe(e, ClientIo))?;
+        response_writer.finish()?;
 
         Ok(())
     }

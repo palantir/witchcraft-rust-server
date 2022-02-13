@@ -45,3 +45,8 @@ services:
             type: integer
             param-type: query
         returns: binary
+      trailers:
+        http: POST /trailers
+        args:
+          body: binary
+        returns: binary

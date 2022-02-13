@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::body::ClientIo;
+use crate::body::BodyPart;
 use crate::endpoint::{errors, WitchcraftEndpoint};
 use crate::health::endpoint_500s::EndpointHealth;
 use crate::server::RawBody;
@@ -35,7 +35,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use sync_wrapper::SyncWrapper;
-use tokio::io::AsyncWriteExt;
 use tokio::pin;
 use witchcraft_log::info;
 use witchcraft_metrics::MetricRegistry;
@@ -102,7 +101,16 @@ impl WitchcraftEndpoint for ConjureEndpoint {
         let mut response = match self.inner.handle(&mut safe_params, req).await {
             Ok(response) => response.map(ResponseBody::new),
             Err(error) => errors::to_response(error, |o| {
-                o.map_or(ResponseBody::Empty, ResponseBody::Fixed)
+                o.map_or(
+                    ResponseBody {
+                        state: State::Empty,
+                        trailers: None,
+                    },
+                    |b| ResponseBody {
+                        state: State::Fixed(b),
+                        trailers: None,
+                    },
+                )
             }),
         };
         response.extensions_mut().insert(safe_params);
@@ -110,20 +118,25 @@ impl WitchcraftEndpoint for ConjureEndpoint {
     }
 }
 
-enum ResponseBody {
+enum State {
     Empty,
     Fixed(Bytes),
     Streaming {
         writer: SyncWrapper<Fuse<BoxFuture<'static, Result<(), Error>>>>,
-        receiver: mpsc::Receiver<Bytes>,
+        receiver: mpsc::Receiver<BodyPart>,
     },
+}
+
+struct ResponseBody {
+    state: State,
+    trailers: Option<HeaderMap>,
 }
 
 impl ResponseBody {
     fn new(body: AsyncResponseBody<ResponseWriter>) -> Self {
-        match body {
-            AsyncResponseBody::Empty => ResponseBody::Empty,
-            AsyncResponseBody::Fixed(bytes) => ResponseBody::Fixed(bytes),
+        let state = match body {
+            AsyncResponseBody::Empty => State::Empty,
+            AsyncResponseBody::Fixed(bytes) => State::Fixed(bytes),
             AsyncResponseBody::Streaming(writer) => {
                 let (sender, receiver) = mpsc::channel(1);
                 let writer = async move {
@@ -131,16 +144,19 @@ impl ResponseBody {
                         let body_writer = ResponseWriter::new(sender);
                     }
                     writer.write_body(body_writer.as_mut()).await?;
-                    body_writer
-                        .flush()
-                        .await
-                        .map_err(|e| Error::service_safe(e, ClientIo))
+                    body_writer.finish().await?;
+                    Ok(())
                 };
-                ResponseBody::Streaming {
+                State::Streaming {
                     writer: SyncWrapper::new(writer.boxed().fuse()),
                     receiver,
                 }
             }
+        };
+
+        ResponseBody {
+            state,
+            trailers: None,
         }
     }
 }
@@ -154,10 +170,10 @@ impl Body for ResponseBody {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        match mem::replace(&mut *self, ResponseBody::Empty) {
-            ResponseBody::Empty => Poll::Ready(None),
-            ResponseBody::Fixed(bytes) => Poll::Ready(Some(Ok(bytes))),
-            ResponseBody::Streaming {
+        match mem::replace(&mut self.state, State::Empty) {
+            State::Empty => Poll::Ready(None),
+            State::Fixed(bytes) => Poll::Ready(Some(Ok(bytes))),
+            State::Streaming {
                 mut writer,
                 mut receiver,
             } => {
@@ -168,9 +184,28 @@ impl Body for ResponseBody {
                     }
                 }
 
-                let poll = Pin::new(&mut receiver).poll_next(cx).map(|o| o.map(Ok));
+                // NB: it's safe to poll an mpsc::Receiver after termination
+                let poll = loop {
+                    match Pin::new(&mut receiver).poll_next(cx) {
+                        Poll::Ready(Some(BodyPart::Data(data))) => {
+                            break Poll::Ready(Some(Ok(data)));
+                        }
+                        Poll::Ready(Some(BodyPart::Trailers(trailers))) => {
+                            self.trailers = Some(trailers);
+                        }
+                        Poll::Ready(None) => {
+                            if writer.get_mut().is_terminated() {
+                                break Poll::Ready(None);
+                            } else {
+                                break Poll::Pending;
+                            }
+                        }
+                        Poll::Pending => break Poll::Pending,
+                    }
+                };
+
                 if !matches!(poll, Poll::Ready(None)) {
-                    *self = ResponseBody::Streaming { writer, receiver };
+                    self.state = State::Streaming { writer, receiver };
                 }
 
                 poll
@@ -179,21 +214,21 @@ impl Body for ResponseBody {
     }
 
     fn poll_trailers(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         _: &mut Context<'_>,
     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
+        Poll::Ready(Ok(self.trailers.take()))
     }
 
     fn is_end_stream(&self) -> bool {
-        matches!(self, &ResponseBody::Empty)
+        matches!(self.state, State::Empty) && self.trailers.is_none()
     }
 
     fn size_hint(&self) -> SizeHint {
-        match self {
-            ResponseBody::Empty => SizeHint::with_exact(0),
-            ResponseBody::Fixed(bytes) => SizeHint::with_exact(bytes.len() as u64),
-            ResponseBody::Streaming { .. } => SizeHint::new(),
+        match &self.state {
+            State::Empty => SizeHint::with_exact(0),
+            State::Fixed(bytes) => SizeHint::with_exact(bytes.len() as u64),
+            State::Streaming { .. } => SizeHint::new(),
         }
     }
 }

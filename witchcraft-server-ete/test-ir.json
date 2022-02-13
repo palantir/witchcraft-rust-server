@@ -140,6 +140,29 @@
       },
       "markers" : [ ],
       "tags" : [ ]
+    }, {
+      "endpointName" : "trailers",
+      "httpMethod" : "POST",
+      "httpPath" : "/test/trailers",
+      "args" : [ {
+        "argName" : "body",
+        "type" : {
+          "type" : "primitive",
+          "primitive" : "BINARY"
+        },
+        "paramType" : {
+          "type" : "body",
+          "body" : { }
+        },
+        "markers" : [ ],
+        "tags" : [ ]
+      } ],
+      "returns" : {
+        "type" : "primitive",
+        "primitive" : "BINARY"
+      },
+      "markers" : [ ],
+      "tags" : [ ]
     } ]
   } ],
   "extensions" : { }

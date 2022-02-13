@@ -15,17 +15,19 @@ use crate::conjure::AsyncTestService;
 use async_trait::async_trait;
 use conjure_error::{Error, InvalidArgument};
 use conjure_http::server::AsyncWriteBody;
+use http::{HeaderMap, HeaderValue};
 use std::pin::Pin;
 use std::time::Duration;
-use tokio::io::AsyncWriteExt;
-use tokio::time;
-use witchcraft_server::ResponseWriter;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::{pin, time};
+use witchcraft_server::{RequestBody, ResponseWriter};
 
 pub struct TestResource;
 
 #[async_trait]
-impl AsyncTestService<ResponseWriter> for TestResource {
+impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
     type SlowBodyBody = SlowBodyBody;
+    type TrailersBody = TrailersBody;
 
     async fn safe_params(
         &self,
@@ -54,6 +56,21 @@ impl AsyncTestService<ResponseWriter> for TestResource {
     async fn slow_body(&self, delay_millis: i32) -> Result<SlowBodyBody, Error> {
         Ok(SlowBodyBody(Duration::from_millis(delay_millis as u64)))
     }
+
+    async fn trailers(&self, body: RequestBody) -> Result<TrailersBody, Error> {
+        pin!(body);
+        let mut bytes = vec![];
+        body.read_to_end(&mut bytes).await.unwrap();
+        assert_eq!(bytes, b"expected request body");
+
+        let trailers = body.trailers().await.unwrap().unwrap();
+        assert_eq!(
+            trailers.get("Request-Trailer").unwrap(),
+            "expected request trailer value",
+        );
+
+        Ok(TrailersBody)
+    }
 }
 
 pub struct SlowBodyBody(Duration);
@@ -72,6 +89,22 @@ impl AsyncWriteBody<ResponseWriter> for SlowBodyBody {
             .await
             .map_err(|e| Error::service_safe(e, InvalidArgument::new()))?;
 
+        Ok(())
+    }
+}
+
+pub struct TrailersBody;
+
+#[async_trait]
+impl AsyncWriteBody<ResponseWriter> for TrailersBody {
+    async fn write_body(self: Box<Self>, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
+        w.write_all(b"expected response body").await.unwrap();
+        let mut trailers = HeaderMap::new();
+        trailers.insert(
+            "Response-Trailer",
+            HeaderValue::from_static("expected response trailer value"),
+        );
+        w.send_trailers(trailers).await.unwrap();
         Ok(())
     }
 }

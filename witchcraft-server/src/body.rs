@@ -17,7 +17,8 @@ use conjure_error::{Error, ErrorCode, ErrorType};
 use conjure_object::Uuid;
 use futures_channel::mpsc;
 use futures_sink::Sink;
-use futures_util::{ready, Stream};
+use futures_util::{future, ready, SinkExt, Stream};
+use http::HeaderMap;
 use http_body::Body;
 use pin_project::pin_project;
 use serde::ser::SerializeMap;
@@ -45,6 +46,30 @@ impl RequestBody {
             cur: Bytes::new(),
             _p: PhantomPinned,
         }
+    }
+
+    /// Returns the request's trailers, if any are present.
+    ///
+    /// The body must have been completely read before this is called.
+    pub fn poll_trailers(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<Option<HeaderMap>, Error>> {
+        self.project()
+            .inner
+            .poll_trailers(cx)
+            .map_err(|e| Error::service_safe(e, ClientIo))
+    }
+
+    /// Returns the request's trailers, if any are present.
+    ///
+    /// The body must have been completely read before this is called.
+    pub async fn trailers(self: Pin<&mut Self>) -> Result<Option<HeaderMap>, Error> {
+        self.project()
+            .inner
+            .trailers()
+            .await
+            .map_err(|e| Error::service_safe(e, ClientIo))
     }
 }
 
@@ -101,18 +126,23 @@ impl AsyncBufRead for RequestBody {
     }
 }
 
+pub(crate) enum BodyPart {
+    Data(Bytes),
+    Trailers(HeaderMap),
+}
+
 /// The writer used for streaming response bodies.
 #[pin_project]
 pub struct ResponseWriter {
     #[pin]
-    sender: mpsc::Sender<Bytes>,
+    sender: mpsc::Sender<BodyPart>,
     buf: BytesMut,
     #[pin]
     _p: PhantomPinned,
 }
 
 impl ResponseWriter {
-    pub(crate) fn new(sender: mpsc::Sender<Bytes>) -> Self {
+    pub(crate) fn new(sender: mpsc::Sender<BodyPart>) -> Self {
         ResponseWriter {
             sender,
             buf: BytesMut::new(),
@@ -120,20 +150,94 @@ impl ResponseWriter {
         }
     }
 
-    fn poll_flush_shallow(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+    /// Like [`Sink::start_send`] except that it sends the response's trailers.
+    ///
+    /// The body must be fully written before calling this method.
+    pub fn start_send_trailers(self: Pin<&mut Self>, trailers: HeaderMap) -> Result<(), Error> {
+        self.start_send_inner(BodyPart::Trailers(trailers))
+    }
+
+    /// Like [`SinkExt::send`] except that it sends the response's trailers.
+    ///
+    /// The body must be fully written before calling this method.
+    pub async fn send_trailers(mut self: Pin<&mut Self>, trailers: HeaderMap) -> Result<(), Error> {
+        future::poll_fn(|cx| self.as_mut().poll_flush_shallow(cx))
+            .await
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
+
+        self.project()
+            .sender
+            .send(BodyPart::Trailers(trailers))
+            .await
+            .map_err(|e| Error::service_safe(e, ClientIo))
+    }
+
+    pub(crate) async fn finish(mut self: Pin<&mut Self>) -> Result<(), Error> {
+        self.flush().await
+    }
+
+    fn start_send_inner(self: Pin<&mut Self>, item: BodyPart) -> Result<(), Error> {
+        let this = self.project();
+
+        assert!(this.buf.is_empty());
+        this.sender
+            .start_send(item)
+            .map_err(|e| Error::service_safe(e, ClientIo))
+    }
+
+    fn poll_flush_shallow(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), mpsc::SendError>> {
         let mut this = self.project();
 
         if this.buf.is_empty() {
             return Poll::Ready(Ok(()));
         }
 
-        ready!(this.sender.as_mut().poll_ready(cx))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        ready!(this.sender.as_mut().poll_ready(cx))?;
         this.sender
-            .start_send(this.buf.split().freeze())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .start_send(BodyPart::Data(this.buf.split().freeze()))?;
 
         Poll::Ready(Ok(()))
+    }
+}
+
+impl Sink<Bytes> for ResponseWriter {
+    type Error = Error;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_flush_shallow(cx))
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
+
+        self.project()
+            .sender
+            .poll_ready(cx)
+            .map_err(|e| Error::service_safe(e, ClientIo))
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+        self.start_send_inner(BodyPart::Data(item))
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_flush_shallow(cx))
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
+
+        self.project()
+            .sender
+            .poll_flush(cx)
+            .map_err(|e| Error::service_safe(e, ClientIo))
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_flush_shallow(cx))
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
+
+        self.project()
+            .sender
+            .poll_close(cx)
+            .map_err(|e| Error::service_safe(e, ClientIo))
     }
 }
 
@@ -144,7 +248,8 @@ impl AsyncWrite for ResponseWriter {
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
         if self.buf.len() > 4096 {
-            ready!(self.as_mut().poll_flush_shallow(cx))?;
+            ready!(self.as_mut().poll_flush_shallow(cx))
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         }
 
         self.project().buf.extend_from_slice(buf);
@@ -152,7 +257,8 @@ impl AsyncWrite for ResponseWriter {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))?;
+        ready!(self.as_mut().poll_flush_shallow(cx))
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         self.project()
             .sender
@@ -161,7 +267,8 @@ impl AsyncWrite for ResponseWriter {
     }
 
     fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))?;
+        ready!(self.as_mut().poll_flush_shallow(cx))
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         self.project()
             .sender
