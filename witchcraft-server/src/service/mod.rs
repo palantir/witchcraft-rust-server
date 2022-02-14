@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 pub mod accept;
 pub mod catch_unwind;
+pub mod client_certificate;
 pub mod connection_limit;
 pub mod connection_metrics;
 pub mod deprecation_header;

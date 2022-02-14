@@ -11,12 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::service::{Layer, Service};
+use crate::service::hyper::NewConnection;
+use crate::service::{Layer, Service, ServiceBuilder};
 use conjure_error::Error;
 use futures_util::ready;
 use openssl::rand;
 use openssl::ssl::{
-    self, AlpnError, Ssl, SslContext, SslFiletype, SslMethod, SslOptions, SslVersion,
+    self, AlpnError, Ssl, SslContext, SslFiletype, SslMethod, SslOptions, SslVerifyMode, SslVersion,
 };
 use pin_project::pin_project;
 use std::future::Future;
@@ -62,6 +63,14 @@ impl TlsLayer {
             .set_private_key_file(config.keystore().key_path(), SslFiletype::PEM)
             .map_err(Error::internal_safe)?;
         builder.check_private_key().map_err(Error::internal_safe)?;
+
+        if let Some(client_auth) = config.client_auth_truststore() {
+            builder
+                .set_ca_file(client_auth.path())
+                .map_err(Error::internal_safe)?;
+
+            builder.set_verify(SslVerifyMode::PEER);
+        }
 
         let cipher_list = convert_suites(CIPHER_SUITES);
         builder
@@ -115,19 +124,20 @@ pub struct TlsService<S> {
     context: SslContext,
 }
 
-impl<S, R> Service<R> for TlsService<S>
+impl<S, R, L> Service<NewConnection<R, L>> for TlsService<S>
 where
-    S: Service<SslStream<R>, Response = Result<(), Error>>,
+    S: Service<NewConnection<SslStream<R>, L>, Response = Result<(), Error>>,
     R: AsyncRead + AsyncWrite + Unpin,
 {
     type Response = S::Response;
 
-    type Future = TlsFuture<S, R>;
+    type Future = TlsFuture<S, R, L>;
 
-    fn call(&self, req: R) -> Self::Future {
-        match Ssl::new(&self.context).and_then(|ssl| SslStream::new(ssl, req)) {
+    fn call(&self, req: NewConnection<R, L>) -> Self::Future {
+        match Ssl::new(&self.context).and_then(|ssl| SslStream::new(ssl, req.stream)) {
             Ok(stream) => TlsFuture::Handshaking {
                 stream: Some(stream),
+                service_builder: Some(req.service_builder),
                 inner: self.inner.clone(),
             },
             Err(e) => TlsFuture::Error {
@@ -138,12 +148,13 @@ where
 }
 
 #[pin_project(project = TlsFutureProj)]
-pub enum TlsFuture<S, R>
+pub enum TlsFuture<S, R, L>
 where
-    S: Service<SslStream<R>>,
+    S: Service<NewConnection<SslStream<R>, L>>,
 {
     Handshaking {
         stream: Option<SslStream<R>>,
+        service_builder: Option<ServiceBuilder<L>>,
         inner: Arc<S>,
     },
     Inner {
@@ -155,9 +166,9 @@ where
     },
 }
 
-impl<S, R> Future for TlsFuture<S, R>
+impl<S, R, L> Future for TlsFuture<S, R, L>
 where
-    S: Service<SslStream<R>, Response = Result<(), Error>>,
+    S: Service<NewConnection<SslStream<R>, L>, Response = Result<(), Error>>,
     R: AsyncRead + AsyncWrite + Unpin,
 {
     type Output = Result<(), Error>;
@@ -165,18 +176,22 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {
             match self.as_mut().project() {
-                TlsFutureProj::Handshaking { inner, stream } => {
-                    match ready!(Pin::new(stream.as_mut().unwrap()).poll_accept(cx)) {
-                        Ok(()) => {
-                            let stream = stream.take().unwrap();
-                            let new = TlsFuture::Inner {
-                                future: inner.call(stream),
-                            };
-                            self.set(new);
-                        }
-                        Err(e) => return Poll::Ready(Err(Error::internal_safe(e))),
+                TlsFutureProj::Handshaking {
+                    inner,
+                    stream,
+                    service_builder,
+                } => match ready!(Pin::new(stream.as_mut().unwrap()).poll_accept(cx)) {
+                    Ok(()) => {
+                        let new = TlsFuture::Inner {
+                            future: inner.call(NewConnection {
+                                stream: stream.take().unwrap(),
+                                service_builder: service_builder.take().unwrap(),
+                            }),
+                        };
+                        self.set(new);
                     }
-                }
+                    Err(e) => return Poll::Ready(Err(Error::internal_safe(e))),
+                },
                 TlsFutureProj::Inner { future } => return future.poll(cx),
                 TlsFutureProj::Error { error } => return Poll::Ready(Err(error.take().unwrap())),
             }

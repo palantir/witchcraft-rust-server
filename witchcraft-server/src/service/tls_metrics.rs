@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::service::hyper::NewConnection;
 use crate::service::{Layer, Service};
 use std::sync::Arc;
 use tokio_openssl::SslStream;
@@ -45,21 +46,25 @@ pub struct TlsMetricsService<S> {
     metrics: Arc<MetricRegistry>,
 }
 
-impl<S, R> Service<SslStream<R>> for TlsMetricsService<S>
+impl<S, R, L> Service<NewConnection<SslStream<R>, L>> for TlsMetricsService<S>
 where
-    S: Service<SslStream<R>>,
+    S: Service<NewConnection<SslStream<R>, L>>,
 {
     type Response = S::Response;
 
     type Future = S::Future;
 
-    fn call(&self, req: SslStream<R>) -> Self::Future {
-        let cipher = req.ssl().current_cipher().expect("session is active");
+    fn call(&self, req: NewConnection<SslStream<R>, L>) -> Self::Future {
+        let cipher = req
+            .stream
+            .ssl()
+            .current_cipher()
+            .expect("session is active");
         self.metrics
             .meter(
                 MetricId::new("tls.handshake")
                     .with_tag("context", "server")
-                    .with_tag("protocol", req.ssl().version_str())
+                    .with_tag("protocol", req.stream.ssl().version_str())
                     .with_tag(
                         "cipher",
                         cipher.standard_name().unwrap_or_else(|| cipher.name()),
