@@ -11,6 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::endpoint::conjure::ConjureEndpoint;
+use crate::endpoint::extended_path::ExtendedPathEndpoint;
+use crate::endpoint::WitchcraftEndpoint;
+use crate::{RequestBody, ResponseWriter};
+use conjure_http::server::{AsyncEndpoint, AsyncService};
 use conjure_runtime::ClientFactory;
 use std::sync::Arc;
 use tokio::runtime::Handle;
@@ -21,6 +26,7 @@ pub struct Witchcraft {
     pub(crate) metrics: Arc<MetricRegistry>,
     pub(crate) client_factory: ClientFactory,
     pub(crate) handle: Handle,
+    pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
 }
 
 impl Witchcraft {
@@ -40,5 +46,37 @@ impl Witchcraft {
     #[inline]
     pub fn handle(&self) -> &Handle {
         &self.handle
+    }
+
+    /// Installs an async service at the server's root.
+    pub fn app<T>(&mut self, service: T)
+    where
+        T: AsyncService<RequestBody, ResponseWriter>,
+    {
+        self.endpoints(None, service.endpoints())
+    }
+
+    /// Installs an async service under the server's `/api` prefix.
+    pub fn api<T>(&mut self, service: T)
+    where
+        T: AsyncService<RequestBody, ResponseWriter>,
+    {
+        self.endpoints(Some("/api"), service.endpoints())
+    }
+
+    fn endpoints(
+        &mut self,
+        prefix: Option<&str>,
+        endpoints: Vec<Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>>,
+    ) {
+        self.endpoints.extend(
+            endpoints
+                .into_iter()
+                .map(|e| ConjureEndpoint::new(Some(&self.metrics), e))
+                .map(|e| match prefix {
+                    Some(prefix) => Box::new(ExtendedPathEndpoint::new(e, prefix)) as _,
+                    None => Box::new(e) as _,
+                }),
+        )
     }
 }

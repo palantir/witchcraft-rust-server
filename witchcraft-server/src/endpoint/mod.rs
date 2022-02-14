@@ -17,12 +17,38 @@ use crate::service::handler::BodyWriteAborted;
 use async_trait::async_trait;
 use bytes::Bytes;
 use conjure_http::server::EndpointMetadata;
+use futures_util::future::BoxFuture;
 use http::{Request, Response};
 use http_body::combinators::BoxBody;
+
+pub mod conjure;
+pub mod errors;
+pub mod extended_path;
 
 #[async_trait]
 pub trait WitchcraftEndpoint: EndpointMetadata {
     fn metrics(&self) -> Option<&EndpointMetrics>;
 
     async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>>;
+}
+
+impl<T> WitchcraftEndpoint for Box<T>
+where
+    T: ?Sized + WitchcraftEndpoint,
+{
+    fn metrics(&self) -> Option<&EndpointMetrics> {
+        (**self).metrics()
+    }
+
+    // manually implementing to avoid double boxing the inner future
+    fn handle<'life0, 'async_trait>(
+        &'life0 self,
+        req: Request<RawBody>,
+    ) -> BoxFuture<Response<BoxBody<Bytes, BodyWriteAborted>>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        (**self).handle(req)
+    }
 }

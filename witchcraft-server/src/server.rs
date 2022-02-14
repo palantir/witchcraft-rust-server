@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::endpoint::extended_path::ExtendedPathEndpoint;
 use crate::logging::api::RequestLogV2;
 use crate::logging::Appender;
 use crate::service::accept::AcceptService;
@@ -44,6 +45,7 @@ use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;
+use std::mem;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
@@ -56,9 +58,17 @@ pub async fn start(
     witchcraft: &mut Witchcraft,
     request_logger: Appender<RequestLogV2>,
 ) -> Result<(), Error> {
+    let mut endpoints = mem::take(&mut witchcraft.endpoints);
+    if config.context_path() != "/" {
+        endpoints = endpoints
+            .into_iter()
+            .map(|e| Box::new(ExtendedPathEndpoint::new(e, config.context_path())) as _)
+            .collect();
+    }
+
     // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
-        .layer(RoutingLayer::new(vec![]))
+        .layer(RoutingLayer::new(endpoints))
         .layer(RequestIdLayer)
         .layer(TracePropagationLayer)
         .layer(SpansLayer)

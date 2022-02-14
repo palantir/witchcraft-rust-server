@@ -52,6 +52,7 @@
 #![warn(missing_docs)]
 
 use crate::shutdown_hooks::ShutdownHooks;
+pub use body::{RequestBody, ResponseWriter};
 use config::install::InstallConfig;
 use config::runtime::RuntimeConfig;
 use conjure_error::Error;
@@ -73,6 +74,7 @@ use witchcraft_metrics::MetricRegistry;
 #[doc(inline)]
 pub use witchcraft_server_config as config;
 
+mod body;
 mod configs;
 mod endpoint;
 mod logging;
@@ -171,6 +173,7 @@ where
         metrics,
         client_factory,
         handle: handle.clone(),
+        endpoints: vec![],
     };
 
     let base_install_config = install_config.as_ref().clone();

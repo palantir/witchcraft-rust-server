@@ -19,6 +19,7 @@ conjure-object = "0.7"
 conjure-runtime = "1.2"
 conjure-serde = "0.7"
 foreign-types = "0.5"
+futures-channel = "0.3"
 futures-sink = "0.3"
 futures-util = "0.3"
 http = "0.2"
@@ -42,6 +43,7 @@ serde_json = "1"
 serde_yaml = "0.8"
 sequence_trie = "0.3"
 socket2 = "0.4"
+sync_wrapper = "0.1"
 tikv-jemalloc-ctl = { version = "0.4", features = ["use_std"], optional = true }
 tikv-jemallocator = { version = "0.4", features = [
     "unprefixed_malloc_on_supported_platforms",
