@@ -143,6 +143,8 @@ impl<T> AsyncAppender<T> {
         Ok(())
     }
 
+    // NB: the correctness of poll_flush and poll_close requires that only one task will ever call them (the shutdown
+    // hook)
     pub fn poll_flush(&self, cx: &mut Context<'_>) -> Poll<()> {
         let mut state = self.state.lock();
 
@@ -216,24 +218,19 @@ where
 {
     type Output = ();
 
+    // There is some subtlety here to avoid holding the lock across calls to the inner sink.
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
 
         let mut state = this.state.lock();
-
-        if state
-            .read_waker
-            .as_ref()
-            .map_or(true, |w| !w.will_wake(cx.waker()))
-        {
-            state.read_waker = Some(cx.waker().clone());
-        }
 
         while !state.queue.is_empty() {
             drop(state);
             let _ = ready!(this.inner.as_mut().poll_ready(cx));
             state = this.state.lock();
 
+            // Even though we've released the lock since seeing that the queue was not empty, we know that fact hasn't
+            // changed since this task is the only thing that removes items from the queue.
             let value = state.queue.pop_front().unwrap();
             if let Some(waker) = state.write_waker.take() {
                 waker.wake();
@@ -244,11 +241,24 @@ where
             state = this.state.lock();
         }
 
+        // Doing this after processing all pending requests avoids some extra wakeups if we're waiting on the inner
+        // sink while the queue is being written to.
+        if state
+            .read_waker
+            .as_ref()
+            .map_or(true, |w| !w.will_wake(cx.waker()))
+        {
+            state.read_waker = Some(cx.waker().clone());
+        }
+
         if !state.flushed {
             drop(state);
             let _ = ready!(this.inner.as_mut().poll_flush(cx));
             state = this.state.lock();
 
+            // Since we've released the lock after seeing that the queue was empty above, we don't want to claim to a
+            // writer task that we've flushed the queue unless it is still empty. If new items have been added to it,
+            // this task will be immediately re-woken to handle that new data and then attempt to flush again.
             if state.queue.is_empty() {
                 state.flushed = true;
                 if let Some(waker) = state.write_waker.take() {

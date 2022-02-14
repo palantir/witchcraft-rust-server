@@ -186,10 +186,10 @@ pub struct ClientAuthTruststoreConfig {
 }
 
 impl ClientAuthTruststoreConfig {
-    /// Returns the path to a file containg X.509 certificates (i.e. blocks of `-----BEGIN CERTIFICATE-----`) that will
-    /// act as the trust roots for validating the client's identity.
+    /// Returns the path to a file containg PEM-encoded certificates (i.e. blocks of `-----BEGIN CERTIFICATE-----`)
+    /// that will act as the trust roots for validating the client's identity.
     ///
-    /// Defaults to `var/security/cert.cer`.
+    /// Defaults to `var/security/ca.cer`.
     #[inline]
     pub fn path(&self) -> &Path {
         &self.path
@@ -200,7 +200,7 @@ impl Default for ClientAuthTruststoreConfig {
     #[inline]
     fn default() -> Self {
         ClientAuthTruststoreConfig {
-            path: PathBuf::from("var/security/cert.cer"),
+            path: PathBuf::from("var/security/ca.cer"),
         }
     }
 }
