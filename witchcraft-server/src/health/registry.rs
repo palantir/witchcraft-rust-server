@@ -88,7 +88,7 @@ impl HealthCheckRegistry {
 
         assert!(
             TYPE_PATTERN.is_match(type_),
-            "{type_} must `SCREAMING_SNAKE_CASE",
+            "{type_} must `SCREAMING_SNAKE_CASE`",
         );
 
         match self.checks.lock().entry(CheckType(type_.to_string())) {
