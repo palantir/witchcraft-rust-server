@@ -21,6 +21,7 @@ use crate::service::connection_metrics::ConnectionMetricsLayer;
 use crate::service::deprecation_header::DeprecationHeaderLayer;
 use crate::service::endpoint_metrics::EndpointMetricsLayer;
 use crate::service::error_log::ErrorLogLayer;
+use crate::service::graceful_shutdown::GracefulShutdownLayer;
 use crate::service::gzip::GzipLayer;
 use crate::service::handler::HandlerService;
 use crate::service::hyper::{HyperService, NewConnection};
@@ -42,6 +43,7 @@ use crate::service::unverified_jwt::UnverifiedJwtLayer;
 use crate::service::web_security::WebSecurityLayer;
 use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
+use crate::shutdown_hooks::ShutdownHooks;
 use crate::Witchcraft;
 use conjure_error::Error;
 use std::mem;
@@ -53,6 +55,7 @@ pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 
 pub async fn start(
     witchcraft: &mut Witchcraft,
+    shutdown_hooks: &mut ShutdownHooks,
     request_logger: Appender<RequestLogV2>,
 ) -> Result<(), Error> {
     // This service handles individual HTTP requests, each running concurrently.
@@ -83,6 +86,7 @@ pub async fn start(
         .layer(TlsLayer::new(&witchcraft.install_config)?)
         .layer(TlsMetricsLayer::new(&witchcraft.metrics))
         .layer(ClientCertificateLayer)
+        .layer(GracefulShutdownLayer::new(shutdown_hooks))
         .layer(IdleConnectionLayer::new(&witchcraft.install_config))
         .service(HyperService::new(request_service));
     let handle_service = Arc::new(handle_service);
@@ -96,7 +100,7 @@ pub async fn start(
         ))
         .service(AcceptService::new(&witchcraft.install_config)?);
 
-    task::spawn(async move {
+    let handle = task::spawn(async move {
         loop {
             let stream = accept_service.call(()).await;
             let connection = NewConnection {
@@ -113,6 +117,10 @@ pub async fn start(
                 }
             });
         }
+    });
+
+    shutdown_hooks.push(async move {
+        handle.abort();
     });
 
     Ok(())
