@@ -43,6 +43,7 @@ serde_json = "1"
 serde_yaml = "0.8"
 sequence_trie = "0.3"
 socket2 = "0.4"
+staged-builder = "0.1"
 sync_wrapper = "0.1"
 tikv-jemalloc-ctl = { version = "0.4", features = ["use_std"], optional = true }
 tikv-jemallocator = { version = "0.4", features = [

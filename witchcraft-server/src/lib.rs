@@ -51,6 +51,7 @@
 //! ```
 #![warn(missing_docs)]
 
+use crate::health::HealthCheckRegistry;
 use crate::shutdown_hooks::ShutdownHooks;
 pub use body::{RequestBody, ResponseWriter};
 use config::install::InstallConfig;
@@ -78,6 +79,7 @@ pub mod blocking;
 mod body;
 mod configs;
 mod endpoint;
+pub mod health;
 mod logging;
 mod metrics;
 mod server;
@@ -157,6 +159,7 @@ where
 
     metrics::init(&metrics);
 
+    let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
     let host_metrics = Arc::new(HostMetricsRegistry::new());
 
     let mut client_factory =
@@ -172,6 +175,7 @@ where
 
     let mut witchcraft = Witchcraft {
         metrics,
+        health_checks,
         client_factory,
         handle: handle.clone(),
         install_config: install_config.as_ref().clone(),
