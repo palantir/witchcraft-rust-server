@@ -48,7 +48,7 @@ fn notify_crash() -> Result<(), Error> {
         Err(e) => return Err(Error::internal_safe(e)),
     };
 
-    // Only grab the first 512 KB of the crash log just in case it's huge. We'll save it on disk for later retreival
+    // Only grab the first 512 KB of the crash log just in case it's huge. We'll save it on disk for later retrieval
     // if necessary. The log cleanup logic will get rid of it eventually if not.
     let mut contents = vec![];
     crash_log
