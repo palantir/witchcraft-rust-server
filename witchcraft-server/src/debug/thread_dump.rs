@@ -1,0 +1,72 @@
+// Copyright 2022 Palantir Technologies, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+use crate::debug::Diagnostic;
+use bytes::Bytes;
+use conjure_error::Error;
+use http::HeaderValue;
+use std::io::Write;
+use std::process::Command;
+
+/// A diagnostic which returns a stack trace of every thread in the server.
+///
+/// It is only supported on Linux.
+pub struct ThreadDumpDiagnostic;
+
+impl Diagnostic for ThreadDumpDiagnostic {
+    fn type_(&self) -> &str {
+        "rust.thread.dump.v1"
+    }
+
+    fn content_type(&self) -> HeaderValue {
+        HeaderValue::from_static("text/plain")
+    }
+
+    fn safe_loggable(&self) -> bool {
+        true
+    }
+
+    fn result(&self) -> Result<Bytes, Error> {
+        let trace = rstack_self::trace(Command::new("/proc/self/exe").arg("rstack"))
+            .map_err(Error::internal_safe)?;
+
+        let mut buf = vec![];
+        for thread in trace.threads() {
+            writeln!(buf, "{} - {}", thread.id(), thread.name()).unwrap();
+
+            // this copies the backtrace crate's default formatting
+            for (i, frame) in thread.frames().iter().enumerate() {
+                for (j, symbol) in frame.symbols().iter().enumerate() {
+                    if j == 0 {
+                        write!(buf, "{i:4}: ").unwrap();
+                    } else {
+                        write!(buf, "      ").unwrap();
+                    }
+                    writeln!(buf, "{}", symbol.name().unwrap_or("???")).unwrap();
+                    if let Some(file) = symbol.file() {
+                        writeln!(
+                            buf,
+                            "              at {}:{}",
+                            file.display(),
+                            symbol.line().unwrap_or(0),
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+            writeln!(buf).unwrap();
+        }
+
+        Ok(Bytes::from(buf))
+    }
+}

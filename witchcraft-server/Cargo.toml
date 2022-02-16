@@ -3,6 +3,22 @@ name = "witchcraft-server"
 version = "0.1.0"
 edition = "2021"
 
+[[package.metadata.sls.diagnostics]]
+type = "diagnostic.types.v1"
+docs = "All supported diagnostic types returnable from the server."
+
+[[package.metadata.sls.diagnostics]]
+type = "metric.names.v1"
+docs = "All currently emitted metrics and their tags."
+
+[[package.metadata.sls.diagnostics]]
+type = "rust.heap.status.v1"
+docs = "Statistics about the memory allocator, in jemalloc's default text format."
+
+[[package.metadata.sls.diagnostics]]
+type = "rust.thread.dump.v1"
+docs = "A recording of running threads and their respective stacktraces."
+
 [features]
 default = ["jemalloc"]
 jemalloc = ["tikv-jemalloc-ctl", "tikv-jemallocator"]
@@ -68,6 +84,7 @@ witchcraft-server-config = { path = "../witchcraft-server-config" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procinfo = "0.4"
+rstack-self = { version = "0.3", features = ["dw"], default-features = false }
 
 [dev-dependencies]
 flate2 = "1"
