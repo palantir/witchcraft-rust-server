@@ -79,10 +79,7 @@ use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
-#[cfg(all(
-    target_os = "linux",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))]
+#[cfg(target_os = "linux")]
 use std::env;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -100,6 +97,7 @@ pub use witchcraft_server_config as config;
 pub mod blocking;
 mod body;
 mod configs;
+mod crash;
 mod debug;
 mod endpoint;
 pub mod health;
@@ -188,6 +186,8 @@ where
     ))?;
 
     info!("server starting");
+
+    crash::init()?;
 
     metrics::init(&metrics);
 
