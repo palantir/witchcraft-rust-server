@@ -106,7 +106,6 @@ impl HealthCheckRegistry {
         }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn run_checks(&self) -> HealthStatus {
         let threshold = Instant::now() - STALENESS_THRESHOLD;
         let mut stale_checks = vec![];

@@ -51,17 +51,20 @@ pub struct HealthCheckResult {
 
 impl HealthCheckResult {
     /// Health state of the check.
+    #[inline]
     pub fn state(&self) -> &HealthState {
         &self.state
     }
 
     /// Text describing the state of the check which should provide enough information for the check to be actionable
     /// when included in an alert.
+    #[inline]
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
     }
 
     /// Additional redacted information on the nature of the health check.
+    #[inline]
     pub fn params(&self) -> &BTreeMap<String, Any> {
         &self.params
     }
