@@ -16,6 +16,8 @@ use refreshable::{RefreshHandle, Refreshable};
 use serde::de::DeserializeOwned;
 use serde_encrypted_value::{Key, ReadOnly};
 use std::fs;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Handle;
 use tokio::{task, time};
@@ -35,7 +37,10 @@ where
     parse(&bytes, key.as_ref())
 }
 
-pub fn load_runtime<T>(runtime: &Handle) -> Result<Refreshable<T, Error>, Error>
+pub fn load_runtime<T>(
+    runtime: &Handle,
+    config_ok: &Arc<AtomicBool>,
+) -> Result<Refreshable<T, Error>, Error>
 where
     T: DeserializeOwned + PartialEq + 'static + Sync + Send,
 {
@@ -45,7 +50,7 @@ where
 
     let (refreshable, handle) = Refreshable::new(value);
 
-    runtime.spawn(runtime_reload(bytes, key, handle));
+    runtime.spawn(runtime_reload(bytes, key, handle, config_ok.clone()));
 
     Ok(refreshable)
 }
@@ -72,6 +77,7 @@ async fn runtime_reload<T>(
     mut bytes: Vec<u8>,
     key: Option<Key<ReadOnly>>,
     mut handle: RefreshHandle<T, Error>,
+    config_ok: Arc<AtomicBool>,
 ) where
     T: DeserializeOwned + PartialEq + 'static + Sync + Send,
 {
@@ -85,6 +91,7 @@ async fn runtime_reload<T>(
                     "error reading runtime config",
                     error: Error::internal_safe(e)
                 );
+                config_ok.store(false, Ordering::Relaxed);
                 continue;
             }
         };
@@ -98,14 +105,19 @@ async fn runtime_reload<T>(
             Ok(value) => value,
             Err(e) => {
                 error!("error parsing runtime config", error: e);
+                config_ok.store(false, Ordering::Relaxed);
                 continue;
             }
         };
 
         // it's okay to use block_in_place here since we know this future is running as its own task.
-        if let Err(errors) = task::block_in_place(|| handle.refresh(value)) {
-            for error in errors {
-                error!("error reloading runtime config", error: error);
+        match task::block_in_place(|| handle.refresh(value)) {
+            Ok(()) => config_ok.store(true, Ordering::Relaxed),
+            Err(errors) => {
+                for error in errors {
+                    error!("error reloading runtime config", error: error);
+                }
+                config_ok.store(false, Ordering::Relaxed);
             }
         }
 

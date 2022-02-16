@@ -235,6 +235,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::health::endpoint_500s::EndpointHealth;
     use crate::server::RawBody;
     use crate::service::endpoint_metrics::EndpointMetrics;
     use crate::service::handler::BodyWriteAborted;
@@ -280,6 +281,10 @@ mod test {
     #[async_trait]
     impl WitchcraftEndpoint for TestEndpoint {
         fn metrics(&self) -> Option<&EndpointMetrics> {
+            None
+        }
+
+        fn health(&self) -> Option<&Arc<EndpointHealth>> {
             None
         }
 

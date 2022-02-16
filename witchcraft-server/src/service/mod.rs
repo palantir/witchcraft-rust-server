@@ -20,6 +20,7 @@ pub mod client_certificate;
 pub mod connection_limit;
 pub mod connection_metrics;
 pub mod deprecation_header;
+pub mod endpoint_health;
 pub mod endpoint_metrics;
 pub mod error_log;
 pub mod graceful_shutdown;

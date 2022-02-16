@@ -16,6 +16,7 @@ use crate::blocking::pool::ThreadPool;
 use crate::blocking::{RequestBody, ResponseWriter};
 use crate::body::ClientIo;
 use crate::endpoint::{errors, WitchcraftEndpoint};
+use crate::health::endpoint_500s::EndpointHealth;
 use crate::server::RawBody;
 use crate::service::endpoint_metrics::EndpointMetrics;
 use crate::service::handler::{BodyWriteAborted, EmptyBody};
@@ -43,6 +44,7 @@ pub struct ConjureBlockingEndpoint {
     inner: Arc<dyn Endpoint<RequestBody, ResponseWriter> + Sync + Send>,
     thread_pool: Arc<ThreadPool>,
     metrics: EndpointMetrics,
+    health: Arc<EndpointHealth>,
 }
 
 impl ConjureBlockingEndpoint {
@@ -53,6 +55,7 @@ impl ConjureBlockingEndpoint {
     ) -> Self {
         ConjureBlockingEndpoint {
             metrics: EndpointMetrics::new(metrics, &inner),
+            health: Arc::new(EndpointHealth::new()),
             inner: Arc::from(inner),
             thread_pool: thread_pool.clone(),
         }
@@ -89,6 +92,10 @@ impl EndpointMetadata for ConjureBlockingEndpoint {
 impl WitchcraftEndpoint for ConjureBlockingEndpoint {
     fn metrics(&self) -> Option<&EndpointMetrics> {
         Some(&self.metrics)
+    }
+
+    fn health(&self) -> Option<&Arc<EndpointHealth>> {
+        Some(&self.health)
     }
 
     async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>> {

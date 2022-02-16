@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::health::endpoint_500s::EndpointHealth;
 use crate::server::RawBody;
 use crate::service::endpoint_metrics::EndpointMetrics;
 use crate::service::handler::BodyWriteAborted;
@@ -20,6 +21,7 @@ use conjure_http::server::EndpointMetadata;
 use futures_util::future::BoxFuture;
 use http::{Request, Response};
 use http_body::combinators::BoxBody;
+use std::sync::Arc;
 
 pub mod conjure;
 pub mod errors;
@@ -28,6 +30,8 @@ pub mod extended_path;
 #[async_trait]
 pub trait WitchcraftEndpoint: EndpointMetadata {
     fn metrics(&self) -> Option<&EndpointMetrics>;
+
+    fn health(&self) -> Option<&Arc<EndpointHealth>>;
 
     async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>>;
 }
@@ -38,6 +42,10 @@ where
 {
     fn metrics(&self) -> Option<&EndpointMetrics> {
         (**self).metrics()
+    }
+
+    fn health(&self) -> Option<&Arc<EndpointHealth>> {
+        (**self).health()
     }
 
     // manually implementing to avoid double boxing the inner future

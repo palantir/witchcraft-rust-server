@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::endpoint::WitchcraftEndpoint;
+use crate::health::endpoint_500s::EndpointHealth;
 use crate::server::RawBody;
 use crate::service::endpoint_metrics::EndpointMetrics;
 use crate::service::handler::BodyWriteAborted;
@@ -21,6 +22,7 @@ use futures_util::future::BoxFuture;
 use http::{Method, Request, Response};
 use http_body::combinators::BoxBody;
 use std::borrow::Cow;
+use std::sync::Arc;
 
 /// A [`WitchcraftEndpoint`] which prepends path components to an inner endpoint.
 pub struct ExtendedPathEndpoint<T> {
@@ -89,6 +91,10 @@ where
 {
     fn metrics(&self) -> Option<&EndpointMetrics> {
         self.inner.metrics()
+    }
+
+    fn health(&self) -> Option<&Arc<EndpointHealth>> {
+        self.inner.health()
     }
 
     // manually implementing to avoid double boxing the inner future

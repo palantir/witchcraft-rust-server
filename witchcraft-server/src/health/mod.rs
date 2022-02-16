@@ -20,7 +20,11 @@ use std::collections::BTreeMap;
 
 #[allow(warnings)]
 pub(crate) mod api;
+pub(crate) mod config_reload;
+pub(crate) mod endpoint_500s;
+pub(crate) mod panics;
 mod registry;
+pub(crate) mod service_dependency;
 
 /// A health check.
 pub trait HealthCheck {
