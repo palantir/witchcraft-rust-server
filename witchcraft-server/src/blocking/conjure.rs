@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::blocking::body::BodyPart;
+use crate::blocking::cancellation::CancellationGuard;
 use crate::blocking::pool::ThreadPool;
-use crate::blocking::{RequestBody, ResponseWriter};
+use crate::blocking::{Cancellation, RequestBody, ResponseWriter};
 use crate::body::ClientIo;
 use crate::endpoint::{errors, WitchcraftEndpoint};
 use crate::health::endpoint_500s::EndpointHealth;
@@ -98,7 +99,13 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
         Some(&self.health)
     }
 
-    async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
+    async fn handle(
+        &self,
+        mut req: Request<RawBody>,
+    ) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
+        let (cancellation, guard) = Cancellation::new();
+        req.extensions_mut().insert(cancellation);
+
         let trace_context = zipkin::current();
         let snapshot = mdc::snapshot();
         let (sender, receiver) = oneshot::channel();
@@ -121,7 +128,7 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
             response.extensions_mut().insert(safe_params);
 
             let (parts, body) = response.into_parts();
-            let (body, writer) = ResponseBody::new(body, handle);
+            let (body, writer) = ResponseBody::new(body, guard, handle);
 
             let response = Response::from_parts(parts, body.boxed());
             let _ = sender.send(response);
@@ -152,6 +159,7 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
 struct ResponseBody {
     state: State,
     trailers: Option<HeaderMap>,
+    _guard: CancellationGuard,
 }
 
 enum State {
@@ -166,6 +174,7 @@ enum State {
 impl ResponseBody {
     fn new(
         body: server::ResponseBody<ResponseWriter>,
+        guard: CancellationGuard,
         handle: Handle,
     ) -> (Self, Option<StreamingWriter>) {
         let (state, writer) = match body {
@@ -193,6 +202,7 @@ impl ResponseBody {
             ResponseBody {
                 state,
                 trailers: None,
+                _guard: guard,
             },
             writer,
         )

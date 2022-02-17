@@ -15,6 +15,7 @@ use std::future::Future;
 use std::sync::Arc;
 
 pub mod accept;
+pub mod cancellation;
 pub mod catch_unwind;
 pub mod client_certificate;
 pub mod connection_limit;
