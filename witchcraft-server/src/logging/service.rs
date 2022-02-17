@@ -18,18 +18,31 @@ use crate::shutdown_hooks::ShutdownHooks;
 use arc_swap::ArcSwap;
 use conjure_error::{Error, ErrorKind};
 use conjure_object::Utc;
+use conjure_serde::json;
+use once_cell::sync::OnceCell;
 use refreshable::{Refreshable, Subscription};
 use sequence_trie::SequenceTrie;
 use serde::Deserialize;
-use std::fmt::Write;
+use std::fmt::Write as _;
+use std::io::Write as _;
 use std::sync::Arc;
-use std::{error, panic, thread};
+use std::{error, io, panic, thread};
 use witchcraft_log::bridge::{self, BridgedLogger};
 use witchcraft_log::{error, mdc};
 use witchcraft_log::{Level, LevelFilter, Log, Metadata, Record};
 use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
+
+static STATE: OnceCell<LoggerState> = OnceCell::new();
+
+pub fn early_init() {
+    witchcraft_log::set_max_level(LevelFilter::Info);
+    bridge::set_max_level(LevelFilter::Info);
+    witchcraft_log::set_logger(&ServiceLogger).expect("logger already initialized");
+    log::set_logger(&BridgedLogger).expect("logger already initialized");
+    log_panics();
+}
 
 pub async fn init(
     metrics: &MetricRegistry,
@@ -50,28 +63,30 @@ pub async fn init(
         }
     });
 
-    let logger = ServiceLogger {
+    let logger = LoggerState {
         appender,
         levels,
         _subscription: subscription,
     };
-    let logger = Box::leak(Box::new(logger));
-    witchcraft_log::set_logger(logger).expect("logger already initialized");
-    log::set_logger(&BridgedLogger).expect("logger already initialized");
-    log_panics();
+    STATE.set(logger).ok().expect("logger already initialized");
 
     Ok(())
 }
 
-pub struct ServiceLogger {
+struct LoggerState {
     appender: Appender<ServiceLogV1>,
     levels: Arc<ArcSwap<Levels>>,
     _subscription: Subscription<LoggingConfig, Error>,
 }
 
+struct ServiceLogger;
+
 impl Log for ServiceLogger {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.levels.load().enabled(metadata)
+        match STATE.get() {
+            Some(state) => state.levels.load().enabled(metadata),
+            None => true,
+        }
     }
 
     fn log(&self, record: &Record<'_>) {
@@ -173,8 +188,18 @@ impl Log for ServiceLogger {
         for (key, value) in record.unsafe_params() {
             message = message.insert_unsafe_params(*key, value);
         }
+        let message = message.build();
 
-        let _ = self.appender.try_send(message.build());
+        match STATE.get() {
+            Some(state) => {
+                let _ = state.appender.try_send(message);
+            }
+            None => {
+                let mut buf = json::to_vec(&message).unwrap();
+                buf.push(b'\n');
+                let _ = io::stdout().write_all(&buf);
+            }
+        }
     }
 
     fn flush(&self) {

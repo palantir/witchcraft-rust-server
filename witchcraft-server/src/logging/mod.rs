@@ -41,6 +41,10 @@ pub struct Loggers {
     pub request_logger: Appender<RequestLogV2>,
 }
 
+pub fn early_init() {
+    service::early_init()
+}
+
 pub async fn init(
     metrics: &Arc<MetricRegistry>,
     install: &InstallConfig,
