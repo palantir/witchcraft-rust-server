@@ -4,6 +4,7 @@ port: <PORT>
 use-console-log: true
 context-path: /witchcraft-ete
 server:
+  http2: <HTTP2>
   io-threads: 1
   min-threads: 1
   idle-connection-timeout: 2s

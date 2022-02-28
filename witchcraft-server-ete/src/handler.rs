@@ -14,15 +14,17 @@
 use crate::conjure::TestService;
 use conjure_error::{Error, InvalidArgument};
 use conjure_http::server::WriteBody;
-use std::io::Write;
+use http::{HeaderMap, HeaderValue};
+use std::io::{Read, Write};
 use std::thread;
 use std::time::Duration;
-use witchcraft_server::blocking::ResponseWriter;
+use witchcraft_server::blocking::{RequestBody, ResponseWriter};
 
 pub struct TestResource;
 
-impl TestService<ResponseWriter> for TestResource {
+impl TestService<RequestBody, ResponseWriter> for TestResource {
     type SlowBodyBody = SlowBodyBody;
+    type TrailersBody = TrailersBody;
 
     fn safe_params(
         &self,
@@ -51,6 +53,20 @@ impl TestService<ResponseWriter> for TestResource {
     fn slow_body(&self, delay_millis: i32) -> Result<SlowBodyBody, Error> {
         Ok(SlowBodyBody(Duration::from_millis(delay_millis as u64)))
     }
+
+    fn trailers(&self, mut body: RequestBody) -> Result<TrailersBody, Error> {
+        let mut bytes = vec![];
+        body.read_to_end(&mut bytes).unwrap();
+        assert_eq!(bytes, b"expected request body");
+
+        let trailers = body.trailers().unwrap().unwrap();
+        assert_eq!(
+            trailers.get("Request-Trailer").unwrap(),
+            "expected request trailer value",
+        );
+
+        Ok(TrailersBody)
+    }
 }
 
 pub struct SlowBodyBody(Duration);
@@ -65,6 +81,21 @@ impl WriteBody<ResponseWriter> for SlowBodyBody {
         w.write_all(&[0])
             .map_err(|e| Error::service_safe(e, InvalidArgument::new()))?;
 
+        Ok(())
+    }
+}
+
+pub struct TrailersBody;
+
+impl WriteBody<ResponseWriter> for TrailersBody {
+    fn write_body(self: Box<Self>, w: &mut ResponseWriter) -> Result<(), Error> {
+        w.write_all(b"expected response body").unwrap();
+        let mut trailers = HeaderMap::new();
+        trailers.insert(
+            "Response-Trailer",
+            HeaderValue::from_static("expected response trailer value"),
+        );
+        w.send_trailers(trailers).unwrap();
         Ok(())
     }
 }

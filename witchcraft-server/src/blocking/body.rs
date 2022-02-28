@@ -17,6 +17,7 @@ use bytes::{Buf, Bytes, BytesMut};
 use conjure_error::Error;
 use futures_channel::mpsc;
 use futures_util::{Future, SinkExt};
+use http::HeaderMap;
 use http_body::Body;
 use std::io::{BufRead, Read, Write};
 use std::time::Duration;
@@ -40,6 +41,16 @@ impl RequestBody {
             handle,
             cur: Bytes::new(),
         }
+    }
+
+    /// Returns the request's trailers, if any are present.
+    ///
+    /// The body must have been completely read before this is called.
+    pub fn trailers(&mut self) -> Result<Option<HeaderMap>, Error> {
+        self.handle
+            .block_on(async { time::timeout(IO_TIMEOUT, self.inner.trailers()).await })
+            .map_err(|e| Error::service_safe(e, ClientIo))?
+            .map_err(|e| Error::service_safe(e, ClientIo))
     }
 
     fn next_raw(&mut self) -> Result<Option<Bytes>, Box<dyn error::Error + Sync + Send>> {
@@ -98,6 +109,7 @@ impl BufRead for RequestBody {
 
 pub enum BodyPart {
     Data(Bytes),
+    Trailers(HeaderMap),
     Done,
 }
 
@@ -117,6 +129,31 @@ impl ResponseWriter {
         }
     }
 
+    /// Writes a block of [`Bytes`] to the response body.
+    ///
+    /// Compared to `ResponseWriter`'s [`Write`] implementation, this method can avoid some copies if the data is
+    /// already represented as a [`Bytes`] value.
+    pub fn send(&mut self, bytes: Bytes) -> Result<(), Error> {
+        self.send_inner(BodyPart::Data(bytes))
+    }
+
+    /// Writes the response's trailers.
+    ///
+    /// The body must be fully written before calling this method.
+    pub fn send_trailers(&mut self, trailers: HeaderMap) -> Result<(), Error> {
+        self.send_inner(BodyPart::Trailers(trailers))
+    }
+
+    fn send_inner(&mut self, part: BodyPart) -> Result<(), Error> {
+        self.flush_shallow()
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
+
+        Self::with_timeout(&self.handle, self.sender.feed(part))
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
+
+        Ok(())
+    }
+
     fn with_timeout<F, R, E>(
         handle: &Handle,
         future: F,
@@ -130,7 +167,7 @@ impl ResponseWriter {
             .map_err(Into::into)
     }
 
-    fn flush_shallow(&mut self) -> io::Result<()> {
+    fn flush_shallow(&mut self) -> Result<(), Box<dyn error::Error + Sync + Send>> {
         if self.buf.is_empty() {
             return Ok(());
         }
@@ -139,16 +176,14 @@ impl ResponseWriter {
             &self.handle,
             self.sender.feed(BodyPart::Data(self.buf.split().freeze())),
         )
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-        Ok(())
     }
 
-    pub(crate) fn finish(mut self) -> io::Result<()> {
-        self.flush_shallow()?;
+    pub(crate) fn finish(mut self) -> Result<(), Error> {
+        self.flush_shallow()
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
 
         Self::with_timeout(&self.handle, self.sender.send(BodyPart::Done))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(|e| Error::service_safe(e, ClientIo))?;
 
         Ok(())
     }
@@ -158,7 +193,8 @@ impl Write for ResponseWriter {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if self.buf.len() > 4096 {
-            self.flush_shallow()?;
+            self.flush_shallow()
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         }
 
         self.buf.extend_from_slice(buf);
@@ -166,7 +202,8 @@ impl Write for ResponseWriter {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.flush_shallow()?;
+        self.flush_shallow()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Self::with_timeout(&self.handle, self.sender.flush())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
