@@ -13,7 +13,9 @@
 // limitations under the License.
 //! Blocking handler APIs.
 pub use body::{RequestBody, ResponseWriter};
+pub use cancellation::Cancellation;
 
 mod body;
+mod cancellation;
 pub(crate) mod conjure;
 pub(crate) mod pool;

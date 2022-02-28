@@ -14,7 +14,7 @@
 use crate::service::{Layer, Service};
 use http::{HeaderMap, Response};
 use http_body::Body;
-use pin_project::pin_project;
+use pin_project::{pin_project, pinned_drop};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -49,15 +49,27 @@ where
         let inner = self.inner.call(req);
         drop(guard);
 
-        MdcFuture { inner, snapshot }
+        MdcFuture {
+            inner: Some(inner),
+            snapshot,
+        }
     }
 }
 
-#[pin_project]
+#[pin_project(PinnedDrop)]
 pub struct MdcFuture<F> {
     #[pin]
-    inner: F,
+    inner: Option<F>,
     snapshot: Snapshot,
+}
+
+#[pinned_drop]
+impl<F> PinnedDrop for MdcFuture<F> {
+    fn drop(self: Pin<&mut Self>) {
+        let mut this = self.project();
+        let _guard = with(this.snapshot);
+        this.inner.set(None);
+    }
 }
 
 impl<F, B> Future for MdcFuture<F>
@@ -70,7 +82,7 @@ where
         let this = self.project();
         let _guard = with(this.snapshot);
 
-        this.inner.poll(cx).map(|r| {
+        this.inner.as_pin_mut().unwrap().poll(cx).map(|r| {
             r.map(|inner| MdcBody {
                 inner,
                 snapshot: mdc::snapshot(),

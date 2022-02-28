@@ -14,6 +14,7 @@
 use crate::logging::api::RequestLogV2;
 use crate::logging::Appender;
 use crate::service::accept::AcceptService;
+use crate::service::cancellation::CancellationLayer;
 use crate::service::catch_unwind::CatchUnwindLayer;
 use crate::service::client_certificate::ClientCertificateLayer;
 use crate::service::connection_limit::ConnectionLimitLayer;
@@ -69,6 +70,7 @@ pub async fn start(
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
         .layer(RequestLogLayer::new(request_logger))
+        .layer(CancellationLayer)
         .layer(GzipLayer::new(&witchcraft.install_config))
         .layer(DeprecationHeaderLayer)
         .layer(KeepAliveHeaderLayer::new(&witchcraft.install_config))
