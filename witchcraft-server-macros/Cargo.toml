@@ -1,0 +1,18 @@
+[package]
+name = "witchcraft-server-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+conjure-error = "0.7"
+refreshable = "1"
+
+witchcraft-server = { path = "../witchcraft-server" }
