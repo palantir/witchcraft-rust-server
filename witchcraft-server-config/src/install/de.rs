@@ -49,11 +49,11 @@ pub struct ServerConfig {
     pub max_threads: Option<usize>,
     pub max_connections: Option<usize>,
     pub io_threads: Option<usize>,
-    #[serde(with = "humantime_serde")]
+    #[serde(default, with = "humantime_serde")]
     pub idle_thread_timeout: Option<Duration>,
     pub shutdown_timeout: Option<Duration>,
     pub gzip: Option<bool>,
     pub http2: Option<bool>,
-    #[serde(with = "humantime_serde")]
+    #[serde(default, with = "humantime_serde")]
     pub idle_connection_timeout: Option<Duration>,
 }
