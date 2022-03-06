@@ -266,13 +266,13 @@ impl ClientAuthTruststoreConfig {
 pub struct ServerConfig {
     #[builder(default = num_cpus::get())]
     processors: usize,
-    #[builder(default, into)]
+    #[builder(default, custom(type = usize, convert = Some))]
     min_threads: Option<usize>,
-    #[builder(default, into)]
+    #[builder(default, custom(type = usize, convert = Some))]
     max_threads: Option<usize>,
-    #[builder(default, into)]
+    #[builder(default, custom(type = usize, convert = Some))]
     max_connections: Option<usize>,
-    #[builder(default, into)]
+    #[builder(default, custom(type = usize, convert = Some))]
     io_threads: Option<usize>,
     #[builder(default = Duration::from_secs(5 * 60))]
     idle_thread_timeout: Duration,
