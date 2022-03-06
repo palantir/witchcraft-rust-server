@@ -12,30 +12,82 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //! Fixed configuration.
-use serde::{de, Deserialize, Deserializer};
+use crate::ConfigError;
+use serde::de::Error;
+use serde::{Deserialize, Deserializer};
+use staged_builder::{staged_builder, Validate};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+mod de;
+
 /// The fixed configuration for a Witchcraft server.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
+#[builder(validate)]
 pub struct InstallConfig {
+    #[builder(into)]
     product_name: String,
+    #[builder(into)]
     product_version: String,
     port: u16,
-    #[serde(default)]
+    #[builder(default)]
     keystore: KeystoreConfig,
+    #[builder(default, into)]
     client_auth_truststore: Option<ClientAuthTruststoreConfig>,
-    #[serde(
-        default = "default_install_config_context_path",
-        deserialize_with = "deserialize_install_config_context_path"
-    )]
+    #[builder(into, default = "/".to_string())]
     context_path: String,
-    #[serde(default = "default_install_config_use_console_log")]
+    #[builder(default = env::var_os("CONTAINER").is_some())]
     use_console_log: bool,
-    #[serde(default)]
+    #[builder(default)]
     server: ServerConfig,
+}
+
+impl Validate for InstallConfig {
+    type Error = ConfigError;
+
+    fn validate(&self) -> Result<(), Self::Error> {
+        if !(self.context_path == "/"
+            || (self.context_path.starts_with('/') && !self.context_path.ends_with('/')))
+        {
+            return Err(ConfigError(
+                "context-path must either be `/` or start but not end with a `/`".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+impl<'de> Deserialize<'de> for InstallConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::InstallConfig::deserialize(deserializer)?;
+        let mut builder = InstallConfig::builder()
+            .product_name(raw.product_name)
+            .product_version(raw.product_version)
+            .port(raw.port);
+        if let Some(keystore) = raw.keystore {
+            builder = builder.keystore(keystore);
+        }
+        if let Some(client_auth_truststore) = raw.client_auth_truststore {
+            builder = builder.client_auth_truststore(client_auth_truststore);
+        }
+        if let Some(context_path) = raw.context_path {
+            builder = builder.context_path(context_path);
+        }
+        if let Some(use_console_log) = raw.use_console_log {
+            builder = builder.use_console_log(use_console_log);
+        }
+        if let Some(server) = raw.server {
+            builder = builder.server(server);
+        }
+
+        builder.build().map_err(Error::custom)
+    }
 }
 
 impl AsRef<InstallConfig> for InstallConfig {
@@ -113,38 +165,38 @@ impl InstallConfig {
     }
 }
 
-#[inline]
-fn default_install_config_context_path() -> String {
-    "/".to_string()
-}
-
-#[inline]
-fn deserialize_install_config_context_path<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let context_path = String::deserialize(deserializer)?;
-    if !(context_path == "/" || (context_path.starts_with('/') && !context_path.ends_with('/'))) {
-        return Err(de::Error::invalid_value(
-            de::Unexpected::Str(&context_path),
-            &"a valid context path",
-        ));
-    }
-
-    Ok(context_path)
-}
-
-#[inline]
-fn default_install_config_use_console_log() -> bool {
-    env::var_os("CONTAINER").is_some()
-}
-
 /// TLS key configuration.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(default, rename_all = "kebab-case")]
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
 pub struct KeystoreConfig {
+    #[builder(into, default = PathBuf::from("var/security/key.pem"))]
     key_path: PathBuf,
+    #[builder(into, default = PathBuf::from("var/security/cert.cer"))]
     cert_path: PathBuf,
+}
+
+impl Default for KeystoreConfig {
+    #[inline]
+    fn default() -> Self {
+        KeystoreConfig::builder().build()
+    }
+}
+
+impl<'de> Deserialize<'de> for KeystoreConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::KeystoreConfig::deserialize(deserializer)?;
+        let mut builder = KeystoreConfig::builder();
+        if let Some(key_path) = raw.key_path {
+            builder = builder.key_path(key_path);
+        }
+        if let Some(cert_path) = raw.cert_path {
+            builder = builder.cert_path(cert_path);
+        }
+        Ok(builder.build())
+    }
 }
 
 impl KeystoreConfig {
@@ -168,21 +220,33 @@ impl KeystoreConfig {
     }
 }
 
-impl Default for KeystoreConfig {
+/// TLS client authentication configuration.
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
+pub struct ClientAuthTruststoreConfig {
+    #[builder(into, default = PathBuf::from("var/security/ca.cer"))]
+    path: PathBuf,
+}
+
+impl Default for ClientAuthTruststoreConfig {
     #[inline]
     fn default() -> Self {
-        KeystoreConfig {
-            key_path: PathBuf::from("var/security/key.pem"),
-            cert_path: PathBuf::from("var/security/cert.cer"),
-        }
+        ClientAuthTruststoreConfig::builder().build()
     }
 }
 
-/// TLS client authentication configuration.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(default, rename_all = "kebab-case")]
-pub struct ClientAuthTruststoreConfig {
-    path: PathBuf,
+impl<'de> Deserialize<'de> for ClientAuthTruststoreConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::ClientAuthTruststoreConfig::deserialize(deserializer)?;
+        let mut builder = ClientAuthTruststoreConfig::builder();
+        if let Some(path) = raw.path {
+            builder = builder.path(path);
+        }
+        Ok(builder.build())
+    }
 }
 
 impl ClientAuthTruststoreConfig {
@@ -196,48 +260,78 @@ impl ClientAuthTruststoreConfig {
     }
 }
 
-impl Default for ClientAuthTruststoreConfig {
-    #[inline]
-    fn default() -> Self {
-        ClientAuthTruststoreConfig {
-            path: PathBuf::from("var/security/ca.cer"),
-        }
-    }
-}
-
 /// Advanced server configuration.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(default, rename_all = "kebab-case")]
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
 pub struct ServerConfig {
+    #[builder(default = num_cpus::get())]
     processors: usize,
+    #[builder(default, into)]
     min_threads: Option<usize>,
+    #[builder(default, into)]
     max_threads: Option<usize>,
+    #[builder(default, into)]
     max_connections: Option<usize>,
+    #[builder(default, into)]
     io_threads: Option<usize>,
-    #[serde(with = "humantime_serde")]
+    #[builder(default = Duration::from_secs(5 * 60))]
     idle_thread_timeout: Duration,
+    #[builder(default = Duration::from_secs(15))]
     shutdown_timeout: Duration,
+    #[builder(default = true)]
     gzip: bool,
+    #[builder(default = false)]
     http2: bool,
-    #[serde(with = "humantime_serde")]
+    #[builder(default, into)]
     idle_connection_timeout: Option<Duration>,
 }
 
 impl Default for ServerConfig {
     #[inline]
     fn default() -> Self {
-        ServerConfig {
-            processors: num_cpus::get(),
-            min_threads: None,
-            max_threads: None,
-            max_connections: None,
-            io_threads: None,
-            idle_thread_timeout: Duration::from_secs(5 * 60),
-            shutdown_timeout: Duration::from_secs(15),
-            gzip: true,
-            http2: false,
-            idle_connection_timeout: None,
+        ServerConfig::builder().build()
+    }
+}
+
+impl<'de> Deserialize<'de> for ServerConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::ServerConfig::deserialize(deserializer)?;
+        let mut builder = ServerConfig::builder();
+        if let Some(processors) = raw.processors {
+            builder = builder.processors(processors);
         }
+        if let Some(min_threads) = raw.min_threads {
+            builder = builder.min_threads(min_threads);
+        }
+        if let Some(max_threads) = raw.max_threads {
+            builder = builder.max_threads(max_threads);
+        }
+        if let Some(max_connections) = raw.max_connections {
+            builder = builder.max_connections(max_connections);
+        }
+        if let Some(io_threads) = raw.io_threads {
+            builder = builder.io_threads(io_threads);
+        }
+        if let Some(idle_thread_timeout) = raw.idle_thread_timeout {
+            builder = builder.idle_thread_timeout(idle_thread_timeout);
+        }
+        if let Some(shutdown_timeout) = raw.shutdown_timeout {
+            builder = builder.shutdown_timeout(shutdown_timeout);
+        }
+        if let Some(gzip) = raw.gzip {
+            builder = builder.gzip(gzip);
+        }
+        if let Some(http2) = raw.http2 {
+            builder = builder.http2(http2);
+        }
+        if let Some(idle_connection_timeout) = raw.idle_connection_timeout {
+            builder = builder.idle_connection_timeout(idle_connection_timeout);
+        }
+
+        Ok(builder.build())
     }
 }
 

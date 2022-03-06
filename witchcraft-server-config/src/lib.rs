@@ -13,5 +13,20 @@
 // limitations under the License.
 //! Witchcraft server configuration.
 #![warn(missing_docs)]
+use core::fmt;
+use std::error::Error;
+
 pub mod install;
 pub mod runtime;
+
+/// A validation error retured by config structs.
+#[derive(Debug)]
+pub struct ConfigError(String);
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid configuration: {}", self.0)
+    }
+}
+
+impl Error for ConfigError {}

@@ -15,6 +15,7 @@
 pub use api::HealthState;
 use conjure_object::Any;
 pub use registry::HealthCheckRegistry;
+use serde::Serialize;
 use staged_builder::staged_builder;
 use std::collections::BTreeMap;
 
@@ -44,9 +45,12 @@ pub struct HealthCheckResult {
     state: HealthState,
     #[builder(default, into)]
     message: Option<String>,
-    // FIXME(sfackler) https://github.com/sfackler/staged-builder/issues/2
-    #[builder(default)]
+    #[builder(map(key(type = String, into), value(custom(type = impl Serialize, convert = serialize))))]
     params: BTreeMap<String, Any>,
+}
+
+fn serialize(arg: impl Serialize) -> Any {
+    Any::new(arg).expect("value failed to serialize")
 }
 
 impl HealthCheckResult {

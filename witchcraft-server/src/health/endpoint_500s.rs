@@ -13,10 +13,9 @@
 // limitations under the License.
 use crate::endpoint::WitchcraftEndpoint;
 use crate::health::{HealthCheck, HealthCheckResult, HealthState};
-use conjure_object::Any;
 use http::StatusCode;
 use parking_lot::Mutex;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -206,16 +205,8 @@ impl HealthCheck for Endpoint500sHealthCheck {
         HealthCheckResult::builder()
             .state(HealthState::Warning)
             .message(self.message(&unhealthy_endpoints, &broken_endpoints))
-            .params(BTreeMap::from([
-                (
-                    "unhealthyEndpoints".to_string(),
-                    Any::new(unhealthy_endpoints).unwrap(),
-                ),
-                (
-                    "brokenEndpoints".to_string(),
-                    Any::new(broken_endpoints).unwrap(),
-                ),
-            ]))
+            .insert_params("unhealthyEndpoints", unhealthy_endpoints)
+            .insert_params("brokenEndpoints", broken_endpoints)
             .build()
     }
 }
