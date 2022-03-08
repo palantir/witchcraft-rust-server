@@ -191,7 +191,7 @@ where
     fn call(&self, mut req: Request<B>) -> Self::Future {
         let (route, endpoint) = if req.method() == Method::OPTIONS && req.uri() == "*" {
             (Route::StarOptions, None)
-        } else if req.uri().scheme().is_none() {
+        } else {
             match self
                 .endpoints
                 .get(req.method())
@@ -211,8 +211,6 @@ where
                     }
                 }
             }
-        } else {
-            (Route::Unresolved, None)
         };
 
         if let Some(endpoint) = endpoint {
@@ -511,6 +509,30 @@ mod test {
                 Request::builder()
                     .method(Method::GET)
                     .uri("/foo/bar?a=b")
+                    .body(hyper::Body::empty())
+                    .unwrap(),
+            )
+            .await;
+        match req.extensions().get() {
+            Some(Route::Resolved(endpoint)) => assert_eq!(endpoint.name(), "a"),
+            _ => panic!("bad route"),
+        }
+    }
+
+    #[tokio::test]
+    async fn absolute_form() {
+        let service = RoutingLayer::new(vec![endpoint(
+            Method::GET,
+            vec![PathSegment::Literal(Cow::Borrowed("foo"))],
+            "a",
+        )])
+        .layer(service_fn(|req: Request<hyper::Body>| async { req }));
+
+        let req = service
+            .call(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("https://foobar.com/foo?a=b")
                     .body(hyper::Body::empty())
                     .unwrap(),
             )

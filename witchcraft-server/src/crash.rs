@@ -231,6 +231,7 @@ impl RawFile {
         Ok(())
     }
 
+    #[allow(dead_code)] // only used on linux
     fn read(&self, buf: &mut [u8]) -> Result<usize, ()> {
         let nread = unsafe { read(self.0, buf.as_mut_ptr().cast(), buf.len()) };
         if nread < 0 {

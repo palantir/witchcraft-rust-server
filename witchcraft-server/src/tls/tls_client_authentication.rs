@@ -38,6 +38,18 @@ pub struct TlsClientAuthenticationService<T> {
     trusted_subject_names: Arc<Refreshable<HashSet<String>, Error>>,
 }
 
+impl<T> TlsClientAuthenticationService<T> {
+    /// Creates a new service which will validate the subject name of a client's certificate for each request.
+    ///
+    /// The inner service can implement either the [`Service`] or [`AsyncService`] trait.
+    pub fn new(inner: T, trusted_subject_names: Arc<Refreshable<HashSet<String>, Error>>) -> Self {
+        TlsClientAuthenticationService {
+            inner,
+            trusted_subject_names,
+        }
+    }
+}
+
 impl<T, I, O> Service<I, O> for TlsClientAuthenticationService<T>
 where
     T: Service<I, O>,
