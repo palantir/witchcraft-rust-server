@@ -2,6 +2,10 @@
 name = "witchcraft-server"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+description = "A highly opinionated embedded application server for RESTy APIs, compatible with the Witchcraft ecosystem"
+repository = "https://github.com/palantir/witchcraft-rust-server"
+readme = "../README.md"
 
 [[package.metadata.sls.diagnostics]]
 type = "diagnostic.types.v1"
