@@ -12,22 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //! Runtime-reloadable configuration.
+use crate::ConfigError;
 use conjure_runtime_config::ServicesConfig;
-use serde::de;
+use serde::de::Error;
 use serde::{Deserialize, Deserializer};
+use staged_builder::{staged_builder, Validate};
 use std::collections::HashMap;
 use witchcraft_log::LevelFilter;
 
+mod de;
+
 /// The runtime-reloadable configuration for a Witchcraft server.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
 pub struct RuntimeConfig {
     diagnostics: DiagnosticsConfig,
     health_checks: HealthChecksConfig,
-    #[serde(default)]
+    #[builder(default)]
     logging: LoggingConfig,
-    #[serde(default)]
+    #[builder(default)]
     service_discovery: ServicesConfig,
+}
+
+impl<'de> Deserialize<'de> for RuntimeConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::RuntimeConfig::deserialize(deserializer)?;
+        let mut builder = RuntimeConfig::builder()
+            .diagnostics(raw.diagnostics)
+            .health_checks(raw.health_checks);
+        if let Some(logging) = raw.logging {
+            builder = builder.logging(logging);
+        }
+        if let Some(service_discovery) = raw.service_discovery {
+            builder = builder.service_discovery(service_discovery);
+        }
+
+        Ok(builder.build())
+    }
 }
 
 impl AsRef<RuntimeConfig> for RuntimeConfig {
@@ -68,10 +92,23 @@ impl RuntimeConfig {
 }
 
 /// Diagnostics configuration.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
 pub struct DiagnosticsConfig {
+    #[builder(into)]
     debug_shared_secret: String,
+}
+
+impl<'de> Deserialize<'de> for DiagnosticsConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::DiagnosticsConfig::deserialize(deserializer)?;
+        let builder = DiagnosticsConfig::builder().debug_shared_secret(raw.debug_shared_secret);
+
+        Ok(builder.build())
+    }
 }
 
 impl DiagnosticsConfig {
@@ -85,10 +122,23 @@ impl DiagnosticsConfig {
 }
 
 /// Health checks configuration.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
 pub struct HealthChecksConfig {
+    #[builder(into)]
     shared_secret: String,
+}
+
+impl<'de> Deserialize<'de> for HealthChecksConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::HealthChecksConfig::deserialize(deserializer)?;
+        let builder = HealthChecksConfig::builder().shared_secret(raw.shared_secret);
+
+        Ok(builder.build())
+    }
 }
 
 impl HealthChecksConfig {
@@ -100,40 +150,58 @@ impl HealthChecksConfig {
 }
 
 /// Logging configuration.
-#[derive(Deserialize, Clone, PartialEq, Debug)]
-#[serde(default, rename_all = "kebab-case")]
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
+#[builder(validate)]
 pub struct LoggingConfig {
+    #[builder(default = LevelFilter::Info)]
     level: LevelFilter,
+    #[builder(map(key(type = String, into), value(type = LevelFilter)))]
     loggers: HashMap<String, LevelFilter>,
-    #[serde(deserialize_with = "de_logging_config_tracing_rate")]
+    #[builder(default = 0.0005)]
     trace_rate: f32,
+}
+
+impl Validate for LoggingConfig {
+    type Error = ConfigError;
+
+    fn validate(&self) -> Result<(), Self::Error> {
+        if !(0.0..=1.0).contains(&self.trace_rate()) {
+            return Err(ConfigError(
+                "trace-rate must be between 0 and 1, inclusive".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+impl<'de> Deserialize<'de> for LoggingConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::LoggingConfig::deserialize(deserializer)?;
+        let mut builder = LoggingConfig::builder();
+        if let Some(level) = raw.level {
+            builder = builder.level(level);
+        }
+        if let Some(loggers) = raw.loggers {
+            builder = builder.loggers(loggers);
+        }
+        if let Some(trace_rate) = raw.trace_rate {
+            builder = builder.trace_rate(trace_rate);
+        }
+
+        builder.build().map_err(Error::custom)
+    }
 }
 
 impl Default for LoggingConfig {
     #[inline]
     fn default() -> Self {
-        LoggingConfig {
-            level: LevelFilter::Info,
-            loggers: HashMap::new(),
-            trace_rate: 0.0005,
-        }
+        LoggingConfig::builder().build().unwrap()
     }
-}
-
-#[inline]
-fn de_logging_config_tracing_rate<'de, D>(deserializer: D) -> Result<f32, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let rate = f32::deserialize(deserializer)?;
-    if !(0.0..=1.0).contains(&rate) {
-        return Err(de::Error::invalid_value(
-            de::Unexpected::Float(f64::from(rate)),
-            &"valid rate",
-        ));
-    }
-
-    Ok(rate)
 }
 
 impl LoggingConfig {

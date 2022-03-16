@@ -269,21 +269,16 @@ fn log_panics() {
 #[cfg(test)]
 mod test {
     use super::*;
-    use conjure_serde::json;
     use witchcraft_log::Level;
 
     #[test]
     fn loggers() {
-        let config = r#"
-        {
-            "level": "INFO",
-            "loggers": {
-                "foo": "WARN",
-                "foo::bar": "DEBUG"
-            }
-        }
-        "#;
-        let config = json::server_from_str(config).unwrap();
+        let config = LoggingConfig::builder()
+            .level(LevelFilter::Info)
+            .insert_loggers("foo", LevelFilter::Warn)
+            .insert_loggers("foo::bar", LevelFilter::Debug)
+            .build()
+            .unwrap();
 
         let loggers = Levels::new(&config);
 

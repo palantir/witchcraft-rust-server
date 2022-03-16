@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::health::{HealthCheck, HealthCheckResult, HealthState};
-use conjure_object::Any;
 use conjure_runtime::HostMetricsRegistry;
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -78,13 +77,6 @@ impl HealthCheck for ServiceDependencyHealthCheck {
                 .message("Some nodes of a remote service have a high failure rate".to_string())
         };
 
-        builder
-            .params(
-                bad_hosts_by_service
-                    .into_iter()
-                    .map(|(k, v)| (k.to_string(), Any::new(v).unwrap()))
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .build()
+        builder.params(bad_hosts_by_service).build()
     }
 }
