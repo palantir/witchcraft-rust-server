@@ -1,9 +1,3 @@
-use crate::debug::Diagnostic;
-use bytes::Bytes;
-use conjure_error::Error;
-use conjure_serde::json;
-use http::HeaderValue;
-
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +11,11 @@ use http::HeaderValue;
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::debug::Diagnostic;
+use bytes::Bytes;
+use conjure_error::Error;
+use conjure_serde::json;
+use http::HeaderValue;
 
 const DIAGNOSTIC_TYPES_V1: &str = "diagnostic.types.v1";
 
