@@ -1,6 +1,6 @@
 [package]
 name = "witchcraft-server"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "A highly opinionated embedded application server for RESTy APIs, compatible with the Witchcraft ecosystem"
@@ -85,8 +85,8 @@ witchcraft-log = "0.3"
 witchcraft-metrics = "0.2"
 zipkin = "0.4"
 
-witchcraft-server-config = { path = "../witchcraft-server-config" }
-witchcraft-server-macros = { path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "1.0.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "1.0.0", path = "../witchcraft-server-macros" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procinfo = "0.4"

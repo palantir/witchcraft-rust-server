@@ -140,7 +140,7 @@
 //! The `/status/readiness` endpoint returns a response indicating the server's readiness to handle requests to its
 //! endpoints. Deployment infrastructure uses the result of this endpoint to decide if requests should be routed to a
 //! given instance of the service. Custom readiness checks can be added to the server via the [`ReadinessCheckRegistry`]
-//! returned by the [`Witchraft::readiness_checks`] method. Any long-running initialization logic should happen
+//! returned by the [`Witchcraft::readiness_checks`] method. Any long-running initialization logic should happen
 //! asynchronously and use a readiness check to indicate completion.
 //!
 //! ## Health

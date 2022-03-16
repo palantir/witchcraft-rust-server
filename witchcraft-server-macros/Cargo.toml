@@ -1,7 +1,11 @@
 [package]
 name = "witchcraft-server-macros"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+license = "Apache-2.0"
+description = "Macro definitions used by witchcraft-server"
+repository = "https://github.com/palantir/witchcraft-rust-server"
+readme = "../README.md"
 
 [lib]
 proc-macro = true
@@ -15,4 +19,4 @@ syn = { version = "1", features = ["full"] }
 conjure-error = "0.7"
 refreshable = "1"
 
-witchcraft-server = { path = "../witchcraft-server" }
+witchcraft-server = { version = "1.0.0", path = "../witchcraft-server" }
