@@ -33,11 +33,11 @@ async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 async-trait = "0.1"
 base64 = "0.13"
 bytes = "1"
-conjure-error = "0.7"
-conjure-http = "0.7"
-conjure-object = "0.7"
-conjure-runtime = "1.2"
-conjure-serde = "0.7"
+conjure-error = "1"
+conjure-http = "1"
+conjure-object = "1"
+conjure-runtime = "2"
+conjure-serde = "1"
 foreign-types = "0.5"
 futures-channel = "0.3"
 futures-sink = "0.3"
@@ -81,8 +81,8 @@ tokio = { version = "1", features = [
 tokio-openssl = "0.6"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log = "0.3"
-witchcraft-metrics = "0.2"
+witchcraft-log = "1"
+witchcraft-metrics = "1"
 zipkin = "0.4"
 
 witchcraft-server-config = { version = "1.0.0", path = "../witchcraft-server-config" }

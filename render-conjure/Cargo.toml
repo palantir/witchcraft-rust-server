@@ -6,5 +6,5 @@ publish = false
 
 [dependencies]
 attohttpc = "0.18"
-conjure-codegen = "0.7"
+conjure-codegen = "1"
 tempfile = "3"
