@@ -176,7 +176,13 @@ where
             }
         }
 
-        let unsafe_params = vec![("path".to_string(), Any::new(req.uri().path()).unwrap())];
+        let mut unsafe_params = vec![];
+        if let Some(path_and_query) = req.uri().path_and_query() {
+            unsafe_params.push((
+                "path".to_string(),
+                Any::new(path_and_query.as_str()).unwrap(),
+            ));
+        }
 
         let request_size = Arc::new(AtomicI64::new(0));
 

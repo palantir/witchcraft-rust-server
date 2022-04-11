@@ -1,0 +1,6 @@
+type: improvement
+improvement:
+  description: The unsafe `path` parameter in request logs now contains the URI query
+    in addition to the path.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/43
