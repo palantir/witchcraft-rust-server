@@ -1,0 +1,5 @@
+type: fix
+fix:
+  description: Fixed a panic when a client-side IO error is encountered.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/48
