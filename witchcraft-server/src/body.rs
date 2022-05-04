@@ -21,7 +21,7 @@ use futures_util::{future, ready, SinkExt, Stream};
 use http::HeaderMap;
 use http_body::Body;
 use pin_project::pin_project;
-use serde::ser::SerializeMap;
+use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use std::marker::PhantomPinned;
 use std::pin::Pin;
@@ -284,7 +284,7 @@ impl Serialize for ClientIo {
     where
         S: Serializer,
     {
-        serializer.serialize_map(Some(0))?.end()
+        serializer.serialize_struct("ClientIo", 0)?.end()
     }
 }
 
@@ -303,5 +303,15 @@ impl ErrorType for ClientIo {
 
     fn safe_args(&self) -> &'static [&'static str] {
         &[]
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn conjure_error_from_client_io() {
+        Error::service_safe("", ClientIo);
     }
 }
