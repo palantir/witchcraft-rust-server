@@ -127,8 +127,11 @@ impl AsyncEndpoint<RequestBody, ResponseWriter> for DiagnosticEndpoint {
             }
         };
 
-        // Using OpenSSL's constant time equality check
-        if !memcmp::eq(authorization.as_bytes(), self.state.auth.get().as_bytes()) {
+        let expected = self.state.auth.get();
+        // Using OpenSSL's constant time equality check, which requires the buffer lengths match
+        if authorization.len() != expected.len()
+            || !memcmp::eq(authorization.as_bytes(), expected.as_bytes())
+        {
             return Err(Error::service_safe(
                 "invalid diagnostic check secret",
                 PermissionDenied::new(),
