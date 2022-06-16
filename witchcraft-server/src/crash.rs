@@ -114,6 +114,7 @@ unsafe fn handler_inner(
     let ret = open(
         "var/log/crash.log\0".as_bytes().as_ptr().cast(),
         O_WRONLY | O_CREAT | O_TRUNC,
+        0o644,
     );
     if ret < 0 {
         return Err(());
