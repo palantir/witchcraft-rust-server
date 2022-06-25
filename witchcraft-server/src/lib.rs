@@ -305,7 +305,6 @@ use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
-#[cfg(target_os = "linux")]
 use std::env;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -325,12 +324,12 @@ pub use witchcraft_server_macros::main;
 pub mod blocking;
 mod body;
 mod configs;
-mod crash;
 mod debug;
 mod endpoint;
 pub mod health;
 mod logging;
 mod metrics;
+mod minidump;
 pub mod readiness;
 mod server;
 mod service;
@@ -376,6 +375,10 @@ where
         return Ok(());
     }
 
+    if env::args_os().nth(1).map_or(false, |a| a == "minidump") {
+        return minidump::server();
+    }
+
     logging::early_init();
 
     let install_config = configs::load_install::<I>()?;
@@ -409,7 +412,7 @@ where
 
     info!("server starting");
 
-    crash::init()?;
+    handle.block_on(minidump::init())?;
 
     metrics::init(&metrics);
 
