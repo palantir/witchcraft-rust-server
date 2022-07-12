@@ -351,7 +351,7 @@ impl ServerConfig {
     /// Defaults to 8 times the number of processors.
     #[inline]
     pub fn min_threads(&self) -> usize {
-        self.min_threads.unwrap_or_else(|| self.processors * 8)
+        self.min_threads.unwrap_or(self.processors * 8)
     }
 
     /// Returns the maximum number of threads in the pool used to process blocking endpoints.

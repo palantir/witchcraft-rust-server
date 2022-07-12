@@ -50,7 +50,7 @@ pub async fn init() -> Result<(), Error> {
 
     let guard = CrashHandler::attach(unsafe {
         crash_handler::make_crash_event(move |context| {
-            let _ = client.request_dump(&context);
+            let _ = client.request_dump(context);
             crash_handler::CrashEventResult::Handled(true)
         })
     })
