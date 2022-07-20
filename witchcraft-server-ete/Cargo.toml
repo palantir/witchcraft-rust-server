@@ -14,7 +14,7 @@ conjure-codegen = "1"
 [dependencies]
 async-trait = "0.1"
 conjure-error = "1"
-conjure-http = "1"
+conjure-http = "2"
 conjure-object = "1"
 http = "0.2"
 refreshable = "1"
