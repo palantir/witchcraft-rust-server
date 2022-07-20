@@ -1,4 +1,4 @@
-use conjure_object::serde::{de, ser};
+use conjure_object::serde::{ser, de};
 use std::fmt;
 use std::str;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -84,10 +84,14 @@ impl<'de> de::Visitor<'de> for Visitor_ {
     {
         match v.parse() {
             Ok(e) => Ok(e),
-            Err(_) => Err(de::Error::unknown_variant(
-                v,
-                &["FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
-            )),
+            Err(_) => {
+                Err(
+                    de::Error::unknown_variant(
+                        v,
+                        &["FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
+                    ),
+                )
+            }
         }
     }
 }

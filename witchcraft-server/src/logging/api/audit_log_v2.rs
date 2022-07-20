@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///Definition of the audit.2 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -75,12 +75,16 @@ impl AuditLogV2 {
     }
     ///The parameters known at method invocation time.
     #[inline]
-    pub fn request_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn request_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.request_params
     }
     ///Information derived within a method, commonly parts of the return value.
     #[inline]
-    pub fn result_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn result_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.result_params
     }
 }
@@ -131,7 +135,10 @@ pub struct BuilderStage1 {
 }
 impl BuilderStage1 {
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage2 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage2 {
         BuilderStage2 {
             type_: self.type_,
             time: time,
@@ -326,10 +333,11 @@ impl BuilderStage4 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.request_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.request_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///Information derived within a method, commonly parts of the return value.
@@ -357,10 +365,11 @@ impl BuilderStage4 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.result_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.result_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     /// Consumes the builder, constructing a new instance of the type.

@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///Wraps a log entry with metadata on where it is coming from and the source service that generated it.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -475,7 +475,8 @@ impl BuilderStage12 {
             stack_id: self.stack_id,
             product: self.product,
             product_version: self.product_version,
-            payload: conjure_object::Any::new(payload).expect("value failed to serialize"),
+            payload: conjure_object::Any::new(payload)
+                .expect("value failed to serialize"),
         }
     }
 }
@@ -611,7 +612,9 @@ impl BuilderStage13 {
     where
         T: conjure_object::serde::Serialize,
     {
-        self.payload = conjure_object::Any::new(payload).expect("value failed to serialize");
+        self
+            .payload = conjure_object::Any::new(payload)
+            .expect("value failed to serialize");
         self
     }
     /// Consumes the builder, constructing a new instance of the type.

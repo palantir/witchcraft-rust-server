@@ -1,4 +1,4 @@
-use conjure_object::serde::{de, ser};
+use conjure_object::serde::{ser, de};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct TokenId(pub String);
 impl std::fmt::Display for TokenId {

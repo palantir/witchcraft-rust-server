@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///Definition of the request.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -54,22 +54,30 @@ impl RequestLogV1 {
     }
     ///Known-safe path parameters
     #[inline]
-    pub fn path_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn path_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.path_params
     }
     ///Known-safe query parameters
     #[inline]
-    pub fn query_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn query_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.query_params
     }
     ///Known-safe header parameters
     #[inline]
-    pub fn header_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn header_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.header_params
     }
     ///Known-safe body parameters
     #[inline]
-    pub fn body_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn body_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.body_params
     }
     ///HTTP status code of response
@@ -114,7 +122,9 @@ impl RequestLogV1 {
     }
     ///Unredacted parameters such as path, query and header parameters
     #[inline]
-    pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn unsafe_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
 }
@@ -170,7 +180,10 @@ pub struct BuilderStage1 {
 }
 impl BuilderStage1 {
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage2 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage2 {
         BuilderStage2 {
             type_: self.type_,
             time: time,
@@ -449,10 +462,11 @@ impl BuilderStage8 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.path_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.path_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///Known-safe query parameters
@@ -480,10 +494,11 @@ impl BuilderStage8 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.query_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.query_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///Known-safe header parameters
@@ -511,10 +526,11 @@ impl BuilderStage8 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.header_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.header_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///Known-safe body parameters
@@ -542,10 +558,11 @@ impl BuilderStage8 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.body_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.body_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///User id (if available)
@@ -609,10 +626,11 @@ impl BuilderStage8 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.unsafe_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.unsafe_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     /// Consumes the builder, constructing a new instance of the type.

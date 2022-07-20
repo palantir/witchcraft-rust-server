@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ThreadInfoV1 {
@@ -133,10 +133,11 @@ impl BuilderStage0 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     /// Consumes the builder, constructing a new instance of the type.

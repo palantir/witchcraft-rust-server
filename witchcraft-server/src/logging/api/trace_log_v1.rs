@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///Definition of the trace.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -39,7 +39,9 @@ impl TraceLogV1 {
         self.token_id.as_ref().map(|o| &*o)
     }
     #[inline]
-    pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn unsafe_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
     #[inline]
@@ -88,7 +90,10 @@ pub struct BuilderStage1 {
 }
 impl BuilderStage1 {
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage2 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage2 {
         BuilderStage2 {
             type_: self.type_,
             time: time,
@@ -191,10 +196,11 @@ impl BuilderStage3 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.unsafe_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.unsafe_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     /// Consumes the builder, constructing a new instance of the type.
@@ -267,15 +273,7 @@ impl<'de> de::Deserialize<'de> for TraceLogV1 {
     {
         d.deserialize_struct(
             "TraceLogV1",
-            &[
-                "type",
-                "time",
-                "uid",
-                "sid",
-                "tokenId",
-                "unsafeParams",
-                "span",
-            ],
+            &["type", "time", "uid", "sid", "tokenId", "unsafeParams", "span"],
             Visitor_,
         )
     }

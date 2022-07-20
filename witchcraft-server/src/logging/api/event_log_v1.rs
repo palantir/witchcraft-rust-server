@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///Definition of the event.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -60,7 +60,9 @@ impl EventLogV1 {
     }
     ///Unsafe metadata describing the event
     #[inline]
-    pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn unsafe_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
 }
@@ -107,7 +109,10 @@ pub struct BuilderStage1 {
 }
 impl BuilderStage1 {
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage2 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage2 {
         BuilderStage2 {
             type_: self.type_,
             time: time,
@@ -231,10 +236,11 @@ impl BuilderStage4 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.values.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.values
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///User id (if available)
@@ -289,10 +295,11 @@ impl BuilderStage4 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.unsafe_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.unsafe_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     /// Consumes the builder, constructing a new instance of the type.

@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///A Zipkin-compatible Span object.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

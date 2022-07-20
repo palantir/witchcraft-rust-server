@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///Definition of the service.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -93,7 +93,9 @@ impl ServiceLogV1 {
     }
     ///Unredacted parameters
     #[inline]
-    pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn unsafe_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
     ///Additional dimensions that describe the instance of the log event
@@ -169,7 +171,10 @@ pub struct BuilderStage2 {
 impl BuilderStage2 {
     ///RFC3339Nano UTC datetime string when the log event was emitted
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage3 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage3 {
         BuilderStage3 {
             type_: self.type_,
             level: self.level,
@@ -312,10 +317,11 @@ impl BuilderStage4 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///User id (if available).
@@ -388,10 +394,11 @@ impl BuilderStage4 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.unsafe_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.unsafe_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///Additional dimensions that describe the instance of the log event

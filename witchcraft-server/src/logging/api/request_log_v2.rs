@@ -1,5 +1,5 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
 ///Definition of the request.2 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -96,7 +96,9 @@ impl RequestLogV2 {
     }
     ///Unredacted parameters such as path, query and header parameters
     #[inline]
-    pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn unsafe_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
 }
@@ -149,7 +151,10 @@ pub struct BuilderStage1 {
 }
 impl BuilderStage1 {
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage2 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage2 {
         BuilderStage2 {
             type_: self.type_,
             time: time,
@@ -255,7 +260,10 @@ pub struct BuilderStage6 {
 impl BuilderStage6 {
     ///Size of response (bytes)
     #[inline]
-    pub fn response_size(self, response_size: conjure_object::SafeLong) -> BuilderStage7 {
+    pub fn response_size(
+        self,
+        response_size: conjure_object::SafeLong,
+    ) -> BuilderStage7 {
         BuilderStage7 {
             type_: self.type_,
             time: self.time,
@@ -410,10 +418,11 @@ impl BuilderStage8 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     ///User id (if available)
@@ -477,10 +486,11 @@ impl BuilderStage8 {
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.unsafe_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.unsafe_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
     /// Consumes the builder, constructing a new instance of the type.
