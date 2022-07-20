@@ -81,7 +81,7 @@ tokio = { version = "1", features = [
 tokio-openssl = "0.6"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log = "1"
+witchcraft-log = "2"
 witchcraft-metrics = "1"
 zipkin = "0.4"
 
