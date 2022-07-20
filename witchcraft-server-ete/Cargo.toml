@@ -9,7 +9,7 @@ name = "witchcraft-server-ete"
 test = false
 
 [build-dependencies]
-conjure-codegen = "1"
+conjure-codegen = "2"
 
 [dependencies]
 async-trait = "0.1"
