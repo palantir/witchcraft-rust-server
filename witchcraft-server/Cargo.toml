@@ -33,7 +33,7 @@ async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 async-trait = "0.1"
 base64 = "0.13"
 bytes = "1"
-conjure-error = "1"
+conjure-error = "2"
 conjure-http = "1"
 conjure-object = "1"
 conjure-runtime = "2"
