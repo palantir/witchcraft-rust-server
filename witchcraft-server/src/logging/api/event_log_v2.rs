@@ -1,8 +1,8 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Definition of the event.2 format."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Definition of the event.2 format.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EventLogV2 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
@@ -16,7 +16,7 @@ pub struct EventLogV2 {
     tags: std::collections::BTreeMap<String, String>,
 }
 impl EventLogV2 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
@@ -29,42 +29,42 @@ impl EventLogV2 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    #[doc = "Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`"]
+    ///Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
     #[inline]
     pub fn event_name(&self) -> &str {
         &*self.event_name
     }
-    #[doc = "Observations, measurements and context associated with the event"]
+    ///Observations, measurements and context associated with the event
     #[inline]
     pub fn values(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.values
     }
-    #[doc = "User id (if available)"]
+    ///User id (if available)
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id(&self) -> Option<&super::TraceId> {
         self.trace_id.as_ref().map(|o| &*o)
     }
-    #[doc = "Unsafe metadata describing the event"]
+    ///Unsafe metadata describing the event
     #[inline]
     pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
@@ -93,7 +93,7 @@ impl From<EventLogV2> for BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`EventLogV2`] type"]
+///The stage 0 builder for the [`EventLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
@@ -107,7 +107,7 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`EventLogV2`] type"]
+///The stage 1 builder for the [`EventLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
@@ -121,14 +121,14 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`EventLogV2`] type"]
+///The stage 2 builder for the [`EventLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
 }
 impl BuilderStage2 {
-    #[doc = "Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`"]
+    ///Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
     #[inline]
     pub fn event_name<T>(self, event_name: T) -> BuilderStage3
     where
@@ -148,7 +148,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`EventLogV2`] type"]
+///The stage 3 builder for the [`EventLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -176,7 +176,7 @@ impl BuilderStage3 {
         self.time = time;
         self
     }
-    #[doc = "Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`"]
+    ///Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
     #[inline]
     pub fn event_name<T>(mut self, event_name: T) -> Self
     where
@@ -185,7 +185,7 @@ impl BuilderStage3 {
         self.event_name = event_name.into();
         self
     }
-    #[doc = "Observations, measurements and context associated with the event"]
+    ///Observations, measurements and context associated with the event
     #[inline]
     pub fn values<T>(mut self, values: T) -> Self
     where
@@ -194,7 +194,7 @@ impl BuilderStage3 {
         self.values = values.into_iter().collect();
         self
     }
-    #[doc = "Observations, measurements and context associated with the event"]
+    ///Observations, measurements and context associated with the event
     #[inline]
     pub fn extend_values<T>(mut self, values: T) -> Self
     where
@@ -203,7 +203,7 @@ impl BuilderStage3 {
         self.values.extend(values);
         self
     }
-    #[doc = "Observations, measurements and context associated with the event"]
+    ///Observations, measurements and context associated with the event
     #[inline]
     pub fn insert_values<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -216,7 +216,7 @@ impl BuilderStage3 {
         );
         self
     }
-    #[doc = "User id (if available)"]
+    ///User id (if available)
     #[inline]
     pub fn uid<T>(mut self, uid: T) -> Self
     where
@@ -225,7 +225,7 @@ impl BuilderStage3 {
         self.uid = uid.into();
         self
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid<T>(mut self, sid: T) -> Self
     where
@@ -234,7 +234,7 @@ impl BuilderStage3 {
         self.sid = sid.into();
         self
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id<T>(mut self, token_id: T) -> Self
     where
@@ -243,7 +243,7 @@ impl BuilderStage3 {
         self.token_id = token_id.into();
         self
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id<T>(mut self, trace_id: T) -> Self
     where
@@ -252,7 +252,7 @@ impl BuilderStage3 {
         self.trace_id = trace_id.into();
         self
     }
-    #[doc = "Unsafe metadata describing the event"]
+    ///Unsafe metadata describing the event
     #[inline]
     pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -261,7 +261,7 @@ impl BuilderStage3 {
         self.unsafe_params = unsafe_params.into_iter().collect();
         self
     }
-    #[doc = "Unsafe metadata describing the event"]
+    ///Unsafe metadata describing the event
     #[inline]
     pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -270,7 +270,7 @@ impl BuilderStage3 {
         self.unsafe_params.extend(unsafe_params);
         self
     }
-    #[doc = "Unsafe metadata describing the event"]
+    ///Unsafe metadata describing the event
     #[inline]
     pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -283,7 +283,7 @@ impl BuilderStage3 {
         );
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn tags<T>(mut self, tags: T) -> Self
     where
@@ -292,7 +292,7 @@ impl BuilderStage3 {
         self.tags = tags.into_iter().collect();
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn extend_tags<T>(mut self, tags: T) -> Self
     where
@@ -301,7 +301,7 @@ impl BuilderStage3 {
         self.tags.extend(tags);
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn insert_tags<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -311,7 +311,7 @@ impl BuilderStage3 {
         self.tags.insert(key.into(), value.into());
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> EventLogV2 {
         EventLogV2 {

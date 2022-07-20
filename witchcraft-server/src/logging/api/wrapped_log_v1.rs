@@ -1,8 +1,8 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Wraps a log entry with entity information."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Wraps a log entry with entity information.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WrappedLogV1 {
     type_: String,
     payload: Box<super::WrappedLogV1Payload>,
@@ -14,12 +14,12 @@ pub struct WrappedLogV1 {
     stack_id: Option<String>,
 }
 impl WrappedLogV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "\"wrapped.1\""]
+    ///"wrapped.1"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -28,7 +28,7 @@ impl WrappedLogV1 {
     pub fn payload(&self) -> &super::WrappedLogV1Payload {
         &*self.payload
     }
-    #[doc = "Artifact part of entity's maven coordinate"]
+    ///Artifact part of entity's maven coordinate
     #[inline]
     pub fn entity_name(&self) -> &str {
         &*self.entity_name
@@ -37,22 +37,22 @@ impl WrappedLogV1 {
     pub fn entity_version(&self) -> &str {
         &*self.entity_version
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab service name."]
+    ///Defaults to the wrapped log producer's Skylab service name.
     #[inline]
     pub fn service(&self) -> Option<&str> {
         self.service.as_ref().map(|o| &**o)
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab service ID."]
+    ///Defaults to the wrapped log producer's Skylab service ID.
     #[inline]
     pub fn service_id(&self) -> Option<&str> {
         self.service_id.as_ref().map(|o| &**o)
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab stack name."]
+    ///Defaults to the wrapped log producer's Skylab stack name.
     #[inline]
     pub fn stack(&self) -> Option<&str> {
         self.stack.as_ref().map(|o| &**o)
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab stack ID."]
+    ///Defaults to the wrapped log producer's Skylab stack ID.
     #[inline]
     pub fn stack_id(&self) -> Option<&str> {
         self.stack_id.as_ref().map(|o| &**o)
@@ -79,11 +79,11 @@ impl From<WrappedLogV1> for BuilderStage4 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`WrappedLogV1`] type"]
+///The stage 0 builder for the [`WrappedLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "\"wrapped.1\""]
+    ///"wrapped.1"
     #[inline]
     pub fn type_<T>(self, type_: T) -> BuilderStage1
     where
@@ -94,7 +94,7 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`WrappedLogV1`] type"]
+///The stage 1 builder for the [`WrappedLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
@@ -108,14 +108,14 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`WrappedLogV1`] type"]
+///The stage 2 builder for the [`WrappedLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
     payload: Box<super::WrappedLogV1Payload>,
 }
 impl BuilderStage2 {
-    #[doc = "Artifact part of entity's maven coordinate"]
+    ///Artifact part of entity's maven coordinate
     #[inline]
     pub fn entity_name<T>(self, entity_name: T) -> BuilderStage3
     where
@@ -128,7 +128,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`WrappedLogV1`] type"]
+///The stage 3 builder for the [`WrappedLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -153,7 +153,7 @@ impl BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 4 builder for the [`WrappedLogV1`] type"]
+///The stage 4 builder for the [`WrappedLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage4 {
     type_: String,
@@ -166,7 +166,7 @@ pub struct BuilderStage4 {
     stack_id: Option<String>,
 }
 impl BuilderStage4 {
-    #[doc = "\"wrapped.1\""]
+    ///"wrapped.1"
     #[inline]
     pub fn type_<T>(mut self, type_: T) -> Self
     where
@@ -180,7 +180,7 @@ impl BuilderStage4 {
         self.payload = Box::new(payload);
         self
     }
-    #[doc = "Artifact part of entity's maven coordinate"]
+    ///Artifact part of entity's maven coordinate
     #[inline]
     pub fn entity_name<T>(mut self, entity_name: T) -> Self
     where
@@ -197,7 +197,7 @@ impl BuilderStage4 {
         self.entity_version = entity_version.into();
         self
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab service name."]
+    ///Defaults to the wrapped log producer's Skylab service name.
     #[inline]
     pub fn service<T>(mut self, service: T) -> Self
     where
@@ -206,7 +206,7 @@ impl BuilderStage4 {
         self.service = service.into();
         self
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab service ID."]
+    ///Defaults to the wrapped log producer's Skylab service ID.
     #[inline]
     pub fn service_id<T>(mut self, service_id: T) -> Self
     where
@@ -215,7 +215,7 @@ impl BuilderStage4 {
         self.service_id = service_id.into();
         self
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab stack name."]
+    ///Defaults to the wrapped log producer's Skylab stack name.
     #[inline]
     pub fn stack<T>(mut self, stack: T) -> Self
     where
@@ -224,7 +224,7 @@ impl BuilderStage4 {
         self.stack = stack.into();
         self
     }
-    #[doc = "Defaults to the wrapped log producer's Skylab stack ID."]
+    ///Defaults to the wrapped log producer's Skylab stack ID.
     #[inline]
     pub fn stack_id<T>(mut self, stack_id: T) -> Self
     where
@@ -233,7 +233,7 @@ impl BuilderStage4 {
         self.stack_id = stack_id.into();
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> WrappedLogV1 {
         WrappedLogV1 {

@@ -2,7 +2,7 @@ use conjure_object::private::{UnionField_, UnionTypeField_};
 use conjure_object::serde::ser::SerializeMap as SerializeMap_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum UnionEventLog {
     EventLog(super::EventLogV1),
     EventLogV2(super::EventLogV2),
@@ -63,7 +63,9 @@ impl<'de> de::Visitor<'de> for Visitor_ {
                             &variant.as_str(),
                         ));
                     }
-                    (variant, None) => return Err(de::Error::missing_field(variant.as_str())),
+                    (variant, None) => {
+                        return Err(de::Error::missing_field(variant.as_str()));
+                    }
                 }
             }
             Some(UnionField_::Value(variant)) => {
@@ -135,7 +137,7 @@ impl<'de> de::Visitor<'de> for VariantVisitor_ {
                 return Err(de::Error::unknown_variant(
                     value,
                     &["eventLog", "eventLogV2"],
-                ))
+                ));
             }
         };
         Ok(v)

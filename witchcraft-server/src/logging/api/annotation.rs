@@ -1,15 +1,15 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "A Zipkin-compatible Annotation object."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///A Zipkin-compatible Annotation object.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Annotation {
     timestamp: conjure_object::SafeLong,
     value: String,
     endpoint: Box<super::Endpoint>,
 }
 impl Annotation {
-    #[doc = r" Constructs a new instance of the type."]
+    /// Constructs a new instance of the type.
     #[inline]
     pub fn new<T>(
         timestamp: conjure_object::SafeLong,
@@ -25,17 +25,17 @@ impl Annotation {
             endpoint: Box::new(endpoint),
         }
     }
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "Time annotation was created (epoch microsecond value)"]
+    ///Time annotation was created (epoch microsecond value)
     #[inline]
     pub fn timestamp(&self) -> conjure_object::SafeLong {
         self.timestamp
     }
-    #[doc = "Value encapsulated by this annotation"]
+    ///Value encapsulated by this annotation
     #[inline]
     pub fn value(&self) -> &str {
         &*self.value
@@ -61,11 +61,11 @@ impl From<Annotation> for BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`Annotation`] type"]
+///The stage 0 builder for the [`Annotation`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "Time annotation was created (epoch microsecond value)"]
+    ///Time annotation was created (epoch microsecond value)
     #[inline]
     pub fn timestamp(self, timestamp: conjure_object::SafeLong) -> BuilderStage1 {
         BuilderStage1 {
@@ -73,13 +73,13 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`Annotation`] type"]
+///The stage 1 builder for the [`Annotation`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     timestamp: conjure_object::SafeLong,
 }
 impl BuilderStage1 {
-    #[doc = "Value encapsulated by this annotation"]
+    ///Value encapsulated by this annotation
     #[inline]
     pub fn value<T>(self, value: T) -> BuilderStage2
     where
@@ -91,7 +91,7 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`Annotation`] type"]
+///The stage 2 builder for the [`Annotation`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     timestamp: conjure_object::SafeLong,
@@ -107,7 +107,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`Annotation`] type"]
+///The stage 3 builder for the [`Annotation`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     timestamp: conjure_object::SafeLong,
@@ -115,13 +115,13 @@ pub struct BuilderStage3 {
     endpoint: Box<super::Endpoint>,
 }
 impl BuilderStage3 {
-    #[doc = "Time annotation was created (epoch microsecond value)"]
+    ///Time annotation was created (epoch microsecond value)
     #[inline]
     pub fn timestamp(mut self, timestamp: conjure_object::SafeLong) -> Self {
         self.timestamp = timestamp;
         self
     }
-    #[doc = "Value encapsulated by this annotation"]
+    ///Value encapsulated by this annotation
     #[inline]
     pub fn value<T>(mut self, value: T) -> Self
     where
@@ -135,7 +135,7 @@ impl BuilderStage3 {
         self.endpoint = Box::new(endpoint);
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> Annotation {
         Annotation {

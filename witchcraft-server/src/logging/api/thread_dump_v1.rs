@@ -1,12 +1,12 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ThreadDumpV1 {
     threads: Vec<super::ThreadInfoV1>,
 }
 impl ThreadDumpV1 {
-    #[doc = r" Constructs a new instance of the type."]
+    /// Constructs a new instance of the type.
     #[inline]
     pub fn new<T>(threads: T) -> ThreadDumpV1
     where
@@ -16,12 +16,12 @@ impl ThreadDumpV1 {
             threads: threads.into_iter().collect(),
         }
     }
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "Information about each of the threads in the thread dump. \"Thread\" may refer to a userland thread such as a goroutine, or an OS-level thread."]
+    ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
     #[inline]
     pub fn threads(&self) -> &[super::ThreadInfoV1] {
         &*self.threads
@@ -43,13 +43,13 @@ impl From<ThreadDumpV1> for BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`ThreadDumpV1`] type"]
+///The stage 0 builder for the [`ThreadDumpV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {
     threads: Vec<super::ThreadInfoV1>,
 }
 impl BuilderStage0 {
-    #[doc = "Information about each of the threads in the thread dump. \"Thread\" may refer to a userland thread such as a goroutine, or an OS-level thread."]
+    ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
     #[inline]
     pub fn threads<T>(mut self, threads: T) -> Self
     where
@@ -58,7 +58,7 @@ impl BuilderStage0 {
         self.threads = threads.into_iter().collect();
         self
     }
-    #[doc = "Information about each of the threads in the thread dump. \"Thread\" may refer to a userland thread such as a goroutine, or an OS-level thread."]
+    ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
     #[inline]
     pub fn extend_threads<T>(mut self, threads: T) -> Self
     where
@@ -67,13 +67,13 @@ impl BuilderStage0 {
         self.threads.extend(threads);
         self
     }
-    #[doc = "Information about each of the threads in the thread dump. \"Thread\" may refer to a userland thread such as a goroutine, or an OS-level thread."]
+    ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
     #[inline]
     pub fn push_threads(mut self, value: super::ThreadInfoV1) -> Self {
         self.threads.push(value);
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> ThreadDumpV1 {
         ThreadDumpV1 {

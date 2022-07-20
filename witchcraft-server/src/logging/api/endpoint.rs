@@ -1,14 +1,14 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Endpoint {
     service_name: String,
     ipv4: Option<String>,
     ipv6: Option<String>,
 }
 impl Endpoint {
-    #[doc = r" Constructs a new instance of the type."]
+    /// Constructs a new instance of the type.
     #[inline]
     pub fn new<T, U, V>(service_name: T, ipv4: U, ipv6: V) -> Endpoint
     where
@@ -22,22 +22,22 @@ impl Endpoint {
             ipv6: Some(ipv6.into()),
         }
     }
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "Name of the service that generated the annotation"]
+    ///Name of the service that generated the annotation
     #[inline]
     pub fn service_name(&self) -> &str {
         &*self.service_name
     }
-    #[doc = "IPv4 address of the machine that generated this annotation (`xxx.xxx.xxx.xxx`)"]
+    ///IPv4 address of the machine that generated this annotation (`xxx.xxx.xxx.xxx`)
     #[inline]
     pub fn ipv4(&self) -> Option<&str> {
         self.ipv4.as_ref().map(|o| &**o)
     }
-    #[doc = "IPv6 address of the machine that generated this annotation (standard hextet form)"]
+    ///IPv6 address of the machine that generated this annotation (standard hextet form)
     #[inline]
     pub fn ipv6(&self) -> Option<&str> {
         self.ipv6.as_ref().map(|o| &**o)
@@ -59,11 +59,11 @@ impl From<Endpoint> for BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`Endpoint`] type"]
+///The stage 0 builder for the [`Endpoint`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "Name of the service that generated the annotation"]
+    ///Name of the service that generated the annotation
     #[inline]
     pub fn service_name<T>(self, service_name: T) -> BuilderStage1
     where
@@ -76,7 +76,7 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`Endpoint`] type"]
+///The stage 1 builder for the [`Endpoint`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     service_name: String,
@@ -84,7 +84,7 @@ pub struct BuilderStage1 {
     ipv6: Option<String>,
 }
 impl BuilderStage1 {
-    #[doc = "Name of the service that generated the annotation"]
+    ///Name of the service that generated the annotation
     #[inline]
     pub fn service_name<T>(mut self, service_name: T) -> Self
     where
@@ -93,7 +93,7 @@ impl BuilderStage1 {
         self.service_name = service_name.into();
         self
     }
-    #[doc = "IPv4 address of the machine that generated this annotation (`xxx.xxx.xxx.xxx`)"]
+    ///IPv4 address of the machine that generated this annotation (`xxx.xxx.xxx.xxx`)
     #[inline]
     pub fn ipv4<T>(mut self, ipv4: T) -> Self
     where
@@ -102,7 +102,7 @@ impl BuilderStage1 {
         self.ipv4 = ipv4.into();
         self
     }
-    #[doc = "IPv6 address of the machine that generated this annotation (standard hextet form)"]
+    ///IPv6 address of the machine that generated this annotation (standard hextet form)
     #[inline]
     pub fn ipv6<T>(mut self, ipv6: T) -> Self
     where
@@ -111,7 +111,7 @@ impl BuilderStage1 {
         self.ipv6 = ipv6.into();
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> Endpoint {
         Endpoint {

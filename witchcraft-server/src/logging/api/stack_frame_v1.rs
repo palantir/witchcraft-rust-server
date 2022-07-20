@@ -1,7 +1,7 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StackFrameV1 {
     address: Option<String>,
     procedure: Option<String>,
@@ -10,32 +10,32 @@ pub struct StackFrameV1 {
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl StackFrameV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "The address of the execution point of this stack frame. This is a string because a safelong can't represent the full 64 bit address space."]
+    ///The address of the execution point of this stack frame. This is a string because a safelong can't represent the full 64 bit address space.
     #[inline]
     pub fn address(&self) -> Option<&str> {
         self.address.as_ref().map(|o| &**o)
     }
-    #[doc = "The identifier of the procedure containing the execution point of this stack frame. This is a fully qualified method name in Java and a demangled symbol name in native code, for example. Note that procedure names may include unsafe information if a service is, for exmaple, running user-defined code. It must be safely redacted."]
+    ///The identifier of the procedure containing the execution point of this stack frame. This is a fully qualified method name in Java and a demangled symbol name in native code, for example. Note that procedure names may include unsafe information if a service is, for exmaple, running user-defined code. It must be safely redacted.
     #[inline]
     pub fn procedure(&self) -> Option<&str> {
         self.procedure.as_ref().map(|o| &**o)
     }
-    #[doc = "The name of the file containing the source location of the execution point of this stack frame. Note that file names may include unsafe information if a service is, for example, running user-defined code. It must be safely redacted."]
+    ///The name of the file containing the source location of the execution point of this stack frame. Note that file names may include unsafe information if a service is, for example, running user-defined code. It must be safely redacted.
     #[inline]
     pub fn file(&self) -> Option<&str> {
         self.file.as_ref().map(|o| &**o)
     }
-    #[doc = "The line number of the source location of the execution point of this stack frame."]
+    ///The line number of the source location of the execution point of this stack frame.
     #[inline]
     pub fn line(&self) -> Option<i32> {
         self.line.as_ref().map(|o| *o)
     }
-    #[doc = "Other frame-level information."]
+    ///Other frame-level information.
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params
@@ -65,7 +65,7 @@ impl From<StackFrameV1> for BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`StackFrameV1`] type"]
+///The stage 0 builder for the [`StackFrameV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {
     address: Option<String>,
@@ -75,7 +75,7 @@ pub struct BuilderStage0 {
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl BuilderStage0 {
-    #[doc = "The address of the execution point of this stack frame. This is a string because a safelong can't represent the full 64 bit address space."]
+    ///The address of the execution point of this stack frame. This is a string because a safelong can't represent the full 64 bit address space.
     #[inline]
     pub fn address<T>(mut self, address: T) -> Self
     where
@@ -84,7 +84,7 @@ impl BuilderStage0 {
         self.address = address.into();
         self
     }
-    #[doc = "The identifier of the procedure containing the execution point of this stack frame. This is a fully qualified method name in Java and a demangled symbol name in native code, for example. Note that procedure names may include unsafe information if a service is, for exmaple, running user-defined code. It must be safely redacted."]
+    ///The identifier of the procedure containing the execution point of this stack frame. This is a fully qualified method name in Java and a demangled symbol name in native code, for example. Note that procedure names may include unsafe information if a service is, for exmaple, running user-defined code. It must be safely redacted.
     #[inline]
     pub fn procedure<T>(mut self, procedure: T) -> Self
     where
@@ -93,7 +93,7 @@ impl BuilderStage0 {
         self.procedure = procedure.into();
         self
     }
-    #[doc = "The name of the file containing the source location of the execution point of this stack frame. Note that file names may include unsafe information if a service is, for example, running user-defined code. It must be safely redacted."]
+    ///The name of the file containing the source location of the execution point of this stack frame. Note that file names may include unsafe information if a service is, for example, running user-defined code. It must be safely redacted.
     #[inline]
     pub fn file<T>(mut self, file: T) -> Self
     where
@@ -102,7 +102,7 @@ impl BuilderStage0 {
         self.file = file.into();
         self
     }
-    #[doc = "The line number of the source location of the execution point of this stack frame."]
+    ///The line number of the source location of the execution point of this stack frame.
     #[inline]
     pub fn line<T>(mut self, line: T) -> Self
     where
@@ -111,7 +111,7 @@ impl BuilderStage0 {
         self.line = line.into();
         self
     }
-    #[doc = "Other frame-level information."]
+    ///Other frame-level information.
     #[inline]
     pub fn params<T>(mut self, params: T) -> Self
     where
@@ -120,7 +120,7 @@ impl BuilderStage0 {
         self.params = params.into_iter().collect();
         self
     }
-    #[doc = "Other frame-level information."]
+    ///Other frame-level information.
     #[inline]
     pub fn extend_params<T>(mut self, params: T) -> Self
     where
@@ -129,7 +129,7 @@ impl BuilderStage0 {
         self.params.extend(params);
         self
     }
-    #[doc = "Other frame-level information."]
+    ///Other frame-level information.
     #[inline]
     pub fn insert_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -142,7 +142,7 @@ impl BuilderStage0 {
         );
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> StackFrameV1 {
         StackFrameV1 {

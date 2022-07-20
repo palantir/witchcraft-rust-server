@@ -1,8 +1,8 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Definition of the service.1 format."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Definition of the service.1 format.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ServiceLogV1 {
     type_: String,
     level: super::LogLevel,
@@ -21,82 +21,82 @@ pub struct ServiceLogV1 {
     tags: std::collections::BTreeMap<String, String>,
 }
 impl ServiceLogV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "\"service.1\""]
+    ///"service.1"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
     }
-    #[doc = "The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)"]
+    ///The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)
     #[inline]
     pub fn level(&self) -> &super::LogLevel {
         &self.level
     }
-    #[doc = "RFC3339Nano UTC datetime string when the log event was emitted"]
+    ///RFC3339Nano UTC datetime string when the log event was emitted
     #[inline]
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    #[doc = "Class or file name. May include line number."]
+    ///Class or file name. May include line number.
     #[inline]
     pub fn origin(&self) -> Option<&str> {
         self.origin.as_ref().map(|o| &**o)
     }
-    #[doc = "Thread name"]
+    ///Thread name
     #[inline]
     pub fn thread(&self) -> Option<&str> {
         self.thread.as_ref().map(|o| &**o)
     }
-    #[doc = "Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text."]
+    ///Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text.
     #[inline]
     pub fn message(&self) -> &str {
         &*self.message
     }
-    #[doc = "Describes the safety of this log event based on prior knowledge within the application which produced the message. This field should not be set to `true` without _total_ confidence that it is correct. * _empty_:  Considered unsafe unless the logging pipeline has special configuration for this `origin`. Eventually these will all be equivalent to `false`. * `true`: All safe components can be trusted. * `false`: Event is _unsafe_ and cannot be exported."]
+    ///Describes the safety of this log event based on prior knowledge within the application which produced the message. This field should not be set to `true` without _total_ confidence that it is correct. * _empty_:  Considered unsafe unless the logging pipeline has special configuration for this `origin`. Eventually these will all be equivalent to `false`. * `true`: All safe components can be trusted. * `false`: Event is _unsafe_ and cannot be exported.
     #[inline]
     pub fn safe(&self) -> Option<bool> {
         self.safe.as_ref().map(|o| *o)
     }
-    #[doc = "Known-safe parameters (redaction may be used to make params knowably safe, but is not required)."]
+    ///Known-safe parameters (redaction may be used to make params knowably safe, but is not required).
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params
     }
-    #[doc = "User id (if available)."]
+    ///User id (if available).
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id(&self) -> Option<&super::TraceId> {
         self.trace_id.as_ref().map(|o| &*o)
     }
-    #[doc = "Language-specific stack trace. Content is knowably safe. Renderers should substitute named placeholders ({name}, for name as a key) with keyed value from unsafeParams and leave non-matching keys as the original placeholder text."]
+    ///Language-specific stack trace. Content is knowably safe. Renderers should substitute named placeholders ({name}, for name as a key) with keyed value from unsafeParams and leave non-matching keys as the original placeholder text.
     #[inline]
     pub fn stacktrace(&self) -> Option<&str> {
         self.stacktrace.as_ref().map(|o| &**o)
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
     pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
@@ -130,11 +130,11 @@ impl From<ServiceLogV1> for BuilderStage4 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`ServiceLogV1`] type"]
+///The stage 0 builder for the [`ServiceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "\"service.1\""]
+    ///"service.1"
     #[inline]
     pub fn type_<T>(self, type_: T) -> BuilderStage1
     where
@@ -145,13 +145,13 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`ServiceLogV1`] type"]
+///The stage 1 builder for the [`ServiceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
 }
 impl BuilderStage1 {
-    #[doc = "The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)"]
+    ///The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)
     #[inline]
     pub fn level(self, level: super::LogLevel) -> BuilderStage2 {
         BuilderStage2 {
@@ -160,14 +160,14 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`ServiceLogV1`] type"]
+///The stage 2 builder for the [`ServiceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
     level: super::LogLevel,
 }
 impl BuilderStage2 {
-    #[doc = "RFC3339Nano UTC datetime string when the log event was emitted"]
+    ///RFC3339Nano UTC datetime string when the log event was emitted
     #[inline]
     pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage3 {
         BuilderStage3 {
@@ -177,7 +177,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`ServiceLogV1`] type"]
+///The stage 3 builder for the [`ServiceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -185,7 +185,7 @@ pub struct BuilderStage3 {
     time: conjure_object::DateTime<conjure_object::Utc>,
 }
 impl BuilderStage3 {
-    #[doc = "Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text."]
+    ///Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text.
     #[inline]
     pub fn message<T>(self, message: T) -> BuilderStage4
     where
@@ -210,7 +210,7 @@ impl BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 4 builder for the [`ServiceLogV1`] type"]
+///The stage 4 builder for the [`ServiceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage4 {
     type_: String,
@@ -230,7 +230,7 @@ pub struct BuilderStage4 {
     tags: std::collections::BTreeMap<String, String>,
 }
 impl BuilderStage4 {
-    #[doc = "\"service.1\""]
+    ///"service.1"
     #[inline]
     pub fn type_<T>(mut self, type_: T) -> Self
     where
@@ -239,19 +239,19 @@ impl BuilderStage4 {
         self.type_ = type_.into();
         self
     }
-    #[doc = "The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)"]
+    ///The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)
     #[inline]
     pub fn level(mut self, level: super::LogLevel) -> Self {
         self.level = level;
         self
     }
-    #[doc = "RFC3339Nano UTC datetime string when the log event was emitted"]
+    ///RFC3339Nano UTC datetime string when the log event was emitted
     #[inline]
     pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
         self.time = time;
         self
     }
-    #[doc = "Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text."]
+    ///Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text.
     #[inline]
     pub fn message<T>(mut self, message: T) -> Self
     where
@@ -260,7 +260,7 @@ impl BuilderStage4 {
         self.message = message.into();
         self
     }
-    #[doc = "Class or file name. May include line number."]
+    ///Class or file name. May include line number.
     #[inline]
     pub fn origin<T>(mut self, origin: T) -> Self
     where
@@ -269,7 +269,7 @@ impl BuilderStage4 {
         self.origin = origin.into();
         self
     }
-    #[doc = "Thread name"]
+    ///Thread name
     #[inline]
     pub fn thread<T>(mut self, thread: T) -> Self
     where
@@ -278,7 +278,7 @@ impl BuilderStage4 {
         self.thread = thread.into();
         self
     }
-    #[doc = "Describes the safety of this log event based on prior knowledge within the application which produced the message. This field should not be set to `true` without _total_ confidence that it is correct. * _empty_:  Considered unsafe unless the logging pipeline has special configuration for this `origin`. Eventually these will all be equivalent to `false`. * `true`: All safe components can be trusted. * `false`: Event is _unsafe_ and cannot be exported."]
+    ///Describes the safety of this log event based on prior knowledge within the application which produced the message. This field should not be set to `true` without _total_ confidence that it is correct. * _empty_:  Considered unsafe unless the logging pipeline has special configuration for this `origin`. Eventually these will all be equivalent to `false`. * `true`: All safe components can be trusted. * `false`: Event is _unsafe_ and cannot be exported.
     #[inline]
     pub fn safe<T>(mut self, safe: T) -> Self
     where
@@ -287,7 +287,7 @@ impl BuilderStage4 {
         self.safe = safe.into();
         self
     }
-    #[doc = "Known-safe parameters (redaction may be used to make params knowably safe, but is not required)."]
+    ///Known-safe parameters (redaction may be used to make params knowably safe, but is not required).
     #[inline]
     pub fn params<T>(mut self, params: T) -> Self
     where
@@ -296,7 +296,7 @@ impl BuilderStage4 {
         self.params = params.into_iter().collect();
         self
     }
-    #[doc = "Known-safe parameters (redaction may be used to make params knowably safe, but is not required)."]
+    ///Known-safe parameters (redaction may be used to make params knowably safe, but is not required).
     #[inline]
     pub fn extend_params<T>(mut self, params: T) -> Self
     where
@@ -305,7 +305,7 @@ impl BuilderStage4 {
         self.params.extend(params);
         self
     }
-    #[doc = "Known-safe parameters (redaction may be used to make params knowably safe, but is not required)."]
+    ///Known-safe parameters (redaction may be used to make params knowably safe, but is not required).
     #[inline]
     pub fn insert_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -318,7 +318,7 @@ impl BuilderStage4 {
         );
         self
     }
-    #[doc = "User id (if available)."]
+    ///User id (if available).
     #[inline]
     pub fn uid<T>(mut self, uid: T) -> Self
     where
@@ -327,7 +327,7 @@ impl BuilderStage4 {
         self.uid = uid.into();
         self
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid<T>(mut self, sid: T) -> Self
     where
@@ -336,7 +336,7 @@ impl BuilderStage4 {
         self.sid = sid.into();
         self
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id<T>(mut self, token_id: T) -> Self
     where
@@ -345,7 +345,7 @@ impl BuilderStage4 {
         self.token_id = token_id.into();
         self
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id<T>(mut self, trace_id: T) -> Self
     where
@@ -354,7 +354,7 @@ impl BuilderStage4 {
         self.trace_id = trace_id.into();
         self
     }
-    #[doc = "Language-specific stack trace. Content is knowably safe. Renderers should substitute named placeholders ({name}, for name as a key) with keyed value from unsafeParams and leave non-matching keys as the original placeholder text."]
+    ///Language-specific stack trace. Content is knowably safe. Renderers should substitute named placeholders ({name}, for name as a key) with keyed value from unsafeParams and leave non-matching keys as the original placeholder text.
     #[inline]
     pub fn stacktrace<T>(mut self, stacktrace: T) -> Self
     where
@@ -363,7 +363,7 @@ impl BuilderStage4 {
         self.stacktrace = stacktrace.into();
         self
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
     pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -372,7 +372,7 @@ impl BuilderStage4 {
         self.unsafe_params = unsafe_params.into_iter().collect();
         self
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
     pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -381,7 +381,7 @@ impl BuilderStage4 {
         self.unsafe_params.extend(unsafe_params);
         self
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
     pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -394,7 +394,7 @@ impl BuilderStage4 {
         );
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn tags<T>(mut self, tags: T) -> Self
     where
@@ -403,7 +403,7 @@ impl BuilderStage4 {
         self.tags = tags.into_iter().collect();
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn extend_tags<T>(mut self, tags: T) -> Self
     where
@@ -412,7 +412,7 @@ impl BuilderStage4 {
         self.tags.extend(tags);
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the log event"]
+    ///Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn insert_tags<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -422,7 +422,7 @@ impl BuilderStage4 {
         self.tags.insert(key.into(), value.into());
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> ServiceLogV1 {
         ServiceLogV1 {

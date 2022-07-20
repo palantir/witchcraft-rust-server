@@ -1,25 +1,25 @@
-use conjure_object::serde::{de, ser};
+use conjure_object::serde::{ser, de};
 use std::fmt;
 use std::str;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum HealthState {
-    #[doc = "The service node is fully operational with no issues."]
+    ///The service node is fully operational with no issues.
     Healthy,
-    #[doc = "The service node is fully operational with no issues; however, it is requesting to defer shutdown or restart. A deferring node should not accept \"new\" jobs but should allow polling of existing jobs."]
+    ///The service node is fully operational with no issues; however, it is requesting to defer shutdown or restart. A deferring node should not accept "new" jobs but should allow polling of existing jobs.
     Deferring,
-    #[doc = "The service node is no longer serving requests and is ready to be shut down. Nodes in a deferring state are expected to change to a suspended state once they have completed any pending work. A suspended node must also indicate in its readiness probe that it should not receive incoming requests."]
+    ///The service node is no longer serving requests and is ready to be shut down. Nodes in a deferring state are expected to change to a suspended state once they have completed any pending work. A suspended node must also indicate in its readiness probe that it should not receive incoming requests.
     Suspended,
-    #[doc = "The service node is operating in a degraded state, but is capable of automatically recovering. If any of the nodes in the service were to be restarted, it may result in correctness or consistency issues with the service. Ex: When a cassandra node decides it is not up-to-date and needs to repair, the node is operating in a degraded state. Restarting the node prior to the repair being complete might result in the service being unable to correctly respond to requests."]
+    ///The service node is operating in a degraded state, but is capable of automatically recovering. If any of the nodes in the service were to be restarted, it may result in correctness or consistency issues with the service. Ex: When a cassandra node decides it is not up-to-date and needs to repair, the node is operating in a degraded state. Restarting the node prior to the repair being complete might result in the service being unable to correctly respond to requests.
     Repairing,
-    #[doc = "The service node is in a state that is trending towards an error. If no corrective action is taken, the health is expected to become an error."]
+    ///The service node is in a state that is trending towards an error. If no corrective action is taken, the health is expected to become an error.
     Warning,
-    #[doc = "The service node is operationally unhealthy."]
+    ///The service node is operationally unhealthy.
     Error,
-    #[doc = "The service node has entered an unrecoverable state. All nodes of the service should be stopped and no automated attempt to restart the node should be made. Ex: a service fails to migrate to a new schema and is left in an unrecoverable state."]
+    ///The service node has entered an unrecoverable state. All nodes of the service should be stopped and no automated attempt to restart the node should be made. Ex: a service fails to migrate to a new schema and is left in an unrecoverable state.
     Terminal,
 }
 impl HealthState {
-    #[doc = r" Returns the string representation of the enum."]
+    /// Returns the string representation of the enum.
     #[inline]
     pub fn as_str(&self) -> &str {
         match self {
@@ -62,7 +62,9 @@ impl str::FromStr for HealthState {
 impl conjure_object::FromPlain for HealthState {
     type Err = conjure_object::plain::ParseEnumError;
     #[inline]
-    fn from_plain(v: &str) -> Result<HealthState, conjure_object::plain::ParseEnumError> {
+    fn from_plain(
+        v: &str,
+    ) -> Result<HealthState, conjure_object::plain::ParseEnumError> {
         v.parse()
     }
 }
@@ -94,18 +96,22 @@ impl<'de> de::Visitor<'de> for Visitor_ {
     {
         match v.parse() {
             Ok(e) => Ok(e),
-            Err(_) => Err(de::Error::unknown_variant(
-                v,
-                &[
-                    "HEALTHY",
-                    "DEFERRING",
-                    "SUSPENDED",
-                    "REPAIRING",
-                    "WARNING",
-                    "ERROR",
-                    "TERMINAL",
-                ],
-            )),
+            Err(_) => {
+                Err(
+                    de::Error::unknown_variant(
+                        v,
+                        &[
+                            "HEALTHY",
+                            "DEFERRING",
+                            "SUSPENDED",
+                            "REPAIRING",
+                            "WARNING",
+                            "ERROR",
+                            "TERMINAL",
+                        ],
+                    ),
+                )
+            }
         }
     }
 }

@@ -22,6 +22,7 @@ use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
 
 #[allow(warnings)]
+#[rustfmt::skip]
 pub mod api;
 mod cleanup;
 mod format;

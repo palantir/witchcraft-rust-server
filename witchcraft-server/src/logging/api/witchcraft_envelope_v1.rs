@@ -1,8 +1,8 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Wraps a log entry with metadata on where it is coming from and the source service that generated it."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Wraps a log entry with metadata on where it is coming from and the source service that generated it.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WitchcraftEnvelopeV1 {
     type_: String,
     deployment: String,
@@ -19,72 +19,72 @@ pub struct WitchcraftEnvelopeV1 {
     payload: conjure_object::Any,
 }
 impl WitchcraftEnvelopeV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "\"envelope.1\""]
+    ///"envelope.1"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
     }
-    #[doc = "Color or other codename for the customer infra"]
+    ///Color or other codename for the customer infra
     #[inline]
     pub fn deployment(&self) -> &str {
         &*self.deployment
     }
-    #[doc = "prod/staging/integration etc."]
+    ///prod/staging/integration etc.
     #[inline]
     pub fn environment(&self) -> &str {
         &*self.environment
     }
-    #[doc = "Skylab environment ID"]
+    ///Skylab environment ID
     #[inline]
     pub fn environment_id(&self) -> &str {
         &*self.environment_id
     }
-    #[doc = "Hostname where the log message originated"]
+    ///Hostname where the log message originated
     #[inline]
     pub fn host(&self) -> &str {
         &*self.host
     }
-    #[doc = "Skylab node ID"]
+    ///Skylab node ID
     #[inline]
     pub fn node_id(&self) -> &str {
         &*self.node_id
     }
-    #[doc = "Skylab service name"]
+    ///Skylab service name
     #[inline]
     pub fn service(&self) -> &str {
         &*self.service
     }
-    #[doc = "Skylab service ID"]
+    ///Skylab service ID
     #[inline]
     pub fn service_id(&self) -> &str {
         &*self.service_id
     }
-    #[doc = "Skylab stack name"]
+    ///Skylab stack name
     #[inline]
     pub fn stack(&self) -> &str {
         &*self.stack
     }
-    #[doc = "Skylab stack ID"]
+    ///Skylab stack ID
     #[inline]
     pub fn stack_id(&self) -> &str {
         &*self.stack_id
     }
-    #[doc = "Artifact part of product's maven coordinate"]
+    ///Artifact part of product's maven coordinate
     #[inline]
     pub fn product(&self) -> &str {
         &*self.product
     }
-    #[doc = "Artifact semantic version"]
+    ///Artifact semantic version
     #[inline]
     pub fn product_version(&self) -> &str {
         &*self.product_version
     }
-    #[doc = "One of the Witchcraft log types; see [witchcraft-api](https://github.com/palantir/witchcraft-api) for details."]
+    ///One of the Witchcraft log types; see [witchcraft-api](https://github.com/palantir/witchcraft-api) for details.
     #[inline]
     pub fn payload(&self) -> &conjure_object::Any {
         &self.payload
@@ -116,11 +116,11 @@ impl From<WitchcraftEnvelopeV1> for BuilderStage13 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 0 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "\"envelope.1\""]
+    ///"envelope.1"
     #[inline]
     pub fn type_<T>(self, type_: T) -> BuilderStage1
     where
@@ -131,13 +131,13 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 1 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
 }
 impl BuilderStage1 {
-    #[doc = "Color or other codename for the customer infra"]
+    ///Color or other codename for the customer infra
     #[inline]
     pub fn deployment<T>(self, deployment: T) -> BuilderStage2
     where
@@ -149,14 +149,14 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 2 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
     deployment: String,
 }
 impl BuilderStage2 {
-    #[doc = "prod/staging/integration etc."]
+    ///prod/staging/integration etc.
     #[inline]
     pub fn environment<T>(self, environment: T) -> BuilderStage3
     where
@@ -169,7 +169,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 3 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -177,7 +177,7 @@ pub struct BuilderStage3 {
     environment: String,
 }
 impl BuilderStage3 {
-    #[doc = "Skylab environment ID"]
+    ///Skylab environment ID
     #[inline]
     pub fn environment_id<T>(self, environment_id: T) -> BuilderStage4
     where
@@ -191,7 +191,7 @@ impl BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 4 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 4 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage4 {
     type_: String,
@@ -200,7 +200,7 @@ pub struct BuilderStage4 {
     environment_id: String,
 }
 impl BuilderStage4 {
-    #[doc = "Hostname where the log message originated"]
+    ///Hostname where the log message originated
     #[inline]
     pub fn host<T>(self, host: T) -> BuilderStage5
     where
@@ -215,7 +215,7 @@ impl BuilderStage4 {
         }
     }
 }
-#[doc = "The stage 5 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 5 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage5 {
     type_: String,
@@ -225,7 +225,7 @@ pub struct BuilderStage5 {
     host: String,
 }
 impl BuilderStage5 {
-    #[doc = "Skylab node ID"]
+    ///Skylab node ID
     #[inline]
     pub fn node_id<T>(self, node_id: T) -> BuilderStage6
     where
@@ -241,7 +241,7 @@ impl BuilderStage5 {
         }
     }
 }
-#[doc = "The stage 6 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 6 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage6 {
     type_: String,
@@ -252,7 +252,7 @@ pub struct BuilderStage6 {
     node_id: String,
 }
 impl BuilderStage6 {
-    #[doc = "Skylab service name"]
+    ///Skylab service name
     #[inline]
     pub fn service<T>(self, service: T) -> BuilderStage7
     where
@@ -269,7 +269,7 @@ impl BuilderStage6 {
         }
     }
 }
-#[doc = "The stage 7 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 7 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage7 {
     type_: String,
@@ -281,7 +281,7 @@ pub struct BuilderStage7 {
     service: String,
 }
 impl BuilderStage7 {
-    #[doc = "Skylab service ID"]
+    ///Skylab service ID
     #[inline]
     pub fn service_id<T>(self, service_id: T) -> BuilderStage8
     where
@@ -299,7 +299,7 @@ impl BuilderStage7 {
         }
     }
 }
-#[doc = "The stage 8 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 8 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage8 {
     type_: String,
@@ -312,7 +312,7 @@ pub struct BuilderStage8 {
     service_id: String,
 }
 impl BuilderStage8 {
-    #[doc = "Skylab stack name"]
+    ///Skylab stack name
     #[inline]
     pub fn stack<T>(self, stack: T) -> BuilderStage9
     where
@@ -331,7 +331,7 @@ impl BuilderStage8 {
         }
     }
 }
-#[doc = "The stage 9 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 9 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage9 {
     type_: String,
@@ -345,7 +345,7 @@ pub struct BuilderStage9 {
     stack: String,
 }
 impl BuilderStage9 {
-    #[doc = "Skylab stack ID"]
+    ///Skylab stack ID
     #[inline]
     pub fn stack_id<T>(self, stack_id: T) -> BuilderStage10
     where
@@ -365,7 +365,7 @@ impl BuilderStage9 {
         }
     }
 }
-#[doc = "The stage 10 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 10 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage10 {
     type_: String,
@@ -380,7 +380,7 @@ pub struct BuilderStage10 {
     stack_id: String,
 }
 impl BuilderStage10 {
-    #[doc = "Artifact part of product's maven coordinate"]
+    ///Artifact part of product's maven coordinate
     #[inline]
     pub fn product<T>(self, product: T) -> BuilderStage11
     where
@@ -401,7 +401,7 @@ impl BuilderStage10 {
         }
     }
 }
-#[doc = "The stage 11 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 11 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage11 {
     type_: String,
@@ -417,7 +417,7 @@ pub struct BuilderStage11 {
     product: String,
 }
 impl BuilderStage11 {
-    #[doc = "Artifact semantic version"]
+    ///Artifact semantic version
     #[inline]
     pub fn product_version<T>(self, product_version: T) -> BuilderStage12
     where
@@ -439,7 +439,7 @@ impl BuilderStage11 {
         }
     }
 }
-#[doc = "The stage 12 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 12 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage12 {
     type_: String,
@@ -456,7 +456,7 @@ pub struct BuilderStage12 {
     product_version: String,
 }
 impl BuilderStage12 {
-    #[doc = "One of the Witchcraft log types; see [witchcraft-api](https://github.com/palantir/witchcraft-api) for details."]
+    ///One of the Witchcraft log types; see [witchcraft-api](https://github.com/palantir/witchcraft-api) for details.
     #[inline]
     pub fn payload<T>(self, payload: T) -> BuilderStage13
     where
@@ -479,7 +479,7 @@ impl BuilderStage12 {
         }
     }
 }
-#[doc = "The stage 13 builder for the [`WitchcraftEnvelopeV1`] type"]
+///The stage 13 builder for the [`WitchcraftEnvelopeV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage13 {
     type_: String,
@@ -497,7 +497,7 @@ pub struct BuilderStage13 {
     payload: conjure_object::Any,
 }
 impl BuilderStage13 {
-    #[doc = "\"envelope.1\""]
+    ///"envelope.1"
     #[inline]
     pub fn type_<T>(mut self, type_: T) -> Self
     where
@@ -506,7 +506,7 @@ impl BuilderStage13 {
         self.type_ = type_.into();
         self
     }
-    #[doc = "Color or other codename for the customer infra"]
+    ///Color or other codename for the customer infra
     #[inline]
     pub fn deployment<T>(mut self, deployment: T) -> Self
     where
@@ -515,7 +515,7 @@ impl BuilderStage13 {
         self.deployment = deployment.into();
         self
     }
-    #[doc = "prod/staging/integration etc."]
+    ///prod/staging/integration etc.
     #[inline]
     pub fn environment<T>(mut self, environment: T) -> Self
     where
@@ -524,7 +524,7 @@ impl BuilderStage13 {
         self.environment = environment.into();
         self
     }
-    #[doc = "Skylab environment ID"]
+    ///Skylab environment ID
     #[inline]
     pub fn environment_id<T>(mut self, environment_id: T) -> Self
     where
@@ -533,7 +533,7 @@ impl BuilderStage13 {
         self.environment_id = environment_id.into();
         self
     }
-    #[doc = "Hostname where the log message originated"]
+    ///Hostname where the log message originated
     #[inline]
     pub fn host<T>(mut self, host: T) -> Self
     where
@@ -542,7 +542,7 @@ impl BuilderStage13 {
         self.host = host.into();
         self
     }
-    #[doc = "Skylab node ID"]
+    ///Skylab node ID
     #[inline]
     pub fn node_id<T>(mut self, node_id: T) -> Self
     where
@@ -551,7 +551,7 @@ impl BuilderStage13 {
         self.node_id = node_id.into();
         self
     }
-    #[doc = "Skylab service name"]
+    ///Skylab service name
     #[inline]
     pub fn service<T>(mut self, service: T) -> Self
     where
@@ -560,7 +560,7 @@ impl BuilderStage13 {
         self.service = service.into();
         self
     }
-    #[doc = "Skylab service ID"]
+    ///Skylab service ID
     #[inline]
     pub fn service_id<T>(mut self, service_id: T) -> Self
     where
@@ -569,7 +569,7 @@ impl BuilderStage13 {
         self.service_id = service_id.into();
         self
     }
-    #[doc = "Skylab stack name"]
+    ///Skylab stack name
     #[inline]
     pub fn stack<T>(mut self, stack: T) -> Self
     where
@@ -578,7 +578,7 @@ impl BuilderStage13 {
         self.stack = stack.into();
         self
     }
-    #[doc = "Skylab stack ID"]
+    ///Skylab stack ID
     #[inline]
     pub fn stack_id<T>(mut self, stack_id: T) -> Self
     where
@@ -587,7 +587,7 @@ impl BuilderStage13 {
         self.stack_id = stack_id.into();
         self
     }
-    #[doc = "Artifact part of product's maven coordinate"]
+    ///Artifact part of product's maven coordinate
     #[inline]
     pub fn product<T>(mut self, product: T) -> Self
     where
@@ -596,7 +596,7 @@ impl BuilderStage13 {
         self.product = product.into();
         self
     }
-    #[doc = "Artifact semantic version"]
+    ///Artifact semantic version
     #[inline]
     pub fn product_version<T>(mut self, product_version: T) -> Self
     where
@@ -605,7 +605,7 @@ impl BuilderStage13 {
         self.product_version = product_version.into();
         self
     }
-    #[doc = "One of the Witchcraft log types; see [witchcraft-api](https://github.com/palantir/witchcraft-api) for details."]
+    ///One of the Witchcraft log types; see [witchcraft-api](https://github.com/palantir/witchcraft-api) for details.
     #[inline]
     pub fn payload<T>(mut self, payload: T) -> Self
     where
@@ -614,7 +614,7 @@ impl BuilderStage13 {
         self.payload = conjure_object::Any::new(payload).expect("value failed to serialize");
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> WitchcraftEnvelopeV1 {
         WitchcraftEnvelopeV1 {

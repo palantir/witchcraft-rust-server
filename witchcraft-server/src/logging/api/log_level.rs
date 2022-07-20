@@ -11,7 +11,7 @@ pub enum LogLevel {
     Trace,
 }
 impl LogLevel {
-    #[doc = r" Returns the string representation of the enum."]
+    /// Returns the string representation of the enum.
     #[inline]
     pub fn as_str(&self) -> &str {
         match self {

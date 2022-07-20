@@ -1,12 +1,12 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HealthStatus {
     checks: std::collections::BTreeMap<super::CheckType, super::HealthCheckResult>,
 }
 impl HealthStatus {
-    #[doc = r" Constructs a new instance of the type."]
+    /// Constructs a new instance of the type.
     #[inline]
     pub fn new<T>(checks: T) -> HealthStatus
     where
@@ -16,7 +16,7 @@ impl HealthStatus {
             checks: checks.into_iter().collect(),
         }
     }
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
@@ -44,7 +44,7 @@ impl From<HealthStatus> for BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`HealthStatus`] type"]
+///The stage 0 builder for the [`HealthStatus`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {
     checks: std::collections::BTreeMap<super::CheckType, super::HealthCheckResult>,
@@ -67,11 +67,15 @@ impl BuilderStage0 {
         self
     }
     #[inline]
-    pub fn insert_checks(mut self, key: super::CheckType, value: super::HealthCheckResult) -> Self {
+    pub fn insert_checks(
+        mut self,
+        key: super::CheckType,
+        value: super::HealthCheckResult,
+    ) -> Self {
         self.checks.insert(key, value);
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> HealthStatus {
         HealthStatus {

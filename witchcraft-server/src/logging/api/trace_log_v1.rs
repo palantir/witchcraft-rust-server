@@ -1,8 +1,8 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Definition of the trace.1 format."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Definition of the trace.1 format.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TraceLogV1 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
@@ -13,7 +13,7 @@ pub struct TraceLogV1 {
     span: Box<super::Span>,
 }
 impl TraceLogV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
@@ -67,7 +67,7 @@ impl From<TraceLogV1> for BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`TraceLogV1`] type"]
+///The stage 0 builder for the [`TraceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
@@ -81,7 +81,7 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`TraceLogV1`] type"]
+///The stage 1 builder for the [`TraceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
@@ -95,7 +95,7 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`TraceLogV1`] type"]
+///The stage 2 builder for the [`TraceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
@@ -115,7 +115,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`TraceLogV1`] type"]
+///The stage 3 builder for the [`TraceLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -197,7 +197,7 @@ impl BuilderStage3 {
         );
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> TraceLogV1 {
         TraceLogV1 {

@@ -1,8 +1,8 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Definition of the request.1 format."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Definition of the request.1 format.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RequestLogV1 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
@@ -24,7 +24,7 @@ pub struct RequestLogV1 {
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl RequestLogV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
@@ -37,82 +37,82 @@ impl RequestLogV1 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    #[doc = "HTTP method of request"]
+    ///HTTP method of request
     #[inline]
     pub fn method(&self) -> Option<&str> {
         self.method.as_ref().map(|o| &**o)
     }
-    #[doc = "Protocol, e.g. `HTTP/1.1`, `HTTP/2`"]
+    ///Protocol, e.g. `HTTP/1.1`, `HTTP/2`
     #[inline]
     pub fn protocol(&self) -> &str {
         &*self.protocol
     }
-    #[doc = "Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`."]
+    ///Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`.
     #[inline]
     pub fn path(&self) -> &str {
         &*self.path
     }
-    #[doc = "Known-safe path parameters"]
+    ///Known-safe path parameters
     #[inline]
     pub fn path_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.path_params
     }
-    #[doc = "Known-safe query parameters"]
+    ///Known-safe query parameters
     #[inline]
     pub fn query_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.query_params
     }
-    #[doc = "Known-safe header parameters"]
+    ///Known-safe header parameters
     #[inline]
     pub fn header_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.header_params
     }
-    #[doc = "Known-safe body parameters"]
+    ///Known-safe body parameters
     #[inline]
     pub fn body_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.body_params
     }
-    #[doc = "HTTP status code of response"]
+    ///HTTP status code of response
     #[inline]
     pub fn status(&self) -> i32 {
         self.status
     }
-    #[doc = "Size of request (bytes). string to allow large numbers."]
+    ///Size of request (bytes). string to allow large numbers.
     #[inline]
     pub fn request_size(&self) -> &str {
         &*self.request_size
     }
-    #[doc = "Size of response (bytes). string to allow large numbers."]
+    ///Size of response (bytes). string to allow large numbers.
     #[inline]
     pub fn response_size(&self) -> &str {
         &*self.response_size
     }
-    #[doc = "Amount of time spent handling request (microseconds)"]
+    ///Amount of time spent handling request (microseconds)
     #[inline]
     pub fn duration(&self) -> i32 {
         self.duration
     }
-    #[doc = "User id (if available)"]
+    ///User id (if available)
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id(&self) -> Option<&super::TraceId> {
         self.trace_id.as_ref().map(|o| &*o)
     }
-    #[doc = "Unredacted parameters such as path, query and header parameters"]
+    ///Unredacted parameters such as path, query and header parameters
     #[inline]
     pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
@@ -149,7 +149,7 @@ impl From<RequestLogV1> for BuilderStage8 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`RequestLogV1`] type"]
+///The stage 0 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
@@ -163,7 +163,7 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`RequestLogV1`] type"]
+///The stage 1 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
@@ -177,14 +177,14 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`RequestLogV1`] type"]
+///The stage 2 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
 }
 impl BuilderStage2 {
-    #[doc = "Protocol, e.g. `HTTP/1.1`, `HTTP/2`"]
+    ///Protocol, e.g. `HTTP/1.1`, `HTTP/2`
     #[inline]
     pub fn protocol<T>(self, protocol: T) -> BuilderStage3
     where
@@ -197,7 +197,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`RequestLogV1`] type"]
+///The stage 3 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -205,7 +205,7 @@ pub struct BuilderStage3 {
     protocol: String,
 }
 impl BuilderStage3 {
-    #[doc = "Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`."]
+    ///Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`.
     #[inline]
     pub fn path<T>(self, path: T) -> BuilderStage4
     where
@@ -219,7 +219,7 @@ impl BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 4 builder for the [`RequestLogV1`] type"]
+///The stage 4 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage4 {
     type_: String,
@@ -228,7 +228,7 @@ pub struct BuilderStage4 {
     path: String,
 }
 impl BuilderStage4 {
-    #[doc = "HTTP status code of response"]
+    ///HTTP status code of response
     #[inline]
     pub fn status(self, status: i32) -> BuilderStage5 {
         BuilderStage5 {
@@ -240,7 +240,7 @@ impl BuilderStage4 {
         }
     }
 }
-#[doc = "The stage 5 builder for the [`RequestLogV1`] type"]
+///The stage 5 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage5 {
     type_: String,
@@ -250,7 +250,7 @@ pub struct BuilderStage5 {
     status: i32,
 }
 impl BuilderStage5 {
-    #[doc = "Size of request (bytes). string to allow large numbers."]
+    ///Size of request (bytes). string to allow large numbers.
     #[inline]
     pub fn request_size<T>(self, request_size: T) -> BuilderStage6
     where
@@ -266,7 +266,7 @@ impl BuilderStage5 {
         }
     }
 }
-#[doc = "The stage 6 builder for the [`RequestLogV1`] type"]
+///The stage 6 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage6 {
     type_: String,
@@ -277,7 +277,7 @@ pub struct BuilderStage6 {
     request_size: String,
 }
 impl BuilderStage6 {
-    #[doc = "Size of response (bytes). string to allow large numbers."]
+    ///Size of response (bytes). string to allow large numbers.
     #[inline]
     pub fn response_size<T>(self, response_size: T) -> BuilderStage7
     where
@@ -294,7 +294,7 @@ impl BuilderStage6 {
         }
     }
 }
-#[doc = "The stage 7 builder for the [`RequestLogV1`] type"]
+///The stage 7 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage7 {
     type_: String,
@@ -306,7 +306,7 @@ pub struct BuilderStage7 {
     response_size: String,
 }
 impl BuilderStage7 {
-    #[doc = "Amount of time spent handling request (microseconds)"]
+    ///Amount of time spent handling request (microseconds)
     #[inline]
     pub fn duration(self, duration: i32) -> BuilderStage8 {
         BuilderStage8 {
@@ -331,7 +331,7 @@ impl BuilderStage7 {
         }
     }
 }
-#[doc = "The stage 8 builder for the [`RequestLogV1`] type"]
+///The stage 8 builder for the [`RequestLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage8 {
     type_: String,
@@ -367,7 +367,7 @@ impl BuilderStage8 {
         self.time = time;
         self
     }
-    #[doc = "Protocol, e.g. `HTTP/1.1`, `HTTP/2`"]
+    ///Protocol, e.g. `HTTP/1.1`, `HTTP/2`
     #[inline]
     pub fn protocol<T>(mut self, protocol: T) -> Self
     where
@@ -376,7 +376,7 @@ impl BuilderStage8 {
         self.protocol = protocol.into();
         self
     }
-    #[doc = "Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`."]
+    ///Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`.
     #[inline]
     pub fn path<T>(mut self, path: T) -> Self
     where
@@ -385,13 +385,13 @@ impl BuilderStage8 {
         self.path = path.into();
         self
     }
-    #[doc = "HTTP status code of response"]
+    ///HTTP status code of response
     #[inline]
     pub fn status(mut self, status: i32) -> Self {
         self.status = status;
         self
     }
-    #[doc = "Size of request (bytes). string to allow large numbers."]
+    ///Size of request (bytes). string to allow large numbers.
     #[inline]
     pub fn request_size<T>(mut self, request_size: T) -> Self
     where
@@ -400,7 +400,7 @@ impl BuilderStage8 {
         self.request_size = request_size.into();
         self
     }
-    #[doc = "Size of response (bytes). string to allow large numbers."]
+    ///Size of response (bytes). string to allow large numbers.
     #[inline]
     pub fn response_size<T>(mut self, response_size: T) -> Self
     where
@@ -409,13 +409,13 @@ impl BuilderStage8 {
         self.response_size = response_size.into();
         self
     }
-    #[doc = "Amount of time spent handling request (microseconds)"]
+    ///Amount of time spent handling request (microseconds)
     #[inline]
     pub fn duration(mut self, duration: i32) -> Self {
         self.duration = duration;
         self
     }
-    #[doc = "HTTP method of request"]
+    ///HTTP method of request
     #[inline]
     pub fn method<T>(mut self, method: T) -> Self
     where
@@ -424,7 +424,7 @@ impl BuilderStage8 {
         self.method = method.into();
         self
     }
-    #[doc = "Known-safe path parameters"]
+    ///Known-safe path parameters
     #[inline]
     pub fn path_params<T>(mut self, path_params: T) -> Self
     where
@@ -433,7 +433,7 @@ impl BuilderStage8 {
         self.path_params = path_params.into_iter().collect();
         self
     }
-    #[doc = "Known-safe path parameters"]
+    ///Known-safe path parameters
     #[inline]
     pub fn extend_path_params<T>(mut self, path_params: T) -> Self
     where
@@ -442,7 +442,7 @@ impl BuilderStage8 {
         self.path_params.extend(path_params);
         self
     }
-    #[doc = "Known-safe path parameters"]
+    ///Known-safe path parameters
     #[inline]
     pub fn insert_path_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -455,7 +455,7 @@ impl BuilderStage8 {
         );
         self
     }
-    #[doc = "Known-safe query parameters"]
+    ///Known-safe query parameters
     #[inline]
     pub fn query_params<T>(mut self, query_params: T) -> Self
     where
@@ -464,7 +464,7 @@ impl BuilderStage8 {
         self.query_params = query_params.into_iter().collect();
         self
     }
-    #[doc = "Known-safe query parameters"]
+    ///Known-safe query parameters
     #[inline]
     pub fn extend_query_params<T>(mut self, query_params: T) -> Self
     where
@@ -473,7 +473,7 @@ impl BuilderStage8 {
         self.query_params.extend(query_params);
         self
     }
-    #[doc = "Known-safe query parameters"]
+    ///Known-safe query parameters
     #[inline]
     pub fn insert_query_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -486,7 +486,7 @@ impl BuilderStage8 {
         );
         self
     }
-    #[doc = "Known-safe header parameters"]
+    ///Known-safe header parameters
     #[inline]
     pub fn header_params<T>(mut self, header_params: T) -> Self
     where
@@ -495,7 +495,7 @@ impl BuilderStage8 {
         self.header_params = header_params.into_iter().collect();
         self
     }
-    #[doc = "Known-safe header parameters"]
+    ///Known-safe header parameters
     #[inline]
     pub fn extend_header_params<T>(mut self, header_params: T) -> Self
     where
@@ -504,7 +504,7 @@ impl BuilderStage8 {
         self.header_params.extend(header_params);
         self
     }
-    #[doc = "Known-safe header parameters"]
+    ///Known-safe header parameters
     #[inline]
     pub fn insert_header_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -517,7 +517,7 @@ impl BuilderStage8 {
         );
         self
     }
-    #[doc = "Known-safe body parameters"]
+    ///Known-safe body parameters
     #[inline]
     pub fn body_params<T>(mut self, body_params: T) -> Self
     where
@@ -526,7 +526,7 @@ impl BuilderStage8 {
         self.body_params = body_params.into_iter().collect();
         self
     }
-    #[doc = "Known-safe body parameters"]
+    ///Known-safe body parameters
     #[inline]
     pub fn extend_body_params<T>(mut self, body_params: T) -> Self
     where
@@ -535,7 +535,7 @@ impl BuilderStage8 {
         self.body_params.extend(body_params);
         self
     }
-    #[doc = "Known-safe body parameters"]
+    ///Known-safe body parameters
     #[inline]
     pub fn insert_body_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -548,7 +548,7 @@ impl BuilderStage8 {
         );
         self
     }
-    #[doc = "User id (if available)"]
+    ///User id (if available)
     #[inline]
     pub fn uid<T>(mut self, uid: T) -> Self
     where
@@ -557,7 +557,7 @@ impl BuilderStage8 {
         self.uid = uid.into();
         self
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid<T>(mut self, sid: T) -> Self
     where
@@ -566,7 +566,7 @@ impl BuilderStage8 {
         self.sid = sid.into();
         self
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id<T>(mut self, token_id: T) -> Self
     where
@@ -575,7 +575,7 @@ impl BuilderStage8 {
         self.token_id = token_id.into();
         self
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id<T>(mut self, trace_id: T) -> Self
     where
@@ -584,7 +584,7 @@ impl BuilderStage8 {
         self.trace_id = trace_id.into();
         self
     }
-    #[doc = "Unredacted parameters such as path, query and header parameters"]
+    ///Unredacted parameters such as path, query and header parameters
     #[inline]
     pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -593,7 +593,7 @@ impl BuilderStage8 {
         self.unsafe_params = unsafe_params.into_iter().collect();
         self
     }
-    #[doc = "Unredacted parameters such as path, query and header parameters"]
+    ///Unredacted parameters such as path, query and header parameters
     #[inline]
     pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -602,7 +602,7 @@ impl BuilderStage8 {
         self.unsafe_params.extend(unsafe_params);
         self
     }
-    #[doc = "Unredacted parameters such as path, query and header parameters"]
+    ///Unredacted parameters such as path, query and header parameters
     #[inline]
     pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -615,7 +615,7 @@ impl BuilderStage8 {
         );
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> RequestLogV1 {
         RequestLogV1 {

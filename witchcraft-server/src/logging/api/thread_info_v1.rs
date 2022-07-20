@@ -1,7 +1,7 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ThreadInfoV1 {
     id: Option<conjure_object::SafeLong>,
     name: Option<String>,
@@ -9,27 +9,27 @@ pub struct ThreadInfoV1 {
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl ThreadInfoV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "The ID of the thread."]
+    ///The ID of the thread.
     #[inline]
     pub fn id(&self) -> Option<conjure_object::SafeLong> {
         self.id.as_ref().map(|o| *o)
     }
-    #[doc = "The name of the thread. Note that thread names may include unsafe information such as the path of the HTTP request being processed. It must be safely redacted."]
+    ///The name of the thread. Note that thread names may include unsafe information such as the path of the HTTP request being processed. It must be safely redacted.
     #[inline]
     pub fn name(&self) -> Option<&str> {
         self.name.as_ref().map(|o| &**o)
     }
-    #[doc = "A list of stack frames for the thread, ordered with the current frame first."]
+    ///A list of stack frames for the thread, ordered with the current frame first.
     #[inline]
     pub fn stack_trace(&self) -> &[super::StackFrameV1] {
         &*self.stack_trace
     }
-    #[doc = "Other thread-level information."]
+    ///Other thread-level information.
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params
@@ -57,7 +57,7 @@ impl From<ThreadInfoV1> for BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`ThreadInfoV1`] type"]
+///The stage 0 builder for the [`ThreadInfoV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {
     id: Option<conjure_object::SafeLong>,
@@ -66,7 +66,7 @@ pub struct BuilderStage0 {
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl BuilderStage0 {
-    #[doc = "The ID of the thread."]
+    ///The ID of the thread.
     #[inline]
     pub fn id<T>(mut self, id: T) -> Self
     where
@@ -75,7 +75,7 @@ impl BuilderStage0 {
         self.id = id.into();
         self
     }
-    #[doc = "The name of the thread. Note that thread names may include unsafe information such as the path of the HTTP request being processed. It must be safely redacted."]
+    ///The name of the thread. Note that thread names may include unsafe information such as the path of the HTTP request being processed. It must be safely redacted.
     #[inline]
     pub fn name<T>(mut self, name: T) -> Self
     where
@@ -84,7 +84,7 @@ impl BuilderStage0 {
         self.name = name.into();
         self
     }
-    #[doc = "A list of stack frames for the thread, ordered with the current frame first."]
+    ///A list of stack frames for the thread, ordered with the current frame first.
     #[inline]
     pub fn stack_trace<T>(mut self, stack_trace: T) -> Self
     where
@@ -93,7 +93,7 @@ impl BuilderStage0 {
         self.stack_trace = stack_trace.into_iter().collect();
         self
     }
-    #[doc = "A list of stack frames for the thread, ordered with the current frame first."]
+    ///A list of stack frames for the thread, ordered with the current frame first.
     #[inline]
     pub fn extend_stack_trace<T>(mut self, stack_trace: T) -> Self
     where
@@ -102,13 +102,13 @@ impl BuilderStage0 {
         self.stack_trace.extend(stack_trace);
         self
     }
-    #[doc = "A list of stack frames for the thread, ordered with the current frame first."]
+    ///A list of stack frames for the thread, ordered with the current frame first.
     #[inline]
     pub fn push_stack_trace(mut self, value: super::StackFrameV1) -> Self {
         self.stack_trace.push(value);
         self
     }
-    #[doc = "Other thread-level information."]
+    ///Other thread-level information.
     #[inline]
     pub fn params<T>(mut self, params: T) -> Self
     where
@@ -117,7 +117,7 @@ impl BuilderStage0 {
         self.params = params.into_iter().collect();
         self
     }
-    #[doc = "Other thread-level information."]
+    ///Other thread-level information.
     #[inline]
     pub fn extend_params<T>(mut self, params: T) -> Self
     where
@@ -126,7 +126,7 @@ impl BuilderStage0 {
         self.params.extend(params);
         self
     }
-    #[doc = "Other thread-level information."]
+    ///Other thread-level information.
     #[inline]
     pub fn insert_params<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -139,7 +139,7 @@ impl BuilderStage0 {
         );
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> ThreadInfoV1 {
         ThreadInfoV1 {

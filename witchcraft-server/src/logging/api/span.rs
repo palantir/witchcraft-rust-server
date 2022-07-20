@@ -1,8 +1,8 @@
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "A Zipkin-compatible Span object."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///A Zipkin-compatible Span object.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
     trace_id: String,
     id: String,
@@ -14,37 +14,37 @@ pub struct Span {
     tags: std::collections::BTreeMap<String, String>,
 }
 impl Span {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "16-digit hex trace identifier"]
+    ///16-digit hex trace identifier
     #[inline]
     pub fn trace_id(&self) -> &str {
         &*self.trace_id
     }
-    #[doc = "16-digit hex span identifier"]
+    ///16-digit hex span identifier
     #[inline]
     pub fn id(&self) -> &str {
         &*self.id
     }
-    #[doc = "Name of the span (typically the operation/RPC/method name for corresponding to this span)"]
+    ///Name of the span (typically the operation/RPC/method name for corresponding to this span)
     #[inline]
     pub fn name(&self) -> &str {
         &*self.name
     }
-    #[doc = "16-digit hex identifer of the parent span"]
+    ///16-digit hex identifer of the parent span
     #[inline]
     pub fn parent_id(&self) -> Option<&str> {
         self.parent_id.as_ref().map(|o| &**o)
     }
-    #[doc = "Timestamp of the start of this span (epoch microsecond value)"]
+    ///Timestamp of the start of this span (epoch microsecond value)
     #[inline]
     pub fn timestamp(&self) -> conjure_object::SafeLong {
         self.timestamp
     }
-    #[doc = "Duration of this span (microseconds)"]
+    ///Duration of this span (microseconds)
     #[inline]
     pub fn duration(&self) -> conjure_object::SafeLong {
         self.duration
@@ -53,7 +53,7 @@ impl Span {
     pub fn annotations(&self) -> &[super::Annotation] {
         &*self.annotations
     }
-    #[doc = "Additional dimensions that describe the instance of the trace span"]
+    ///Additional dimensions that describe the instance of the trace span
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
@@ -80,11 +80,11 @@ impl From<Span> for BuilderStage5 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`Span`] type"]
+///The stage 0 builder for the [`Span`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "16-digit hex trace identifier"]
+    ///16-digit hex trace identifier
     #[inline]
     pub fn trace_id<T>(self, trace_id: T) -> BuilderStage1
     where
@@ -95,13 +95,13 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`Span`] type"]
+///The stage 1 builder for the [`Span`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     trace_id: String,
 }
 impl BuilderStage1 {
-    #[doc = "16-digit hex span identifier"]
+    ///16-digit hex span identifier
     #[inline]
     pub fn id<T>(self, id: T) -> BuilderStage2
     where
@@ -113,14 +113,14 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`Span`] type"]
+///The stage 2 builder for the [`Span`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     trace_id: String,
     id: String,
 }
 impl BuilderStage2 {
-    #[doc = "Name of the span (typically the operation/RPC/method name for corresponding to this span)"]
+    ///Name of the span (typically the operation/RPC/method name for corresponding to this span)
     #[inline]
     pub fn name<T>(self, name: T) -> BuilderStage3
     where
@@ -133,7 +133,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`Span`] type"]
+///The stage 3 builder for the [`Span`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     trace_id: String,
@@ -141,7 +141,7 @@ pub struct BuilderStage3 {
     name: String,
 }
 impl BuilderStage3 {
-    #[doc = "Timestamp of the start of this span (epoch microsecond value)"]
+    ///Timestamp of the start of this span (epoch microsecond value)
     #[inline]
     pub fn timestamp(self, timestamp: conjure_object::SafeLong) -> BuilderStage4 {
         BuilderStage4 {
@@ -152,7 +152,7 @@ impl BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 4 builder for the [`Span`] type"]
+///The stage 4 builder for the [`Span`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage4 {
     trace_id: String,
@@ -161,7 +161,7 @@ pub struct BuilderStage4 {
     timestamp: conjure_object::SafeLong,
 }
 impl BuilderStage4 {
-    #[doc = "Duration of this span (microseconds)"]
+    ///Duration of this span (microseconds)
     #[inline]
     pub fn duration(self, duration: conjure_object::SafeLong) -> BuilderStage5 {
         BuilderStage5 {
@@ -176,7 +176,7 @@ impl BuilderStage4 {
         }
     }
 }
-#[doc = "The stage 5 builder for the [`Span`] type"]
+///The stage 5 builder for the [`Span`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage5 {
     trace_id: String,
@@ -189,7 +189,7 @@ pub struct BuilderStage5 {
     tags: std::collections::BTreeMap<String, String>,
 }
 impl BuilderStage5 {
-    #[doc = "16-digit hex trace identifier"]
+    ///16-digit hex trace identifier
     #[inline]
     pub fn trace_id<T>(mut self, trace_id: T) -> Self
     where
@@ -198,7 +198,7 @@ impl BuilderStage5 {
         self.trace_id = trace_id.into();
         self
     }
-    #[doc = "16-digit hex span identifier"]
+    ///16-digit hex span identifier
     #[inline]
     pub fn id<T>(mut self, id: T) -> Self
     where
@@ -207,7 +207,7 @@ impl BuilderStage5 {
         self.id = id.into();
         self
     }
-    #[doc = "Name of the span (typically the operation/RPC/method name for corresponding to this span)"]
+    ///Name of the span (typically the operation/RPC/method name for corresponding to this span)
     #[inline]
     pub fn name<T>(mut self, name: T) -> Self
     where
@@ -216,19 +216,19 @@ impl BuilderStage5 {
         self.name = name.into();
         self
     }
-    #[doc = "Timestamp of the start of this span (epoch microsecond value)"]
+    ///Timestamp of the start of this span (epoch microsecond value)
     #[inline]
     pub fn timestamp(mut self, timestamp: conjure_object::SafeLong) -> Self {
         self.timestamp = timestamp;
         self
     }
-    #[doc = "Duration of this span (microseconds)"]
+    ///Duration of this span (microseconds)
     #[inline]
     pub fn duration(mut self, duration: conjure_object::SafeLong) -> Self {
         self.duration = duration;
         self
     }
-    #[doc = "16-digit hex identifer of the parent span"]
+    ///16-digit hex identifer of the parent span
     #[inline]
     pub fn parent_id<T>(mut self, parent_id: T) -> Self
     where
@@ -258,7 +258,7 @@ impl BuilderStage5 {
         self.annotations.push(value);
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the trace span"]
+    ///Additional dimensions that describe the instance of the trace span
     #[inline]
     pub fn tags<T>(mut self, tags: T) -> Self
     where
@@ -267,7 +267,7 @@ impl BuilderStage5 {
         self.tags = tags.into_iter().collect();
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the trace span"]
+    ///Additional dimensions that describe the instance of the trace span
     #[inline]
     pub fn extend_tags<T>(mut self, tags: T) -> Self
     where
@@ -276,7 +276,7 @@ impl BuilderStage5 {
         self.tags.extend(tags);
         self
     }
-    #[doc = "Additional dimensions that describe the instance of the trace span"]
+    ///Additional dimensions that describe the instance of the trace span
     #[inline]
     pub fn insert_tags<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -286,7 +286,7 @@ impl BuilderStage5 {
         self.tags.insert(key.into(), value.into());
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> Span {
         Span {
