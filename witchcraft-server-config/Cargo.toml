@@ -8,7 +8,7 @@ repository = "https://github.com/palantir/witchcraft-rust-server"
 readme = "../README.md"
 
 [dependencies]
-conjure-runtime-config = "2"
+conjure-runtime-config = "3"
 humantime-serde = "1"
 num_cpus = "1"
 serde = { version = "1", features = ["derive"] }
