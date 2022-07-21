@@ -1,5 +1,5 @@
-use conjure_object::serde::{de, ser};
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Default)]
+use conjure_object::serde::{ser, de};
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct TraceId(pub String);
 impl std::fmt::Display for TraceId {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

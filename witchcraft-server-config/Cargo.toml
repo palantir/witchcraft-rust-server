@@ -1,6 +1,6 @@
 [package]
 name = "witchcraft-server-config"
-version = "1.4.0"
+version = "2.0.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Configuration types for witchcraft-server"
@@ -8,9 +8,9 @@ repository = "https://github.com/palantir/witchcraft-rust-server"
 readme = "../README.md"
 
 [dependencies]
-conjure-runtime-config = "2"
+conjure-runtime-config = "3"
 humantime-serde = "1"
 num_cpus = "1"
 serde = { version = "1", features = ["derive"] }
 staged-builder = "0.1.1"
-witchcraft-log = "1"
+witchcraft-log = "2"

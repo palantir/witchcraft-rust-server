@@ -1,8 +1,8 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Definition of the audit.2 format."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Definition of the audit.2 format.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AuditLogV2 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
@@ -18,12 +18,12 @@ pub struct AuditLogV2 {
     result_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl AuditLogV2 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "\"audit.2\""]
+    ///"audit.2"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -32,55 +32,59 @@ impl AuditLogV2 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    #[doc = "User id (if available). This is the most downstream caller."]
+    ///User id (if available). This is the most downstream caller.
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id(&self) -> Option<&super::TraceId> {
         self.trace_id.as_ref().map(|o| &*o)
     }
-    #[doc = "All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`."]
+    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
     #[inline]
     pub fn other_uids(&self) -> &[super::UserId] {
         &*self.other_uids
     }
-    #[doc = "Best-effort identifier of the originating machine, e.g. an IP address, a Kubernetes node identifier,"]
-    #[doc = "or similar"]
+    ///Best-effort identifier of the originating machine, e.g. an IP address, a Kubernetes node identifier,
+    ///or similar
     #[inline]
     pub fn origin(&self) -> Option<&str> {
         self.origin.as_ref().map(|o| &**o)
     }
-    #[doc = "Name of the audit event, e.g. PUT_FILE"]
+    ///Name of the audit event, e.g. PUT_FILE
     #[inline]
     pub fn name(&self) -> &str {
         &*self.name
     }
-    #[doc = "Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED"]
+    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
     #[inline]
     pub fn result(&self) -> &super::AuditResult {
         &self.result
     }
-    #[doc = "The parameters known at method invocation time."]
+    ///The parameters known at method invocation time.
     #[inline]
-    pub fn request_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn request_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.request_params
     }
-    #[doc = "Information derived within a method, commonly parts of the return value."]
+    ///Information derived within a method, commonly parts of the return value.
     #[inline]
-    pub fn result_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn result_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.result_params
     }
 }
@@ -109,11 +113,11 @@ impl From<AuditLogV2> for BuilderStage4 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`AuditLogV2`] type"]
+///The stage 0 builder for the [`AuditLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "\"audit.2\""]
+    ///"audit.2"
     #[inline]
     pub fn type_<T>(self, type_: T) -> BuilderStage1
     where
@@ -124,28 +128,31 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`AuditLogV2`] type"]
+///The stage 1 builder for the [`AuditLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
 }
 impl BuilderStage1 {
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage2 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage2 {
         BuilderStage2 {
             type_: self.type_,
             time: time,
         }
     }
 }
-#[doc = "The stage 2 builder for the [`AuditLogV2`] type"]
+///The stage 2 builder for the [`AuditLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
 }
 impl BuilderStage2 {
-    #[doc = "Name of the audit event, e.g. PUT_FILE"]
+    ///Name of the audit event, e.g. PUT_FILE
     #[inline]
     pub fn name<T>(self, name: T) -> BuilderStage3
     where
@@ -158,7 +165,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`AuditLogV2`] type"]
+///The stage 3 builder for the [`AuditLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -166,7 +173,7 @@ pub struct BuilderStage3 {
     name: String,
 }
 impl BuilderStage3 {
-    #[doc = "Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED"]
+    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
     #[inline]
     pub fn result(self, result: super::AuditResult) -> BuilderStage4 {
         BuilderStage4 {
@@ -185,7 +192,7 @@ impl BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 4 builder for the [`AuditLogV2`] type"]
+///The stage 4 builder for the [`AuditLogV2`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage4 {
     type_: String,
@@ -202,7 +209,7 @@ pub struct BuilderStage4 {
     result_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl BuilderStage4 {
-    #[doc = "\"audit.2\""]
+    ///"audit.2"
     #[inline]
     pub fn type_<T>(mut self, type_: T) -> Self
     where
@@ -216,7 +223,7 @@ impl BuilderStage4 {
         self.time = time;
         self
     }
-    #[doc = "Name of the audit event, e.g. PUT_FILE"]
+    ///Name of the audit event, e.g. PUT_FILE
     #[inline]
     pub fn name<T>(mut self, name: T) -> Self
     where
@@ -225,13 +232,13 @@ impl BuilderStage4 {
         self.name = name.into();
         self
     }
-    #[doc = "Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED"]
+    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
     #[inline]
     pub fn result(mut self, result: super::AuditResult) -> Self {
         self.result = result;
         self
     }
-    #[doc = "User id (if available). This is the most downstream caller."]
+    ///User id (if available). This is the most downstream caller.
     #[inline]
     pub fn uid<T>(mut self, uid: T) -> Self
     where
@@ -240,7 +247,7 @@ impl BuilderStage4 {
         self.uid = uid.into();
         self
     }
-    #[doc = "Session id (if available)"]
+    ///Session id (if available)
     #[inline]
     pub fn sid<T>(mut self, sid: T) -> Self
     where
@@ -249,7 +256,7 @@ impl BuilderStage4 {
         self.sid = sid.into();
         self
     }
-    #[doc = "API token id (if available)"]
+    ///API token id (if available)
     #[inline]
     pub fn token_id<T>(mut self, token_id: T) -> Self
     where
@@ -258,7 +265,7 @@ impl BuilderStage4 {
         self.token_id = token_id.into();
         self
     }
-    #[doc = "Zipkin trace id (if available)"]
+    ///Zipkin trace id (if available)
     #[inline]
     pub fn trace_id<T>(mut self, trace_id: T) -> Self
     where
@@ -267,7 +274,7 @@ impl BuilderStage4 {
         self.trace_id = trace_id.into();
         self
     }
-    #[doc = "All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`."]
+    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
     #[inline]
     pub fn other_uids<T>(mut self, other_uids: T) -> Self
     where
@@ -276,7 +283,7 @@ impl BuilderStage4 {
         self.other_uids = other_uids.into_iter().collect();
         self
     }
-    #[doc = "All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`."]
+    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
     #[inline]
     pub fn extend_other_uids<T>(mut self, other_uids: T) -> Self
     where
@@ -285,14 +292,14 @@ impl BuilderStage4 {
         self.other_uids.extend(other_uids);
         self
     }
-    #[doc = "All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`."]
+    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
     #[inline]
     pub fn push_other_uids(mut self, value: super::UserId) -> Self {
         self.other_uids.push(value);
         self
     }
-    #[doc = "Best-effort identifier of the originating machine, e.g. an IP address, a Kubernetes node identifier,"]
-    #[doc = "or similar"]
+    ///Best-effort identifier of the originating machine, e.g. an IP address, a Kubernetes node identifier,
+    ///or similar
     #[inline]
     pub fn origin<T>(mut self, origin: T) -> Self
     where
@@ -301,7 +308,7 @@ impl BuilderStage4 {
         self.origin = origin.into();
         self
     }
-    #[doc = "The parameters known at method invocation time."]
+    ///The parameters known at method invocation time.
     #[inline]
     pub fn request_params<T>(mut self, request_params: T) -> Self
     where
@@ -310,7 +317,7 @@ impl BuilderStage4 {
         self.request_params = request_params.into_iter().collect();
         self
     }
-    #[doc = "The parameters known at method invocation time."]
+    ///The parameters known at method invocation time.
     #[inline]
     pub fn extend_request_params<T>(mut self, request_params: T) -> Self
     where
@@ -319,20 +326,21 @@ impl BuilderStage4 {
         self.request_params.extend(request_params);
         self
     }
-    #[doc = "The parameters known at method invocation time."]
+    ///The parameters known at method invocation time.
     #[inline]
     pub fn insert_request_params<K, V>(mut self, key: K, value: V) -> Self
     where
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.request_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.request_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
-    #[doc = "Information derived within a method, commonly parts of the return value."]
+    ///Information derived within a method, commonly parts of the return value.
     #[inline]
     pub fn result_params<T>(mut self, result_params: T) -> Self
     where
@@ -341,7 +349,7 @@ impl BuilderStage4 {
         self.result_params = result_params.into_iter().collect();
         self
     }
-    #[doc = "Information derived within a method, commonly parts of the return value."]
+    ///Information derived within a method, commonly parts of the return value.
     #[inline]
     pub fn extend_result_params<T>(mut self, result_params: T) -> Self
     where
@@ -350,20 +358,21 @@ impl BuilderStage4 {
         self.result_params.extend(result_params);
         self
     }
-    #[doc = "Information derived within a method, commonly parts of the return value."]
+    ///Information derived within a method, commonly parts of the return value.
     #[inline]
     pub fn insert_result_params<K, V>(mut self, key: K, value: V) -> Self
     where
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.result_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.result_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> AuditLogV2 {
         AuditLogV2 {

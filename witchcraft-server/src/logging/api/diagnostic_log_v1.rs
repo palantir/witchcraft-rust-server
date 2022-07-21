@@ -1,8 +1,8 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
-#[doc = "Definition of the diagnostic.1 format."]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+///Definition of the diagnostic.1 format.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DiagnosticLogV1 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
@@ -10,12 +10,12 @@ pub struct DiagnosticLogV1 {
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl DiagnosticLogV1 {
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "\"diagnostic.1\""]
+    ///"diagnostic.1"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -24,14 +24,16 @@ impl DiagnosticLogV1 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    #[doc = "The diagnostic being logged."]
+    ///The diagnostic being logged.
     #[inline]
     pub fn diagnostic(&self) -> &super::Diagnostic {
         &*self.diagnostic
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
-    pub fn unsafe_params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+    pub fn unsafe_params(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
 }
@@ -52,11 +54,11 @@ impl From<DiagnosticLogV1> for BuilderStage3 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`DiagnosticLogV1`] type"]
+///The stage 0 builder for the [`DiagnosticLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "\"diagnostic.1\""]
+    ///"diagnostic.1"
     #[inline]
     pub fn type_<T>(self, type_: T) -> BuilderStage1
     where
@@ -67,28 +69,31 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`DiagnosticLogV1`] type"]
+///The stage 1 builder for the [`DiagnosticLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     type_: String,
 }
 impl BuilderStage1 {
     #[inline]
-    pub fn time(self, time: conjure_object::DateTime<conjure_object::Utc>) -> BuilderStage2 {
+    pub fn time(
+        self,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+    ) -> BuilderStage2 {
         BuilderStage2 {
             type_: self.type_,
             time: time,
         }
     }
 }
-#[doc = "The stage 2 builder for the [`DiagnosticLogV1`] type"]
+///The stage 2 builder for the [`DiagnosticLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
 }
 impl BuilderStage2 {
-    #[doc = "The diagnostic being logged."]
+    ///The diagnostic being logged.
     #[inline]
     pub fn diagnostic(self, diagnostic: super::Diagnostic) -> BuilderStage3 {
         BuilderStage3 {
@@ -99,7 +104,7 @@ impl BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 3 builder for the [`DiagnosticLogV1`] type"]
+///The stage 3 builder for the [`DiagnosticLogV1`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage3 {
     type_: String,
@@ -108,7 +113,7 @@ pub struct BuilderStage3 {
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl BuilderStage3 {
-    #[doc = "\"diagnostic.1\""]
+    ///"diagnostic.1"
     #[inline]
     pub fn type_<T>(mut self, type_: T) -> Self
     where
@@ -122,13 +127,13 @@ impl BuilderStage3 {
         self.time = time;
         self
     }
-    #[doc = "The diagnostic being logged."]
+    ///The diagnostic being logged.
     #[inline]
     pub fn diagnostic(mut self, diagnostic: super::Diagnostic) -> Self {
         self.diagnostic = Box::new(diagnostic);
         self
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
     pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -137,7 +142,7 @@ impl BuilderStage3 {
         self.unsafe_params = unsafe_params.into_iter().collect();
         self
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
     pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
@@ -146,20 +151,21 @@ impl BuilderStage3 {
         self.unsafe_params.extend(unsafe_params);
         self
     }
-    #[doc = "Unredacted parameters"]
+    ///Unredacted parameters
     #[inline]
     pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
     where
         K: Into<String>,
         V: conjure_object::serde::Serialize,
     {
-        self.unsafe_params.insert(
-            key.into(),
-            conjure_object::Any::new(value).expect("value failed to serialize"),
-        );
+        self.unsafe_params
+            .insert(
+                key.into(),
+                conjure_object::Any::new(value).expect("value failed to serialize"),
+            );
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> DiagnosticLogV1 {
         DiagnosticLogV1 {

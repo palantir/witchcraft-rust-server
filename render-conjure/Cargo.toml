@@ -1,10 +1,10 @@
 [package]
 name = "render-conjure"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 publish = false
 
 [dependencies]
 attohttpc = "0.19"
-conjure-codegen = "1"
+conjure-codegen = "2"
 tempfile = "3"

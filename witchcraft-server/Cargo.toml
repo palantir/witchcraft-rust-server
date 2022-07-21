@@ -1,6 +1,6 @@
 [package]
 name = "witchcraft-server"
-version = "1.4.0"
+version = "2.0.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "A highly opinionated embedded application server for RESTy APIs, compatible with the Witchcraft ecosystem"
@@ -33,11 +33,11 @@ async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 async-trait = "0.1"
 base64 = "0.13"
 bytes = "1"
-conjure-error = "1"
-conjure-http = "1"
-conjure-object = "1"
-conjure-runtime = "2"
-conjure-serde = "1"
+conjure-error = "2"
+conjure-http = "2"
+conjure-object = "2"
+conjure-runtime = "3"
+conjure-serde = "2"
 foreign-types = "0.5"
 futures-channel = "0.3"
 futures-sink = "0.3"
@@ -81,12 +81,12 @@ tokio = { version = "1", features = [
 tokio-openssl = "0.6"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log = "1"
+witchcraft-log = "2"
 witchcraft-metrics = "1"
 zipkin = "0.4"
 
-witchcraft-server-config = { version = "1.4.0", path = "../witchcraft-server-config" }
-witchcraft-server-macros = { version = "1.4.0", path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "2.0.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "2.0.0", path = "../witchcraft-server-macros" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procinfo = "0.4"
