@@ -17,10 +17,11 @@ use async_trait::async_trait;
 use conjure_error::Error;
 use minidump::{Minidump, Module};
 use minidump_processor::{
-    CallStack, ProcessState, StackFrame, SymbolError, SymbolFile, SymbolSupplier, Symbolizer,
+    CallStack, FileError, FileKind, ProcessState, StackFrame, SymbolError, SymbolFile,
+    SymbolSupplier, Symbolizer,
 };
 use std::fmt::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use symbolic::cfi::CfiCache;
 use symbolic::common::ByteView;
 use symbolic::debuginfo::Object;
@@ -74,6 +75,14 @@ impl SymbolSupplier for WitchcraftSymbolSupplier {
         let cfi_cache = CfiCache::from_object(&object).map_err(|_| SymbolError::NotFound)?;
 
         SymbolFile::from_bytes(cfi_cache.as_slice())
+    }
+
+    async fn locate_file(
+        &self,
+        _module: &(dyn Module + Sync),
+        _file_kind: FileKind,
+    ) -> Result<PathBuf, FileError> {
+        Err(FileError::NotFound)
     }
 }
 

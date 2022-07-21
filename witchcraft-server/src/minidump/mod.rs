@@ -89,7 +89,7 @@ pub fn server() -> Result<(), Error> {
 
     minidumper::Server::with_name(Path::new(SOCKET_ADDR))
         .map_err(Error::internal_safe)?
-        .run(Box::new(WitchcraftServerHandler), &shutdown)
+        .run(Box::new(WitchcraftServerHandler), &shutdown, None)
         .map_err(Error::internal_safe)
 }
 
