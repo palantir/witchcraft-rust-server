@@ -1,13 +1,13 @@
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use conjure_object::serde::{de, ser};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GenericDiagnostic {
     diagnostic_type: String,
     value: conjure_object::Any,
 }
 impl GenericDiagnostic {
-    #[doc = r" Constructs a new instance of the type."]
+    /// Constructs a new instance of the type.
     #[inline]
     pub fn new<T, U>(diagnostic_type: T, value: U) -> GenericDiagnostic
     where
@@ -19,17 +19,17 @@ impl GenericDiagnostic {
             value: conjure_object::Any::new(value).expect("value failed to serialize"),
         }
     }
-    #[doc = r" Returns a new builder."]
+    /// Returns a new builder.
     #[inline]
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    #[doc = "An identifier for the type of diagnostic represented."]
+    ///An identifier for the type of diagnostic represented.
     #[inline]
     pub fn diagnostic_type(&self) -> &str {
         &*self.diagnostic_type
     }
-    #[doc = "Observations, measurements and context associated with the diagnostic."]
+    ///Observations, measurements and context associated with the diagnostic.
     #[inline]
     pub fn value(&self) -> &conjure_object::Any {
         &self.value
@@ -50,11 +50,11 @@ impl From<GenericDiagnostic> for BuilderStage2 {
         }
     }
 }
-#[doc = "The stage 0 builder for the [`GenericDiagnostic`] type"]
+///The stage 0 builder for the [`GenericDiagnostic`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    #[doc = "An identifier for the type of diagnostic represented."]
+    ///An identifier for the type of diagnostic represented.
     #[inline]
     pub fn diagnostic_type<T>(self, diagnostic_type: T) -> BuilderStage1
     where
@@ -65,13 +65,13 @@ impl BuilderStage0 {
         }
     }
 }
-#[doc = "The stage 1 builder for the [`GenericDiagnostic`] type"]
+///The stage 1 builder for the [`GenericDiagnostic`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage1 {
     diagnostic_type: String,
 }
 impl BuilderStage1 {
-    #[doc = "Observations, measurements and context associated with the diagnostic."]
+    ///Observations, measurements and context associated with the diagnostic.
     #[inline]
     pub fn value<T>(self, value: T) -> BuilderStage2
     where
@@ -83,14 +83,14 @@ impl BuilderStage1 {
         }
     }
 }
-#[doc = "The stage 2 builder for the [`GenericDiagnostic`] type"]
+///The stage 2 builder for the [`GenericDiagnostic`] type
 #[derive(Debug, Clone)]
 pub struct BuilderStage2 {
     diagnostic_type: String,
     value: conjure_object::Any,
 }
 impl BuilderStage2 {
-    #[doc = "An identifier for the type of diagnostic represented."]
+    ///An identifier for the type of diagnostic represented.
     #[inline]
     pub fn diagnostic_type<T>(mut self, diagnostic_type: T) -> Self
     where
@@ -99,7 +99,7 @@ impl BuilderStage2 {
         self.diagnostic_type = diagnostic_type.into();
         self
     }
-    #[doc = "Observations, measurements and context associated with the diagnostic."]
+    ///Observations, measurements and context associated with the diagnostic.
     #[inline]
     pub fn value<T>(mut self, value: T) -> Self
     where
@@ -108,7 +108,7 @@ impl BuilderStage2 {
         self.value = conjure_object::Any::new(value).expect("value failed to serialize");
         self
     }
-    #[doc = r" Consumes the builder, constructing a new instance of the type."]
+    /// Consumes the builder, constructing a new instance of the type.
     #[inline]
     pub fn build(self) -> GenericDiagnostic {
         GenericDiagnostic {

@@ -1,8 +1,8 @@
-use conjure_object::private::{UnionField_, UnionTypeField_};
+use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeMap as SerializeMap_;
-use conjure_object::serde::{de, ser};
+use conjure_object::private::{UnionField_, UnionTypeField_};
 use std::fmt;
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum WrappedLogV1Payload {
     ServiceLogV1(super::ServiceLogV1),
     RequestLogV2(super::RequestLogV2),
@@ -103,12 +103,16 @@ impl<'de> de::Visitor<'de> for Visitor_ {
                         WrappedLogV1Payload::DiagnosticLogV1(value)
                     }
                     (variant, Some(key)) => {
-                        return Err(de::Error::invalid_value(
-                            de::Unexpected::Str(key.as_str()),
-                            &variant.as_str(),
-                        ));
+                        return Err(
+                            de::Error::invalid_value(
+                                de::Unexpected::Str(key.as_str()),
+                                &variant.as_str(),
+                            ),
+                        );
                     }
-                    (variant, None) => return Err(de::Error::missing_field(variant.as_str())),
+                    (variant, None) => {
+                        return Err(de::Error::missing_field(variant.as_str()));
+                    }
                 }
             }
             Some(UnionField_::Value(variant)) => {
@@ -147,10 +151,12 @@ impl<'de> de::Visitor<'de> for Visitor_ {
                 }
                 let type_variant = map.next_value::<Variant_>()?;
                 if variant != type_variant {
-                    return Err(de::Error::invalid_value(
-                        de::Unexpected::Str(type_variant.as_str()),
-                        &variant.as_str(),
-                    ));
+                    return Err(
+                        de::Error::invalid_value(
+                            de::Unexpected::Str(type_variant.as_str()),
+                            &variant.as_str(),
+                        ),
+                    );
                 }
                 value
             }
@@ -212,18 +218,20 @@ impl<'de> de::Visitor<'de> for VariantVisitor_ {
             "auditLogV2" => Variant_::AuditLogV2,
             "diagnosticLogV1" => Variant_::DiagnosticLogV1,
             value => {
-                return Err(de::Error::unknown_variant(
-                    value,
-                    &[
-                        "serviceLogV1",
-                        "requestLogV2",
-                        "traceLogV1",
-                        "eventLogV2",
-                        "metricLogV1",
-                        "auditLogV2",
-                        "diagnosticLogV1",
-                    ],
-                ))
+                return Err(
+                    de::Error::unknown_variant(
+                        value,
+                        &[
+                            "serviceLogV1",
+                            "requestLogV2",
+                            "traceLogV1",
+                            "eventLogV2",
+                            "metricLogV1",
+                            "auditLogV2",
+                            "diagnosticLogV1",
+                        ],
+                    ),
+                );
             }
         };
         Ok(v)

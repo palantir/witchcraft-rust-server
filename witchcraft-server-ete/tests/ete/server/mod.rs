@@ -34,6 +34,7 @@ use tokio::{task, time};
 use tokio_openssl::SslStream;
 
 #[allow(warnings)]
+#[rustfmt::skip]
 #[path = "../../../../witchcraft-server/src/logging/api/mod.rs"]
 pub mod api;
 

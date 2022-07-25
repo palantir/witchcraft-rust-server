@@ -20,6 +20,7 @@ use staged_builder::staged_builder;
 use std::collections::BTreeMap;
 
 #[allow(warnings)]
+#[rustfmt::skip]
 pub(crate) mod api;
 pub(crate) mod config_reload;
 pub(crate) mod endpoint_500s;
