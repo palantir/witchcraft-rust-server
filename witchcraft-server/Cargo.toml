@@ -1,6 +1,6 @@
 [package]
 name = "witchcraft-server"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "A highly opinionated embedded application server for RESTy APIs, compatible with the Witchcraft ecosystem"
@@ -28,6 +28,7 @@ default = ["jemalloc"]
 jemalloc = ["tikv-jemalloc-ctl", "tikv-jemallocator"]
 
 [dependencies]
+addr2line = "0.17"
 arc-swap = "1"
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 async-trait = "0.1"
@@ -38,6 +39,7 @@ conjure-http = "2"
 conjure-object = "2"
 conjure-runtime = "3"
 conjure-serde = "2"
+crash-handler = "0.3"
 foreign-types = "0.5"
 futures-channel = "0.3"
 futures-sink = "0.3"
@@ -49,6 +51,9 @@ hyper = { version = "0.14", features = ["http1", "http2", "server"] }
 itertools = "0.10"
 libc = "0.2"
 log = "0.4"
+minidump = "0.12"
+minidump-processor = "0.12"
+minidumper = "0.5"
 num_cpus = "1"
 once_cell = "1"
 openssl = "0.10"
@@ -57,6 +62,7 @@ pin-project = "1"
 rand = "0.8"
 refreshable = "1"
 regex = "1"
+rustc-demangle = "0.1"
 serde = "1"
 serde-encrypted-value = "0.4"
 serde_json = "1"
@@ -64,6 +70,7 @@ serde_yaml = "0.9"
 sequence_trie = "0.3"
 socket2 = "0.4"
 staged-builder = "0.1.1"
+symbolic = { version = "9", features = ["cfi", "debuginfo"] }
 sync_wrapper = "0.1"
 tikv-jemalloc-ctl = { version = "0.5", features = ["use_std"], optional = true }
 tikv-jemallocator = { version = "0.5", features = [
@@ -81,18 +88,17 @@ tokio = { version = "1", features = [
 tokio-openssl = "0.6"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1", features = ["log"] }
+typed-arena = "2"
 witchcraft-log = "2"
 witchcraft-metrics = "1"
 zipkin = "0.4"
 
-witchcraft-server-config = { version = "2.0.0", path = "../witchcraft-server-config" }
-witchcraft-server-macros = { version = "2.0.0", path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "2.1.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "2.1.0", path = "../witchcraft-server-macros" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procinfo = "0.4"
 rstack-self = { version = "0.3", features = ["dw"], default-features = false }
-rustc-demangle = "0.1"
-unwind = "0.4"
 
 [dev-dependencies]
 flate2 = "1"
