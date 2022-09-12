@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::service::peer_addr::GetPeerAddr;
 use crate::service::{Layer, Service};
 use futures_util::ready;
 use pin_project::{pin_project, pinned_drop};
@@ -157,5 +158,14 @@ where
 
     fn is_write_vectored(&self) -> bool {
         self.inner.is_write_vectored()
+    }
+}
+
+impl<S> GetPeerAddr for ConnectionMetricsStream<S>
+where
+    S: GetPeerAddr,
+{
+    fn peer_addr(&self) -> Result<std::net::SocketAddr, conjure_error::Error> {
+        self.inner.peer_addr()
     }
 }
