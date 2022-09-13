@@ -31,6 +31,7 @@ use crate::service::idle_connection::IdleConnectionLayer;
 use crate::service::keep_alive_header::KeepAliveHeaderLayer;
 use crate::service::mdc::MdcLayer;
 use crate::service::no_caching::NoCachingLayer;
+use crate::service::peer_addr::PeerAddrLayer;
 use crate::service::request_id::RequestIdLayer;
 use crate::service::request_log::{RequestLogLayer, RequestLogRequestBody};
 use crate::service::routing::RoutingLayer;
@@ -87,6 +88,7 @@ pub async fn start(
 
     // This layer handles individual TCP connections, each running concurrently.
     let handle_service = ServiceBuilder::new()
+        .layer(PeerAddrLayer)
         .layer(TlsLayer::new(&witchcraft.install_config)?)
         .layer(TlsMetricsLayer::new(&witchcraft.metrics))
         .layer(ClientCertificateLayer)

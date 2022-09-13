@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::service::peer_addr::GetPeerAddr;
 use crate::service::Service;
 use conjure_error::Error;
 use futures_util::ready;
@@ -131,4 +132,10 @@ fn setup_socket(stream: &TcpStream) -> io::Result<()> {
     stream.set_nodelay(true)?;
     SockRef::from(stream).set_tcp_keepalive(&TcpKeepalive::new().with_time(TCP_KEEPALIVE))?;
     Ok(())
+}
+
+impl GetPeerAddr for TcpStream {
+    fn peer_addr(&self) -> Result<SocketAddr, Error> {
+        self.peer_addr().map_err(Error::internal_safe)
+    }
 }
