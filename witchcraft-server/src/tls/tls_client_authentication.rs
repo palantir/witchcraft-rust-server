@@ -18,8 +18,7 @@ use conjure_http::server::{
     AsyncEndpoint, AsyncResponseBody, AsyncService, Endpoint, EndpointMetadata, PathSegment,
     ResponseBody, Service,
 };
-use conjure_http::SafeParams;
-use http::{Method, Request, Response};
+use http::{Extensions, Method, Request, Response};
 use openssl::nid::Nid;
 use openssl::stack::Stack;
 use openssl::x509::{GeneralName, X509NameRef};
@@ -192,11 +191,11 @@ where
 {
     fn handle(
         &self,
-        safe_params: &mut SafeParams,
         req: Request<I>,
+        response_extensions: &mut Extensions,
     ) -> Result<Response<ResponseBody<O>>, Error> {
         self.check_request(&req)?;
-        self.inner.handle(safe_params, req)
+        self.inner.handle(req, response_extensions)
     }
 }
 
@@ -208,13 +207,13 @@ where
 {
     async fn handle(
         &self,
-        safe_params: &mut SafeParams,
         req: Request<I>,
+        response_extensions: &mut Extensions,
     ) -> Result<Response<AsyncResponseBody<O>>, Error>
     where
         I: 'async_trait,
     {
         self.check_request(&req)?;
-        self.inner.handle(safe_params, req).await
+        self.inner.handle(req, response_extensions).await
     }
 }

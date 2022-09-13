@@ -20,7 +20,7 @@ use conjure_http::server::{
 };
 use conjure_http::{PathParams, SafeParams};
 use http::header::{HeaderName, AUTHORIZATION, CONTENT_TYPE};
-use http::{HeaderValue, Method, Request, Response};
+use http::{Extensions, HeaderValue, Method, Request, Response};
 use once_cell::sync::Lazy;
 use openssl::memcmp;
 use refreshable::Refreshable;
@@ -108,9 +108,12 @@ impl EndpointMetadata for DiagnosticEndpoint {
 impl AsyncEndpoint<RequestBody, ResponseWriter> for DiagnosticEndpoint {
     async fn handle(
         &self,
-        safe_params: &mut SafeParams,
         req: Request<RequestBody>,
+        response_extensions: &mut Extensions,
     ) -> Result<Response<AsyncResponseBody<ResponseWriter>>, Error> {
+        response_extensions.insert(SafeParams::new());
+        let safe_params = response_extensions.get_mut::<SafeParams>().unwrap();
+
         let diagnostic_type = &req
             .extensions()
             .get::<PathParams>()

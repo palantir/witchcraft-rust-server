@@ -25,12 +25,12 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use conjure_error::Error;
 use conjure_http::server::{self, Endpoint, EndpointMetadata, PathSegment, WriteBody};
-use conjure_http::SafeParams;
 use futures_channel::{mpsc, oneshot};
 use futures_util::Stream;
-use http::{HeaderMap, Method, Request, Response, StatusCode};
+use http::{Extensions, HeaderMap, Method, Request, Response, StatusCode};
 use http_body::combinators::BoxBody;
 use http_body::{Body, SizeHint};
+use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -116,16 +116,24 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
             let _guard = trace_context.map(zipkin::set_current);
             mdc::set(snapshot);
 
-            let mut safe_params = SafeParams::new();
             let req = req.map(|inner| RequestBody::new(inner, handle.clone()));
+            let mut response_extensions = Extensions::new();
 
-            let mut response = endpoint.handle(&mut safe_params, req).unwrap_or_else(|e| {
-                errors::to_response(e, |o| {
+            let mut response = match panic::catch_unwind(AssertUnwindSafe(|| {
+                endpoint.handle(req, &mut response_extensions)
+            })) {
+                Ok(Ok(resp)) => resp,
+                Ok(Err(e)) => errors::to_response(e, |o| {
                     o.map_or(server::ResponseBody::Empty, server::ResponseBody::Fixed)
-                })
-            });
+                }),
+                Err(_) => {
+                    let mut response = Response::new(server::ResponseBody::Empty);
+                    *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                    response
+                }
+            };
 
-            response.extensions_mut().insert(safe_params);
+            response.extensions_mut().extend(response_extensions);
 
             let (parts, body) = response.into_parts();
             let (body, writer) = ResponseBody::new(body, guard, handle);
