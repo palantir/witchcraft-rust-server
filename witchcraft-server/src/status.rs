@@ -20,10 +20,9 @@ use conjure_error::{Error, PermissionDenied};
 use conjure_http::server::{
     AsyncEndpoint, AsyncResponseBody, AsyncService, EndpointMetadata, PathSegment,
 };
-use conjure_http::SafeParams;
 use conjure_serde::json;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
-use http::{HeaderValue, Method, Request, Response, StatusCode};
+use http::{Extensions, HeaderValue, Method, Request, Response, StatusCode};
 use openssl::memcmp;
 use refreshable::Refreshable;
 use std::borrow::Cow;
@@ -114,8 +113,8 @@ impl EndpointMetadata for LivenessEndpoint {
 impl AsyncEndpoint<RequestBody, ResponseWriter> for LivenessEndpoint {
     async fn handle(
         &self,
-        _: &mut SafeParams,
         _: Request<RequestBody>,
+        _: &mut Extensions,
     ) -> Result<Response<AsyncResponseBody<ResponseWriter>>, Error> {
         let mut response = Response::new(AsyncResponseBody::Empty);
         *response.status_mut() = StatusCode::NO_CONTENT;
@@ -160,8 +159,8 @@ impl EndpointMetadata for HealthEndpoint {
 impl AsyncEndpoint<RequestBody, ResponseWriter> for HealthEndpoint {
     async fn handle(
         &self,
-        _: &mut SafeParams,
         req: Request<RequestBody>,
+        _: &mut Extensions,
     ) -> Result<Response<AsyncResponseBody<ResponseWriter>>, Error> {
         let authorization = match req.headers().get(AUTHORIZATION) {
             Some(authorization) => authorization,
@@ -232,8 +231,8 @@ impl EndpointMetadata for ReadinessEndpoint {
 impl AsyncEndpoint<RequestBody, ResponseWriter> for ReadinessEndpoint {
     async fn handle(
         &self,
-        _: &mut SafeParams,
         _: Request<RequestBody>,
+        _: &mut Extensions,
     ) -> Result<Response<AsyncResponseBody<ResponseWriter>>, Error> {
         let readiness_checks = task::spawn_blocking({
             let readiness_checks = self.state.readiness_checks.clone();

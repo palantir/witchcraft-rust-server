@@ -1,0 +1,5 @@
+type: break
+break:
+  description: Bumped to Conjure 3.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/77

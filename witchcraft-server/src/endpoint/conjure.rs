@@ -22,15 +22,15 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use conjure_error::Error;
 use conjure_http::server::{AsyncEndpoint, AsyncResponseBody, EndpointMetadata, PathSegment};
-use conjure_http::SafeParams;
 use futures_channel::mpsc;
 use futures_util::future::{BoxFuture, Fuse, FusedFuture};
 use futures_util::{FutureExt, Stream};
-use http::{HeaderMap, Method, Request, Response};
+use http::{Extensions, HeaderMap, Method, Request, Response, StatusCode};
 use http_body::combinators::BoxBody;
 use http_body::{Body, SizeHint};
 use std::future::Future;
 use std::mem;
+use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -96,11 +96,15 @@ impl WitchcraftEndpoint for ConjureEndpoint {
     }
 
     async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
-        let mut safe_params = SafeParams::new();
         let req = req.map(RequestBody::new);
-        let mut response = match self.inner.handle(&mut safe_params, req).await {
-            Ok(response) => response.map(ResponseBody::new),
-            Err(error) => errors::to_response(error, |o| {
+        let mut response_extensions = Extensions::new();
+
+        let mut response = match AssertUnwindSafe(self.inner.handle(req, &mut response_extensions))
+            .catch_unwind()
+            .await
+        {
+            Ok(Ok(response)) => response.map(ResponseBody::new),
+            Ok(Err(error)) => errors::to_response(error, |o| {
                 o.map_or(
                     ResponseBody {
                         state: State::Empty,
@@ -112,8 +116,16 @@ impl WitchcraftEndpoint for ConjureEndpoint {
                     },
                 )
             }),
+            Err(_) => {
+                let mut response = Response::new(ResponseBody {
+                    state: State::Empty,
+                    trailers: None,
+                });
+                *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                response
+            }
         };
-        response.extensions_mut().insert(safe_params);
+        response.extensions_mut().extend(response_extensions);
         response.map(|b| b.boxed())
     }
 }
