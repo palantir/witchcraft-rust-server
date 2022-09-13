@@ -3,7 +3,13 @@ pub use self::annotation::Annotation;
 #[doc(inline)]
 pub use self::audit_log_v2::AuditLogV2;
 #[doc(inline)]
+pub use self::audit_log_v3::AuditLogV3;
+#[doc(inline)]
+pub use self::audit_producer::AuditProducer;
+#[doc(inline)]
 pub use self::audit_result::AuditResult;
+#[doc(inline)]
+pub use self::contextualized_user::ContextualizedUser;
 #[doc(inline)]
 pub use self::diagnostic::Diagnostic;
 #[doc(inline)]
@@ -21,11 +27,15 @@ pub use self::log_level::LogLevel;
 #[doc(inline)]
 pub use self::metric_log_v1::MetricLogV1;
 #[doc(inline)]
+pub use self::organization::Organization;
+#[doc(inline)]
 pub use self::request_log::RequestLog;
 #[doc(inline)]
 pub use self::request_log_v1::RequestLogV1;
 #[doc(inline)]
 pub use self::request_log_v2::RequestLogV2;
+#[doc(inline)]
+pub use self::sensitivity_tagged_value::SensitivityTaggedValue;
 #[doc(inline)]
 pub use self::service_log_v1::ServiceLogV1;
 #[doc(inline)]
@@ -56,7 +66,10 @@ pub use self::wrapped_log_v1::WrappedLogV1;
 pub use self::wrapped_log_v1_payload::WrappedLogV1Payload;
 pub mod annotation;
 pub mod audit_log_v2;
+pub mod audit_log_v3;
+pub mod audit_producer;
 pub mod audit_result;
+pub mod contextualized_user;
 pub mod diagnostic;
 pub mod diagnostic_log_v1;
 pub mod endpoint;
@@ -65,9 +78,11 @@ pub mod event_log_v2;
 pub mod generic_diagnostic;
 pub mod log_level;
 pub mod metric_log_v1;
+pub mod organization;
 pub mod request_log;
 pub mod request_log_v1;
 pub mod request_log_v2;
+pub mod sensitivity_tagged_value;
 pub mod service_log_v1;
 pub mod session_id;
 pub mod span;

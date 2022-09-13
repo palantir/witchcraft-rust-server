@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::path::Path;
 
-const API_VERSION: &str = "2.0.0";
+const API_VERSION: &str = "2.2.0";
 
 fn main() {
     let logging_api_url = format!(
