@@ -11,7 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::logging::api::{LogLevel, MetricLogV1, RequestLogV2, ServiceLogV1, TraceLogV1};
+use crate::logging::api::{
+    AuditLogV3, LogLevel, MetricLogV1, RequestLogV2, ServiceLogV1, TraceLogV1,
+};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use witchcraft_metrics::{Meter, MetricId, MetricRegistry};
@@ -63,6 +65,18 @@ impl LogFormat for TraceLogV1 {
     const FILE_STEM: &'static str = "trace";
     const SIZE_LIMIT_GB: u32 = 1;
     const TIME_LIMIT_DAYS: u32 = 5;
+
+    type Reporter = StandardReporter<Self>;
+}
+
+impl LogFormat for AuditLogV3 {
+    const TYPE: &'static str = "audit.3";
+
+    const FILE_STEM: &'static str = "audit.3";
+
+    const SIZE_LIMIT_GB: u32 = 1024;
+
+    const TIME_LIMIT_DAYS: u32 = 30;
 
     type Reporter = StandardReporter<Self>;
 }
