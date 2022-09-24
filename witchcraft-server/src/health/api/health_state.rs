@@ -17,8 +17,6 @@ pub enum HealthState {
     Error,
     ///The service node has entered an unrecoverable state. All nodes of the service should be stopped and no automated attempt to restart the node should be made. Ex: a service fails to migrate to a new schema and is left in an unrecoverable state.
     Terminal,
-    /// An unknown variant.
-    Unknown(Unknown),
 }
 impl HealthState {
     /// Returns the string representation of the enum.
@@ -32,7 +30,6 @@ impl HealthState {
             HealthState::Warning => "WARNING",
             HealthState::Error => "ERROR",
             HealthState::Terminal => "TERMINAL",
-            HealthState::Unknown(v) => &*v,
         }
     }
 }
@@ -58,13 +55,7 @@ impl str::FromStr for HealthState {
             "WARNING" => Ok(HealthState::Warning),
             "ERROR" => Ok(HealthState::Error),
             "TERMINAL" => Ok(HealthState::Terminal),
-            v => {
-                if conjure_object::private::valid_enum_variant(v) {
-                    Ok(HealthState::Unknown(Unknown(v.to_string().into_boxed_str())))
-                } else {
-                    Err(conjure_object::plain::ParseEnumError::new())
-                }
-            }
+            _ => Err(conjure_object::plain::ParseEnumError::new()),
         }
     }
 }
@@ -122,21 +113,5 @@ impl<'de> de::Visitor<'de> for Visitor_ {
                 )
             }
         }
-    }
-}
-///An unknown variant of the HealthState enum.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Unknown(Box<str>);
-impl std::ops::Deref for Unknown {
-    type Target = str;
-    #[inline]
-    fn deref(&self) -> &str {
-        &self.0
-    }
-}
-impl fmt::Display for Unknown {
-    #[inline]
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, fmt)
     }
 }
