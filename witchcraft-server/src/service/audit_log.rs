@@ -164,6 +164,7 @@ mod test {
     use crate::service::test_util::service_fn;
     use conjure_object::{Utc, Uuid};
 
+    #[allow(clippy::large_enum_variant)]
     #[derive(PartialEq, Debug)]
     enum TestSinkEvent {
         Item(AuditLogV3),
