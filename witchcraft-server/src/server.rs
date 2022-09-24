@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::logging::api::RequestLogV2;
-use crate::logging::Appender;
+use crate::logging::Loggers;
 use crate::service::accept::AcceptService;
+use crate::service::audit_log::AuditLogLayer;
 use crate::service::cancellation::CancellationLayer;
 use crate::service::catch_unwind::CatchUnwindLayer;
 use crate::service::client_certificate::ClientCertificateLayer;
@@ -49,7 +49,9 @@ use crate::service::{Service, ServiceBuilder};
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::Witchcraft;
 use conjure_error::Error;
+use std::future::Future;
 use std::mem;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
@@ -59,7 +61,7 @@ pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 pub async fn start(
     witchcraft: &mut Witchcraft,
     shutdown_hooks: &mut ShutdownHooks,
-    request_logger: Appender<RequestLogV2>,
+    loggers: Loggers,
 ) -> Result<(), Error> {
     // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
@@ -70,7 +72,8 @@ pub async fn start(
         .layer(UnverifiedJwtLayer)
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
-        .layer(RequestLogLayer::new(request_logger))
+        .layer(RequestLogLayer::new(loggers.request_logger))
+        .layer(AuditLogLayer::new(loggers.audit_logger))
         .layer(CancellationLayer)
         .layer(GzipLayer::new(&witchcraft.install_config))
         .layer(DeprecationHeaderLayer)
@@ -117,7 +120,11 @@ pub async fn start(
             task::spawn({
                 let handle_service = handle_service.clone();
                 async move {
-                    if let Err(e) = handle_service.call(connection).await {
+                    // The compiler hits a `higher-ranked lifetime error` if we don't box this future :/
+                    // https://github.com/rust-lang/rust/issues/102211
+                    let f: Pin<Box<dyn Future<Output = Result<(), Error>> + Send>> =
+                        Box::pin(handle_service.call(connection));
+                    if let Err(e) = f.await {
                         debug!("http connection terminated", error: e);
                     }
                 }

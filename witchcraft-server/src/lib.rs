@@ -321,11 +321,13 @@ pub use witchcraft_server_config as config;
 #[doc(inline)]
 pub use witchcraft_server_macros::main;
 
+pub mod audit;
 pub mod blocking;
 mod body;
 mod configs;
 mod debug;
 mod endpoint;
+pub mod extensions;
 pub mod health;
 mod logging;
 mod metrics;
@@ -475,7 +477,7 @@ where
     handle.block_on(server::start(
         &mut witchcraft,
         &mut server_shutdown_hooks,
-        loggers.request_logger,
+        loggers,
     ))?;
 
     handle.block_on(shutdown(

@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::api::{AuditLogV3, RequestLogV2};
-use crate::logging::logger::SyncAppender;
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
-pub use logger::Appender;
+pub use logger::{Appender, SyncAppender};
 use refreshable::Refreshable;
 use std::sync::Arc;
 use witchcraft_metrics::MetricRegistry;

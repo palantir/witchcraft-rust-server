@@ -211,6 +211,30 @@ async fn diagnostic_types_diagnostic() {
 }
 
 #[tokio::test]
+async fn audit_logs() {
+    Server::with(|server| async move {
+        let request = Request::builder()
+            .method("GET")
+            .uri("/witchcraft-ete/api/audit")
+            .body(Body::empty())
+            .unwrap();
+        let response = server
+            .client()
+            .await
+            .unwrap()
+            .send_request(request)
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let logs = server.shutdown().await;
+        assert_eq!(logs.audit.len(), 1);
+        assert_eq!(logs.audit[0].name(), "TEST");
+    })
+    .await;
+}
+
+#[tokio::test]
 async fn trailers() {
     Server::builder()
         .http2(true)
