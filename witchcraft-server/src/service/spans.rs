@@ -145,7 +145,12 @@ where
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
         let this = self.project();
 
-        let span = this.span.as_mut().unwrap().get();
+        let span = match this.span.as_mut() {
+            Some(span) => span.get(),
+            // Early-exit on polls after error or EOF
+            None => return Poll::Ready(None),
+        };
+
         let _guard = zipkin::set_current(span.context());
 
         let poll = this.inner.poll_data(cx);

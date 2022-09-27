@@ -50,3 +50,8 @@ services:
         args:
           body: binary
         returns: binary
+      ioAfterEof:
+        http: POST /ioAfterEof
+        args:
+          body: binary
+        returns: binary

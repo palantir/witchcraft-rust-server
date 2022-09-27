@@ -277,3 +277,27 @@ impl HttpBody for TrailersBody {
         Poll::Ready(Ok(Some(trailers)))
     }
 }
+
+#[tokio::test]
+async fn io_after_eof() {
+    Server::with(|server| async move {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/witchcraft-ete/api/test/ioAfterEof")
+            .header("Content-Type", "application/octet-stream")
+            .body(Body::from("hello world"))
+            .unwrap();
+        let response = server
+            .client()
+            .await
+            .unwrap()
+            .send_request(request)
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        drop(response);
+
+        server.shutdown().await;
+    })
+    .await;
+}

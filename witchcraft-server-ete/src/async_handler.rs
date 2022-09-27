@@ -28,6 +28,7 @@ pub struct TestResource;
 impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
     type SlowBodyBody = SlowBodyBody;
     type TrailersBody = TrailersBody;
+    type IoAfterEofBody = IoAfterEofBody;
 
     async fn safe_params(
         &self,
@@ -71,6 +72,17 @@ impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
 
         Ok(TrailersBody)
     }
+
+    async fn io_after_eof(&self, body: RequestBody) -> Result<IoAfterEofBody, Error> {
+        pin!(body);
+        let mut buf = [0; 1024];
+        while body.read(&mut buf).await.unwrap() != 0 {}
+
+        // we don't care if this returns an err, just that we don't panic
+        let _ = body.read(&mut buf).await;
+
+        Ok(IoAfterEofBody)
+    }
 }
 
 pub struct SlowBodyBody(Duration);
@@ -105,6 +117,20 @@ impl AsyncWriteBody<ResponseWriter> for TrailersBody {
             HeaderValue::from_static("expected response trailer value"),
         );
         w.send_trailers(trailers).await.unwrap();
+        Ok(())
+    }
+}
+
+pub struct IoAfterEofBody;
+
+#[async_trait]
+impl AsyncWriteBody<ResponseWriter> for IoAfterEofBody {
+    async fn write_body(self: Box<Self>, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
+        let buf = [0; 1024];
+        while w.write(&buf).await.unwrap() != 0 {}
+
+        // we don't care if this returns an err, just that we don't panic
+        let _ = w.write(&buf).await;
         Ok(())
     }
 }
