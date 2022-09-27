@@ -25,6 +25,7 @@ pub struct TestResource;
 impl TestService<RequestBody, ResponseWriter> for TestResource {
     type SlowBodyBody = SlowBodyBody;
     type TrailersBody = TrailersBody;
+    type IoAfterEofBody = IoAfterEofBody;
 
     fn safe_params(
         &self,
@@ -67,6 +68,16 @@ impl TestService<RequestBody, ResponseWriter> for TestResource {
 
         Ok(TrailersBody)
     }
+
+    fn io_after_eof(&self, mut body: RequestBody) -> Result<IoAfterEofBody, Error> {
+        let mut buf = [0; 1024];
+        while body.read(&mut buf).unwrap() != 0 {}
+
+        // we don't care if this returns an err, just that we don't panic
+        let _ = body.read(&mut buf);
+
+        Ok(IoAfterEofBody)
+    }
 }
 
 pub struct SlowBodyBody(Duration);
@@ -96,6 +107,19 @@ impl WriteBody<ResponseWriter> for TrailersBody {
             HeaderValue::from_static("expected response trailer value"),
         );
         w.send_trailers(trailers).unwrap();
+        Ok(())
+    }
+}
+
+pub struct IoAfterEofBody;
+
+impl WriteBody<ResponseWriter> for IoAfterEofBody {
+    fn write_body(self: Box<Self>, w: &mut ResponseWriter) -> Result<(), Error> {
+        let buf = [0; 1024];
+        while w.write(&buf).unwrap() != 0 {}
+
+        // we don't care if this returns an err, just that we don't panic
+        let _ = w.write(&buf);
         Ok(())
     }
 }
