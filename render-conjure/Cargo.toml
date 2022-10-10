@@ -5,6 +5,6 @@ edition = "2021"
 publish = false
 
 [dependencies]
-attohttpc = "0.22"
+attohttpc = "0.23"
 conjure-codegen = "2"
 tempfile = "3"
