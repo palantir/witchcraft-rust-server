@@ -31,7 +31,7 @@ use witchcraft_log::error;
 
 /// A layer which records audit logs associated with requests.
 ///
-/// If a response contains a [`AuditLogEntry`] extension, it will be sent to the provides logger sink and flushed
+/// If a response contains a [`AuditLogEntry`] extension, it will be sent to the provided logger sink and flushed
 /// before the response is returned. If the entry cannot be logged, the response will be converted into a 500. This
 /// guarantees that a user will only see the results of a request after its associated audit log has been persisted.
 ///
