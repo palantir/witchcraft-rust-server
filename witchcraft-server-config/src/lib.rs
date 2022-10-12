@@ -13,6 +13,8 @@
 // limitations under the License.
 //! Witchcraft server configuration.
 #![warn(missing_docs)]
+// We want to be able to add float values to configs in the future
+#![allow(clippy::derive_partial_eq_without_eq)]
 use core::fmt;
 use std::error::Error;
 
