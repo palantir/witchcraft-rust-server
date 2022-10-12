@@ -1,3 +1,6 @@
+[workspace.package]
+version = "3.1.0"
+
 [workspace]
 members = [
     "render-conjure",

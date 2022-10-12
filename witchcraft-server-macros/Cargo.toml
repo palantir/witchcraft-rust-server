@@ -1,6 +1,6 @@
 [package]
 name = "witchcraft-server-macros"
-version = "2.1.0"
+version.workspace = true
 edition = "2021"
 license = "Apache-2.0"
 description = "Macro definitions used by witchcraft-server"
@@ -19,4 +19,4 @@ syn = { version = "1", features = ["full"] }
 conjure-error = "3"
 refreshable = "1"
 
-witchcraft-server = { version = "2.1.0", path = "../witchcraft-server" }
+witchcraft-server = { version = "3.1.0", path = "../witchcraft-server" }
