@@ -11,10 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::logging::api::RequestLogV2;
+use crate::logging::api::{AuditLogV3, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
-pub use logger::Appender;
+pub use logger::{Appender, SyncAppender};
 use refreshable::Refreshable;
 use std::sync::Arc;
 use witchcraft_metrics::MetricRegistry;
@@ -40,6 +40,7 @@ pub const SAMPLED_KEY: &str = "_sampled";
 
 pub struct Loggers {
     pub request_logger: Appender<RequestLogV2>,
+    pub audit_logger: SyncAppender<AuditLogV3>,
 }
 
 pub fn early_init() {
@@ -56,8 +57,12 @@ pub async fn init(
     service::init(metrics, install, runtime, hooks).await?;
     trace::init(metrics, install, runtime, hooks).await?;
     let request_logger = logger::appender(install, metrics, hooks).await?;
+    let audit_logger = logger::sync_appender(install, metrics).await?;
 
     cleanup::cleanup_logs().await;
 
-    Ok(Loggers { request_logger })
+    Ok(Loggers {
+        request_logger,
+        audit_logger,
+    })
 }

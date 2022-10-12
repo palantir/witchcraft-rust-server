@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use api::{LogLevel, RequestLogV2, ServiceLogV1};
+use api::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
 use conjure_serde::json;
 use hyper::body::HttpBody;
 use hyper::client::conn::{self, SendRequest};
@@ -223,6 +223,7 @@ impl Server {
         let mut logs = ServerLogs {
             service: vec![],
             request: vec![],
+            audit: vec![],
         };
 
         let stdout = self.stdout_rx.take().unwrap().await.unwrap();
@@ -231,6 +232,8 @@ impl Server {
                 logs.service.push(json::server_from_str(line).unwrap());
             } else if line.contains("request.2") {
                 logs.request.push(json::server_from_str(line).unwrap());
+            } else if line.contains("audit.3") {
+                logs.audit.push(json::server_from_str(line).unwrap());
             }
         }
 
@@ -264,6 +267,7 @@ impl Builder {
 pub struct ServerLogs {
     pub service: Vec<ServiceLogV1>,
     pub request: Vec<RequestLogV2>,
+    pub audit: Vec<AuditLogV3>,
 }
 
 impl ServerLogs {

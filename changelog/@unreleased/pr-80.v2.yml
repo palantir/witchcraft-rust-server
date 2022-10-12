@@ -1,0 +1,6 @@
+type: feature
+feature:
+  description: The server now supports audit logging via an `AuditLogEntry` response
+    extension.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/80

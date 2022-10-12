@@ -9,13 +9,13 @@ name = "witchcraft-server-ete"
 test = false
 
 [build-dependencies]
-conjure-codegen = "2"
+conjure-codegen = "3"
 
 [dependencies]
 async-trait = "0.1"
-conjure-error = "2"
-conjure-http = "2"
-conjure-object = "2"
+conjure-error = "3"
+conjure-http = "3"
+conjure-object = "3"
 http = "0.2"
 refreshable = "1"
 tokio = "1"
@@ -24,7 +24,7 @@ witchcraft-server = { path = "../witchcraft-server" }
 
 [dev-dependencies]
 bytes = "1"
-conjure-serde = "2"
+conjure-serde = "3"
 hyper = "0.14"
 libc = "0.2"
 openssl = "0.10"

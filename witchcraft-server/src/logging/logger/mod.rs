@@ -34,8 +34,9 @@ pub mod rolling_file;
 pub mod stdout;
 
 pub type Appender<T> = AsyncAppender<T>;
+pub type SyncAppender<T> =
+    MetricsAppender<JsonAppender<Pin<Box<dyn Sink<Bytes, Error = io::Error> + Sync + Send>>>, T>;
 
-#[allow(dead_code)]
 pub async fn appender<T>(
     config: &InstallConfig,
     metrics: &MetricRegistry,
@@ -44,6 +45,19 @@ pub async fn appender<T>(
 where
     T: Serialize + LogFormat + 'static + Send,
     T::Reporter: 'static + Send,
+{
+    let appender = sync_appender(config, metrics).await?;
+    let appender = AsyncAppender::new(appender, metrics, hooks);
+
+    Ok(appender)
+}
+
+pub async fn sync_appender<T>(
+    config: &InstallConfig,
+    metrics: &MetricRegistry,
+) -> Result<SyncAppender<T>, Error>
+where
+    T: Serialize + LogFormat + 'static + Send,
 {
     let appender: Pin<Box<dyn Sink<Bytes, Error = io::Error> + Sync + Send>> = if config
         .use_console_log()
@@ -57,7 +71,6 @@ where
 
     let appender = JsonAppender::new(appender);
     let appender = MetricsAppender::new(appender, metrics);
-    let appender = AsyncAppender::new(appender, metrics, hooks);
 
     Ok(appender)
 }

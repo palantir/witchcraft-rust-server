@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::extensions::PeerAddr;
 use crate::service::hyper::NewConnection;
 use crate::service::{Layer, Service, Stack};
 use conjure_error::Error;
 use futures_util::future::{self, Either};
 use http::Request;
 use std::net::SocketAddr;
-
-#[derive(Copy, Clone)]
-pub struct PeerAddr(pub SocketAddr);
 
 pub trait GetPeerAddr {
     fn peer_addr(&self) -> Result<SocketAddr, Error>;

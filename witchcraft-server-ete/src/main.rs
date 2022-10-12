@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::audit_service::AuditService;
 use crate::conjure::TestServiceEndpoints;
 use conjure_error::Error;
 use refreshable::Refreshable;
@@ -20,6 +21,7 @@ use witchcraft_server::config::runtime::RuntimeConfig;
 use witchcraft_server::Witchcraft;
 
 mod async_handler;
+mod audit_service;
 mod handler;
 
 #[allow(dead_code, warnings)]
@@ -36,9 +38,11 @@ fn main(
     match &*env::var("HANDLER_TYPE").unwrap() {
         "async" => {
             wc.api(TestServiceEndpoints::new(async_handler::TestResource));
+            wc.api(AuditService);
         }
         "blocking" => {
             wc.blocking_api(TestServiceEndpoints::new(handler::TestResource));
+            wc.blocking_api(AuditService);
         }
         ty => panic!("invalid handler type {ty}"),
     }
