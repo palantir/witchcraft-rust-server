@@ -1,0 +1,6 @@
+type: fix
+fix:
+  description: Fixed a panic when reading the request body or writing the response
+    body after an IO error or EOS.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/79
