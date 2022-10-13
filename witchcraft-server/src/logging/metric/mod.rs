@@ -18,6 +18,7 @@ use crate::logging::metric::gauge_reporter::GaugeReporter;
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
 use conjure_object::Utc;
+use futures_sink::Sink;
 use futures_util::{ready, SinkExt, Stream};
 use pin_project::pin_project;
 use std::future::Future;
@@ -189,7 +190,7 @@ impl Future for IdleFuture<'_> {
         }
 
         while !this.gauge_reporter.is_empty() {
-            if let Err(Closed) = ready!(Pin::new(&mut *this.appender).poll_ready(cx)) {
+            if let Err(Closed) = ready!(Pin::new(&mut **this.appender).poll_ready(cx)) {
                 break;
             }
 
@@ -199,7 +200,7 @@ impl Future for IdleFuture<'_> {
             };
 
             if let Ok(log) = result {
-                if let Err(Closed) = Pin::new(&mut *this.appender).start_send(log) {
+                if let Err(Closed) = Pin::new(&mut **this.appender).start_send(log) {
                     break;
                 }
             }

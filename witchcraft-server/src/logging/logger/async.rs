@@ -14,7 +14,7 @@
 use crate::logging::format::LogFormat;
 use crate::shutdown_hooks::ShutdownHooks;
 use futures_sink::Sink;
-use futures_util::{ready, SinkExt};
+use futures_util::ready;
 use parking_lot::Mutex;
 use pin_project::pin_project;
 use std::collections::VecDeque;
@@ -22,7 +22,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
-use tokio::task;
+use tokio::task::{self, JoinHandle};
 use witchcraft_metrics::{MetricId, MetricRegistry};
 
 pub struct Closed;
@@ -51,6 +51,21 @@ impl<T> State<T> {
             waker.wake();
         }
     }
+
+    fn start_close(&mut self) {
+        if self.closed {
+            return;
+        }
+
+        self.closed = true;
+        if let Some(waker) = self.read_waker.take() {
+            waker.wake();
+        }
+
+        if let Some(waker) = self.write_waker.take() {
+            waker.wake();
+        }
+    }
 }
 
 pub struct AsyncAppender<T> {
@@ -59,7 +74,7 @@ pub struct AsyncAppender<T> {
 
 impl<T> Drop for AsyncAppender<T> {
     fn drop(&mut self) {
-        self.state.lock().closed = true;
+        self.state.lock().start_close();
     }
 }
 
@@ -82,24 +97,19 @@ impl<T> AsyncAppender<T> {
             move || state.lock().queue.len()
         });
 
-        task::spawn({
+        let handle = task::spawn({
             let state = state.clone();
             WorkerFuture { state, inner }
         });
 
-        hooks.push({
-            let mut appender = AsyncAppender {
-                state: state.clone(),
-            };
-            async move {
-                let _ = Pin::new(&mut appender).close().await;
-            }
+        hooks.push(ShutdownFuture {
+            state: state.clone(),
+            handle,
         });
 
         AsyncAppender { state }
     }
 
-    #[allow(dead_code)]
     pub fn try_send(&self, item: T) -> Result<(), T> {
         let mut state = self.state.lock();
 
@@ -109,8 +119,12 @@ impl<T> AsyncAppender<T> {
         state.start_send(item);
         Ok(())
     }
+}
 
-    pub fn poll_ready(&self, cx: &mut Context<'_>) -> Poll<Result<(), Closed>> {
+impl<T> Sink<T> for AsyncAppender<T> {
+    type Error = Closed;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut state = self.state.lock();
 
         if state.closed {
@@ -132,7 +146,7 @@ impl<T> AsyncAppender<T> {
         Poll::Pending
     }
 
-    pub fn start_send(&self, item: T) -> Result<(), Closed> {
+    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
         let mut state = self.state.lock();
 
         if state.closed {
@@ -143,13 +157,11 @@ impl<T> AsyncAppender<T> {
         Ok(())
     }
 
-    // NB: the correctness of poll_flush and poll_close requires that only one task will ever call them (the shutdown
-    // hook)
-    pub fn poll_flush(&self, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut state = self.state.lock();
 
         if state.flushed {
-            return Poll::Ready(());
+            return Poll::Ready(Ok(()));
         }
 
         if state
@@ -163,45 +175,30 @@ impl<T> AsyncAppender<T> {
         Poll::Pending
     }
 
-    pub fn poll_close(&self, cx: &mut Context<'_>) -> Poll<()> {
-        let mut state = self.state.lock();
-
-        if !state.closed {
-            state.closed = true;
-            if let Some(waker) = state.read_waker.take() {
-                waker.wake();
-            }
-
-            if let Some(waker) = state.write_waker.take() {
-                waker.wake();
-            }
-        }
-
-        drop(state);
-        ready!(self.poll_flush(cx));
-        Poll::Ready(())
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.state.lock().start_close();
+        ready!(self.poll_flush(cx))?;
+        Poll::Ready(Ok(()))
     }
 }
 
-impl<T> Sink<T> for AsyncAppender<T> {
-    type Error = Closed;
+#[pin_project]
+struct ShutdownFuture<T> {
+    state: Arc<Mutex<State<T>>>,
+    #[pin]
+    handle: JoinHandle<()>,
+}
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        (*self).poll_ready(cx)
-    }
+impl<T> Future for ShutdownFuture<T> {
+    type Output = ();
 
-    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
-        (*self).start_send(item)
-    }
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!((*self).poll_flush(cx));
-        Poll::Ready(Ok(()))
-    }
+        this.state.lock().start_close();
+        let _ = ready!(this.handle.poll(cx));
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!((*self).poll_close(cx));
-        Poll::Ready(Ok(()))
+        Poll::Ready(())
     }
 }
 
@@ -267,10 +264,13 @@ where
             }
         }
 
-        if state.closed && state.flushed {
-            Poll::Ready(())
-        } else {
-            Poll::Pending
+        if !state.flushed || !state.closed {
+            return Poll::Pending;
         }
+
+        drop(state);
+        let _ = ready!(this.inner.as_mut().poll_close(cx));
+
+        Poll::Ready(())
     }
 }
