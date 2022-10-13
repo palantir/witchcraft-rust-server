@@ -121,19 +121,19 @@ where
         let mdc = mdc::snapshot();
         let uid = mdc
             .safe()
-            .get(logging::UID_MDC_KEY)
+            .get(logging::mdc::UID_KEY)
             .and_then(|v| UserId::deserialize(v.clone()).ok());
         let sid = mdc
             .safe()
-            .get(logging::SID_MDC_KEY)
+            .get(logging::mdc::SID_KEY)
             .and_then(|v| SessionId::deserialize(v.clone()).ok());
         let token_id = mdc
             .safe()
-            .get(logging::TOKEN_ID_MDC_KEY)
+            .get(logging::mdc::TOKEN_ID_KEY)
             .and_then(|v| TokenId::deserialize(v.clone()).ok());
         let trace_id = mdc
             .safe()
-            .get(logging::TRACE_ID_MDC_KEY)
+            .get(logging::mdc::TRACE_ID_KEY)
             .and_then(|v| TraceId::deserialize(v.clone()).ok());
 
         let mut params = vec![];

@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use api::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
 use conjure_serde::json;
 use hyper::body::HttpBody;
 use hyper::client::conn::{self, SendRequest};
@@ -32,11 +31,7 @@ use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::{task, time};
 use tokio_openssl::SslStream;
-
-#[allow(warnings)]
-#[rustfmt::skip]
-#[path = "../../../../witchcraft-server/src/logging/api/mod.rs"]
-pub mod api;
+use witchcraft_server::logging::api::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
 
 // this is a bit racy, but should work in practice
 fn open_port() -> u16 {

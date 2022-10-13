@@ -115,22 +115,22 @@ impl Log for ServiceLogger {
         let mdc = mdc::snapshot();
         for (key, value) in mdc.safe().iter() {
             match key {
-                logging::UID_MDC_KEY => {
+                logging::mdc::UID_KEY => {
                     if let Ok(uid) = String::deserialize(value.clone()) {
                         message = message.uid(UserId(uid));
                     }
                 }
-                logging::SID_MDC_KEY => {
+                logging::mdc::SID_KEY => {
                     if let Ok(sid) = String::deserialize(value.clone()) {
                         message = message.sid(SessionId(sid));
                     }
                 }
-                logging::TOKEN_ID_MDC_KEY => {
+                logging::mdc::TOKEN_ID_KEY => {
                     if let Ok(token_id) = String::deserialize(value.clone()) {
                         message = message.token_id(TokenId(token_id));
                     }
                 }
-                logging::TRACE_ID_MDC_KEY => {
+                logging::mdc::TRACE_ID_KEY => {
                     if let Ok(trace_id) = String::deserialize(value.clone()) {
                         message = message.trace_id(TraceId(trace_id));
                     }
