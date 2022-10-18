@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Audit log type definitions.
-
 pub use crate::logging::api::{
     audit_log_v3, audit_producer, audit_result, contextualized_user, organization,
     sensitivity_tagged_value, AuditLogV3, AuditProducer, AuditResult, ContextualizedUser,

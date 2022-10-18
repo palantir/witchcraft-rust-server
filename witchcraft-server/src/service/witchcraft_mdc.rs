@@ -46,17 +46,17 @@ where
 
     fn call(&self, req: Request<B>) -> Self::Future {
         if let Some(jwt) = req.extensions().get::<UnverifiedJwt>() {
-            mdc::insert_safe(logging::UID_MDC_KEY, jwt.unverified_user_id());
+            mdc::insert_safe(logging::mdc::UID_KEY, jwt.unverified_user_id());
             if let Some(session_id) = jwt.unverified_session_id() {
-                mdc::insert_safe(logging::SID_MDC_KEY, session_id);
+                mdc::insert_safe(logging::mdc::SID_KEY, session_id);
             }
             if let Some(token_id) = jwt.unverified_token_id() {
-                mdc::insert_safe(logging::TOKEN_ID_MDC_KEY, token_id);
+                mdc::insert_safe(logging::mdc::TOKEN_ID_KEY, token_id);
             }
         }
 
         let context = zipkin::current().expect("zipkin trace not initialized");
-        mdc::insert_safe(logging::TRACE_ID_MDC_KEY, context.trace_id().to_string());
+        mdc::insert_safe(logging::mdc::TRACE_ID_KEY, context.trace_id().to_string());
         if let Some(sampled) = context.sampled() {
             mdc::insert_safe(logging::SAMPLED_KEY, sampled);
         }

@@ -93,8 +93,8 @@ witchcraft-log = "3"
 witchcraft-metrics = "1"
 zipkin = "0.4"
 
-witchcraft-server-config = { version = "3.1.0", path = "../witchcraft-server-config" }
-witchcraft-server-macros = { version = "3.1.0", path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "3.2.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "3.2.0", path = "../witchcraft-server-macros" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procinfo = "0.4"
