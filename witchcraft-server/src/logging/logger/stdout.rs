@@ -68,16 +68,8 @@ struct StdoutSink {
 impl Sink<Bytes> for StdoutSink {
     type Error = io::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        match &mut self.state {
-            State::Idle => Poll::Ready(Ok(())),
-            State::Busy(handle) => {
-                let result = ready!(Pin::new(handle).poll(cx))?;
-                self.state = State::Idle;
-
-                Poll::Ready(result)
-            }
-        }
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx)
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {

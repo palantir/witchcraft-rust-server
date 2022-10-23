@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::logging::logger::byte_buffer::BufBytesSink;
 use async_compression::tokio::write::GzipEncoder;
 use bytes::{Buf, Bytes};
 use conjure_error::Error;
@@ -18,6 +19,7 @@ use conjure_object::chrono::{Date, TimeZone};
 use conjure_object::Utc;
 use futures_sink::Sink;
 use futures_util::ready;
+use pin_project::pin_project;
 use regex::Regex;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -25,27 +27,33 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::fs::{self, File, OpenOptions};
-use tokio::io::{self, AsyncWrite, AsyncWriteExt, BufWriter};
+use tokio::io::{self, AsyncWrite, AsyncWriteExt};
 use tokio::task;
 
 const MAX_LOG_SIZE: u64 = 1024 * 1024 * 1024;
 
 struct CurrentFile {
-    file: BufWriter<File>,
+    file: BufBytesSink<FileBytesSink>,
     len: u64,
     date: Date<Utc>,
-    pending: Bytes,
 }
 
 impl CurrentFile {
-    fn poll_write(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        while self.pending.has_remaining() {
-            let n = ready!(Pin::new(&mut self.file).poll_write(cx, &self.pending))?;
-            self.len += n as u64;
-            self.pending.advance(n);
-        }
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.file).poll_ready(cx)
+    }
 
-        Poll::Ready(Ok(()))
+    fn start_send(&mut self, item: Bytes) -> io::Result<()> {
+        self.len += item.remaining() as u64;
+        Pin::new(&mut self.file).start_send(item)
+    }
+
+    fn poll_flush(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.file).poll_flush(cx)
+    }
+
+    fn poll_close(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.file).poll_close(cx)
     }
 }
 
@@ -118,10 +126,9 @@ impl RollingFileAppender {
 
         Ok(RollingFileAppender {
             state: State::Live(CurrentFile {
-                file: BufWriter::new(file),
+                file: BufBytesSink::new(FileBytesSink::new(file)),
                 len,
                 date,
-                pending: Bytes::new(),
             }),
             next_archive_index,
             name,
@@ -140,14 +147,12 @@ impl Sink<Bytes> for RollingFileAppender {
             let this = &mut *self;
             match &mut this.state {
                 State::Live(file) => {
-                    ready!(file.poll_write(cx))?;
-
                     let date = Utc::now().date();
                     if file.len < MAX_LOG_SIZE && date <= file.date {
-                        return Poll::Ready(Ok(()));
+                        return file.poll_ready(cx);
                     }
 
-                    ready!(Pin::new(&mut file.file).poll_flush(cx))?;
+                    ready!(file.poll_close(cx))?;
 
                     let number = this.next_archive_index;
                     if date > file.date {
@@ -169,10 +174,9 @@ impl Sink<Bytes> for RollingFileAppender {
                 State::Rotating(future) => match ready!(future.as_mut().poll(cx)) {
                     Ok(file) => {
                         self.state = State::Live(CurrentFile {
-                            file: BufWriter::new(file),
+                            file: BufBytesSink::new(FileBytesSink::new(file)),
                             len: 0,
                             date: Utc::now().date(),
-                            pending: Bytes::new(),
                         });
                     }
                     Err(e) => {
@@ -188,32 +192,21 @@ impl Sink<Bytes> for RollingFileAppender {
 
     fn start_send(mut self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
         match &mut self.state {
-            State::Live(file) => {
-                debug_assert!(file.pending.is_empty());
-                file.pending = item;
-            }
+            State::Live(file) => file.start_send(item),
             State::Rotating(_) => panic!("start_send called without poll_ready"),
         }
-
-        Ok(())
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         match &mut self.state {
-            State::Live(file) => {
-                ready!(file.poll_write(cx))?;
-                Pin::new(&mut file.file).poll_flush(cx)
-            }
+            State::Live(file) => file.poll_flush(cx),
             State::Rotating(_) => Poll::Ready(Ok(())),
         }
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         match &mut self.state {
-            State::Live(file) => {
-                ready!(file.poll_write(cx))?;
-                Pin::new(&mut file.file).poll_shutdown(cx)
-            }
+            State::Live(file) => file.poll_close(cx),
             State::Rotating(_) => Poll::Ready(Ok(())),
         }
     }
@@ -463,6 +456,53 @@ struct ArchivedLog {
     date: Date<Utc>,
     number: u32,
     len: u64,
+}
+
+#[pin_project]
+struct FileBytesSink {
+    #[pin]
+    file: File,
+    pending: Bytes,
+}
+
+impl FileBytesSink {
+    fn new(file: File) -> Self {
+        FileBytesSink {
+            file,
+            pending: Bytes::new(),
+        }
+    }
+}
+
+impl Sink<Bytes> for FileBytesSink {
+    type Error = io::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+        let this = self.project();
+        debug_assert!(this.pending.is_empty());
+        *this.pending = item;
+
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let mut this = self.project();
+
+        while !this.pending.is_empty() {
+            let nwritten = ready!(this.file.as_mut().poll_write(cx, this.pending))?;
+            this.pending.advance(nwritten);
+        }
+
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx)
+    }
 }
 
 #[cfg(test)]
