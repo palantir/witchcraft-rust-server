@@ -57,6 +57,7 @@ impl CurrentFile {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum State {
     Live(CurrentFile),
     Rotating(Pin<Box<dyn Future<Output = io::Result<File>> + Sync + Send>>),
