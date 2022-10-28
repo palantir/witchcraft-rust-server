@@ -70,7 +70,7 @@ serde_yaml = "0.9"
 sequence_trie = "0.3"
 socket2 = "0.4"
 staged-builder = "0.1.1"
-symbolic = { version = "9", features = ["cfi", "debuginfo"] }
+symbolic = { version = "10", features = ["cfi", "debuginfo"] }
 sync_wrapper = "0.1"
 tikv-jemalloc-ctl = { version = "0.5", features = ["use_std"], optional = true }
 tikv-jemallocator = { version = "0.5", features = [
