@@ -87,7 +87,7 @@ tokio = { version = "1", features = [
     "time",
 ] }
 tokio-openssl = "0.6"
-tokio-util = { version = "0.7", features = ["codec"] }
+tokio-util = "0.7"
 tracing = { version = "0.1", features = ["log"] }
 typed-arena = "2"
 witchcraft-log = "3"
