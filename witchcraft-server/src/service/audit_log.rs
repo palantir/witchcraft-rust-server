@@ -14,6 +14,7 @@
 
 use crate::extensions::AuditLogEntry;
 use crate::logging::api::AuditLogV3;
+use crate::logging::Payload;
 use crate::service::{Layer, Service};
 use conjure_error::Error;
 use futures_sink::Sink;
@@ -66,7 +67,7 @@ impl<S, T, R, B> Service<R> for AuditLogService<S, T>
 where
     S: Service<R, Response = Response<B>>,
     S::Future: 'static + Send,
-    T: Sink<AuditLogV3> + Unpin + 'static + Send,
+    T: Sink<Payload<AuditLogV3>> + Unpin + 'static + Send,
     T::Error: Into<Box<dyn error::Error + Sync + Send>>,
     B: Send,
 {
@@ -84,8 +85,12 @@ where
                 let mut response = inner.await;
 
                 if let Some(audit_log_entry) = response.extensions_mut().remove::<AuditLogEntry>() {
+                    let payload = Payload {
+                        value: audit_log_entry.0,
+                        cb: None,
+                    };
                     // NB: SinkExt::send includes a flush call
-                    if let Err(e) = logger.lock().await.send(audit_log_entry.0).await {
+                    if let Err(e) = logger.lock().await.send(payload).await {
                         error!(
                             "error persisting audit log entry",
                             error: Error::internal_safe(e)
@@ -175,15 +180,18 @@ mod test {
         events: Vec<TestSinkEvent>,
     }
 
-    impl Sink<AuditLogV3> for TestSink {
+    impl Sink<Payload<AuditLogV3>> for TestSink {
         type Error = &'static str;
 
         fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
         }
 
-        fn start_send(mut self: Pin<&mut Self>, item: AuditLogV3) -> Result<(), Self::Error> {
-            self.events.push(TestSinkEvent::Item(item));
+        fn start_send(
+            mut self: Pin<&mut Self>,
+            item: Payload<AuditLogV3>,
+        ) -> Result<(), Self::Error> {
+            self.events.push(TestSinkEvent::Item(item.value));
             Ok(())
         }
 
@@ -249,14 +257,14 @@ mod test {
 
     struct FailingSink;
 
-    impl Sink<AuditLogV3> for FailingSink {
+    impl Sink<Payload<AuditLogV3>> for FailingSink {
         type Error = &'static str;
 
         fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             Poll::Ready(Err("blammo"))
         }
 
-        fn start_send(self: Pin<&mut Self>, _: AuditLogV3) -> Result<(), Self::Error> {
+        fn start_send(self: Pin<&mut Self>, _: Payload<AuditLogV3>) -> Result<(), Self::Error> {
             Err("blammo")
         }
 

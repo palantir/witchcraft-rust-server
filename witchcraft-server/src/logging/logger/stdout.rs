@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::logger::byte_buffer::BufBytesSink;
+use crate::logging::logger::Payload;
 use bytes::Bytes;
 use futures_sink::Sink;
 use futures_util::ready;
@@ -36,14 +37,14 @@ impl StdoutAppender {
     }
 }
 
-impl Sink<Bytes> for StdoutAppender {
+impl Sink<Payload<Bytes>> for StdoutAppender {
     type Error = io::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project().inner.poll_ready(cx)
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, item: Payload<Bytes>) -> Result<(), Self::Error> {
         self.project().inner.start_send(item)
     }
 

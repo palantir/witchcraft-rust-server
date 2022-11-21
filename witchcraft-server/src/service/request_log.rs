@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::api::{RequestLogV2, SessionId, TokenId, TraceId, UserId};
-use crate::logging::{self, Appender};
+use crate::logging::{self, Appender, Payload};
 use crate::service::routing::Route;
 use crate::service::{Layer, Service};
 use bytes::Buf;
@@ -375,6 +375,9 @@ impl Drop for State {
             .extend_unsafe_params(self.unsafe_params.drain(..))
             .build();
 
-        let _ = self.appender.try_send(request_log);
+        let _ = self.appender.try_send(Payload {
+            value: request_log,
+            cb: None,
+        });
     }
 }

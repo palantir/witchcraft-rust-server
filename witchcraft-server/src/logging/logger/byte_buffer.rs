@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::logging::logger::Payload;
 use bytes::{Bytes, BytesMut};
 use futures_sink::Sink;
 use futures_util::ready;
@@ -105,7 +106,7 @@ where
     }
 }
 
-impl<S> Sink<Bytes> for BufBytesSink<S>
+impl<S> Sink<Payload<Bytes>> for BufBytesSink<S>
 where
     S: Sink<Bytes>,
 {
@@ -115,10 +116,10 @@ where
         self.project().poll_write_pending(cx)
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, item: Payload<Bytes>) -> Result<(), Self::Error> {
         let this = self.project();
         debug_assert!(this.pending_write.is_none());
-        *this.pending_write = Some(item);
+        *this.pending_write = Some(item.value);
         Ok(())
     }
 
@@ -144,10 +145,30 @@ mod test {
     async fn simple_writes() {
         let mut sink = BufBytesSink::with_capacity(5, Vec::<Bytes>::new());
 
-        sink.feed(Bytes::from(&b"aaaa"[..])).await.unwrap();
-        sink.feed(Bytes::from(&b"b"[..])).await.unwrap();
-        sink.feed(Bytes::from(&b"ccc"[..])).await.unwrap();
-        sink.feed(Bytes::from(&b"d"[..])).await.unwrap();
+        sink.feed(Payload {
+            value: Bytes::from(&b"aaaa"[..]),
+            cb: None,
+        })
+        .await
+        .unwrap();
+        sink.feed(Payload {
+            value: Bytes::from(&b"b"[..]),
+            cb: None,
+        })
+        .await
+        .unwrap();
+        sink.feed(Payload {
+            value: Bytes::from(&b"ccc"[..]),
+            cb: None,
+        })
+        .await
+        .unwrap();
+        sink.feed(Payload {
+            value: Bytes::from(&b"d"[..]),
+            cb: None,
+        })
+        .await
+        .unwrap();
 
         assert_eq!(sink.inner, vec![Bytes::from(&b"aaaab"[..])]);
 
@@ -163,9 +184,24 @@ mod test {
     async fn oversized_writes() {
         let mut sink = BufBytesSink::with_capacity(5, Vec::<Bytes>::new());
 
-        sink.feed(Bytes::from(&b"aaaa"[..])).await.unwrap();
-        sink.feed(Bytes::from(&b"bbbbbb"[..])).await.unwrap();
-        sink.feed(Bytes::from(&b"c"[..])).await.unwrap();
+        sink.feed(Payload {
+            value: Bytes::from(&b"aaaa"[..]),
+            cb: None,
+        })
+        .await
+        .unwrap();
+        sink.feed(Payload {
+            value: Bytes::from(&b"bbbbbb"[..]),
+            cb: None,
+        })
+        .await
+        .unwrap();
+        sink.feed(Payload {
+            value: Bytes::from(&b"c"[..]),
+            cb: None,
+        })
+        .await
+        .unwrap();
         sink.flush().await.unwrap();
 
         assert_eq!(

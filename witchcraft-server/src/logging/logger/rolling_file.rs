@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::logger::byte_buffer::BufBytesSink;
+use crate::logging::logger::Payload;
 use async_compression::tokio::write::GzipEncoder;
 use bytes::{Buf, Bytes};
 use conjure_error::Error;
@@ -43,8 +44,8 @@ impl CurrentFile {
         Pin::new(&mut self.file).poll_ready(cx)
     }
 
-    fn start_send(&mut self, item: Bytes) -> io::Result<()> {
-        self.len += item.remaining() as u64;
+    fn start_send(&mut self, item: Payload<Bytes>) -> io::Result<()> {
+        self.len += item.value.remaining() as u64;
         Pin::new(&mut self.file).start_send(item)
     }
 
@@ -140,7 +141,7 @@ impl RollingFileAppender {
     }
 }
 
-impl Sink<Bytes> for RollingFileAppender {
+impl Sink<Payload<Bytes>> for RollingFileAppender {
     type Error = io::Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -191,7 +192,7 @@ impl Sink<Bytes> for RollingFileAppender {
         }
     }
 
-    fn start_send(mut self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+    fn start_send(mut self: Pin<&mut Self>, item: Payload<Bytes>) -> Result<(), Self::Error> {
         match &mut self.state {
             State::Live(file) => file.start_send(item),
             State::Rotating(_) => panic!("start_send called without poll_ready"),

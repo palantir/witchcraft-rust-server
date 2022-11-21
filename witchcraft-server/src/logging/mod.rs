@@ -16,7 +16,7 @@
 use crate::logging::api::{AuditLogV3, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
-pub(crate) use logger::{Appender, SyncAppender};
+pub(crate) use logger::{Appender, Payload, SyncAppender};
 use refreshable::Refreshable;
 use std::sync::Arc;
 use witchcraft_metrics::MetricRegistry;
