@@ -15,7 +15,7 @@ use crate::logging::logger::byte_buffer::BufBytesSink;
 use async_compression::tokio::write::GzipEncoder;
 use bytes::{Buf, Bytes};
 use conjure_error::Error;
-use conjure_object::chrono::{Date, TimeZone};
+use conjure_object::chrono::NaiveDate;
 use conjure_object::Utc;
 use futures_sink::Sink;
 use futures_util::ready;
@@ -35,7 +35,7 @@ const MAX_LOG_SIZE: u64 = 1024 * 1024 * 1024;
 struct CurrentFile {
     file: BufBytesSink<FileBytesSink>,
     len: u64,
-    date: Date<Utc>,
+    date: NaiveDate,
 }
 
 impl CurrentFile {
@@ -89,7 +89,7 @@ impl RollingFileAppender {
         let len = file.metadata().await.map_err(Error::internal_safe)?.len();
 
         let archive_locator = ArchiveLocator::new(name);
-        let date = Utc::now().date();
+        let date = Utc::now().date_naive();
 
         let next_archive_index = archive_locator
             .archived_logs(dir)
@@ -148,7 +148,7 @@ impl Sink<Bytes> for RollingFileAppender {
             let this = &mut *self;
             match &mut this.state {
                 State::Live(file) => {
-                    let date = Utc::now().date();
+                    let date = Utc::now().date_naive();
                     if file.len < MAX_LOG_SIZE && date <= file.date {
                         return file.poll_ready(cx);
                     }
@@ -177,7 +177,7 @@ impl Sink<Bytes> for RollingFileAppender {
                         self.state = State::Live(CurrentFile {
                             file: BufBytesSink::new(FileBytesSink::new(file)),
                             len: 0,
-                            date: Utc::now().date(),
+                            date: Utc::now().date_naive(),
                         });
                     }
                     Err(e) => {
@@ -232,32 +232,27 @@ fn log_path(dir: &Path, name: &str) -> PathBuf {
     path
 }
 
-fn archive_path(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> PathBuf {
+fn archive_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}-{}-{}.log", name, date.naive_utc(), number,));
+    path.push(format!("{}-{}-{}.log", name, date, number));
     path
 }
 
-fn archive_gz_tmp_path(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> PathBuf {
+fn archive_gz_tmp_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!(
-        "{}-{}-{}.log.gz.tmp",
-        name,
-        date.naive_utc(),
-        number,
-    ));
+    path.push(format!("{}-{}-{}.log.gz.tmp", name, date, number));
     path
 }
 
-fn archive_gz_path(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> PathBuf {
+fn archive_gz_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}-{}-{}.log.gz", name, date.naive_utc(), number,));
+    path.push(format!("{}-{}-{}.log.gz", name, date, number));
     path
 }
 
 async fn clear_old_archives(
     dir: &Path,
-    date: Date<Utc>,
+    date: NaiveDate,
     max_archive_size: u64,
     max_archive_days: u32,
     archive_locator: &ArchiveLocator,
@@ -268,7 +263,7 @@ async fn clear_old_archives(
 
 // split out for testing
 async fn clear_old_archives_inner(
-    date: Date<Utc>,
+    date: NaiveDate,
     max_archive_size: u64,
     max_archive_days: u32,
     mut logs: Vec<ArchivedLog>,
@@ -280,7 +275,7 @@ async fn clear_old_archives_inner(
     let mut date_cutoff = date;
     // do a silly loop to make sure we're correct WRT leap things
     for _ in 0..max_archive_days {
-        date_cutoff = date_cutoff.pred();
+        date_cutoff = date_cutoff.pred_opt().unwrap();
     }
 
     for log in logs {
@@ -320,7 +315,7 @@ async fn restart_compression(
     Ok(())
 }
 
-async fn compress(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> io::Result<()> {
+async fn compress(dir: &Path, name: &str, date: NaiveDate, number: u32) -> io::Result<()> {
     let source_path = archive_path(dir, name, date, number);
     let mut source = File::open(&source_path).await?;
 
@@ -342,7 +337,7 @@ async fn compress(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> io::R
 async fn rotate(
     dir: &Path,
     name: &'static str,
-    date: Date<Utc>,
+    date: NaiveDate,
     number: u32,
     max_archive_size: u64,
     max_archive_days: u32,
@@ -359,7 +354,7 @@ async fn rotate(
         // clear archives based on the current date rather than the date of the log being archived.
         let _ = clear_old_archives(
             &dir,
-            Utc::now().date(),
+            Utc::now().date_naive(),
             max_archive_size,
             max_archive_days,
             &archive_locator,
@@ -427,7 +422,7 @@ impl ArchiveLocator {
             let year = captures[1].parse().unwrap();
             let month = captures[2].parse().unwrap();
             let day = captures[3].parse().unwrap();
-            let date = match Utc.ymd_opt(year, month, day).single() {
+            let date = match NaiveDate::from_ymd_opt(year, month, day) {
                 Some(date) => date,
                 None => continue,
             };
@@ -454,7 +449,7 @@ impl ArchiveLocator {
 #[derive(Debug, PartialEq)]
 struct ArchivedLog {
     path: PathBuf,
-    date: Date<Utc>,
+    date: NaiveDate,
     number: u32,
     len: u64,
 }
@@ -522,7 +517,7 @@ mod test {
     #[test]
     fn archive_tmp_path_format() {
         let name = "service";
-        let date = Utc.ymd(2017, 4, 20);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let number = 3;
 
         assert_eq!(
@@ -534,7 +529,7 @@ mod test {
     #[test]
     fn archive_path_format() {
         let name = "service";
-        let date = Utc.ymd(2017, 4, 20);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let number = 3;
 
         assert_eq!(
@@ -548,7 +543,7 @@ mod test {
         let dir = tempfile::tempdir().unwrap();
 
         let name = "service";
-        let date = Utc.ymd(2017, 4, 20);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let number = 3;
 
         let tmp_path = archive_path(dir.path(), name, date, number);
@@ -581,7 +576,7 @@ mod test {
         let file = File::create(&requests_path).await.unwrap();
         file.set_len(2).await.unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         let file = File::create(&service_archive_1_0_path).await.unwrap();
         file.set_len(3).await.unwrap();
@@ -590,7 +585,7 @@ mod test {
         let file = File::create(&service_archive_1_1_path).await.unwrap();
         file.set_len(4).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         let file = File::create(&service_archive_2_0_path).await.unwrap();
         file.set_len(5).await.unwrap();
@@ -642,14 +637,14 @@ mod test {
     async fn clear_old_archives_always_deletes_old_logs() {
         let dir = tempfile::tempdir().unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         File::create(&service_archive_1_0_path).await.unwrap();
 
         let service_archive_1_1_path = archive_gz_path(dir.path(), "service", day1, 1);
         File::create(&service_archive_1_1_path).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         File::create(&service_archive_2_0_path).await.unwrap();
 
@@ -683,7 +678,7 @@ mod test {
             },
         ];
 
-        let date = Utc.ymd(2017, 5, 21);
+        let date = NaiveDate::from_ymd_opt(2017, 5, 21).unwrap();
         clear_old_archives_inner(date, 1024 * 1024 * 1024, 30, logs)
             .await
             .unwrap();
@@ -698,14 +693,14 @@ mod test {
     async fn clear_old_archives_deletes_to_save_space() {
         let dir = tempfile::tempdir().unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         File::create(&service_archive_1_0_path).await.unwrap();
 
         let service_archive_1_1_path = archive_gz_path(dir.path(), "service", day1, 1);
         File::create(&service_archive_1_1_path).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         File::create(&service_archive_2_0_path).await.unwrap();
 
@@ -739,7 +734,7 @@ mod test {
             },
         ];
 
-        let date = Utc.ymd(2017, 4, 21);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         clear_old_archives_inner(date, 1024, 30, logs)
             .await
             .unwrap();
@@ -754,14 +749,14 @@ mod test {
     async fn clear_old_archives_ignores_missing_files() {
         let dir = tempfile::tempdir().unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         // not actually making this
 
         let service_archive_1_1_path = archive_gz_path(dir.path(), "service", day1, 1);
         File::create(&service_archive_1_1_path).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         File::create(&service_archive_2_0_path).await.unwrap();
 
@@ -795,7 +790,7 @@ mod test {
             },
         ];
 
-        let date = Utc.ymd(2017, 4, 21);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         clear_old_archives_inner(date, 1024, 30, logs)
             .await
             .unwrap();
