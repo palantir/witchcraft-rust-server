@@ -58,7 +58,7 @@ use witchcraft_log::debug;
 
 pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 
-pub async fn start(
+pub(crate) async fn start(
     witchcraft: &mut Witchcraft,
     shutdown_hooks: &mut ShutdownHooks,
     loggers: Loggers,

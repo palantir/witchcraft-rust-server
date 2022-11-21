@@ -321,6 +321,9 @@ pub use witchcraft_server_config as config;
 #[doc(inline)]
 pub use witchcraft_server_macros::main;
 
+// FIXME remove in next breaking release
+#[doc(hidden)]
+#[deprecated(note = "Use `logging::api` instead", since = "3.2.0")]
 pub mod audit;
 pub mod blocking;
 mod body;
@@ -329,7 +332,7 @@ mod debug;
 mod endpoint;
 pub mod extensions;
 pub mod health;
-mod logging;
+pub mod logging;
 mod metrics;
 mod minidump;
 pub mod readiness;
