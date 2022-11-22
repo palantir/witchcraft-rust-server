@@ -17,6 +17,7 @@ use crate::logging::api::AuditLogV3;
 use crate::logging::Payload;
 use crate::service::{Layer, Service};
 use conjure_error::Error;
+use futures_channel::oneshot;
 use futures_sink::Sink;
 use futures_util::future::BoxFuture;
 use futures_util::SinkExt;
@@ -85,16 +86,30 @@ where
                 let mut response = inner.await;
 
                 if let Some(audit_log_entry) = response.extensions_mut().remove::<AuditLogEntry>() {
+                    let (tx, rx) = oneshot::channel();
+
                     let payload = Payload {
                         value: audit_log_entry.0,
-                        cb: None,
+                        cb: Some(tx),
                     };
-                    // NB: SinkExt::send includes a flush call
-                    if let Err(e) = logger.lock().await.send(payload).await {
-                        error!(
-                            "error persisting audit log entry",
-                            error: Error::internal_safe(e)
-                        );
+
+                    // NB: This assumes our sink doesn't need to be driven manually by flushes
+                    let send = async {
+                        logger
+                            .lock()
+                            .await
+                            .feed(payload)
+                            .await
+                            .map_err(Error::internal_safe)?;
+                        if rx.await != Ok(true) {
+                            return Err(Error::internal_safe("failed to flush audit log entry"));
+                        }
+
+                        Ok(())
+                    };
+
+                    if let Err(e) = send.await {
+                        error!("error persisting audit log entry", error: e);
 
                         let mut response = Response::new(AuditLogResponseBody { inner: None });
                         *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
@@ -192,6 +207,9 @@ mod test {
             item: Payload<AuditLogV3>,
         ) -> Result<(), Self::Error> {
             self.events.push(TestSinkEvent::Item(item.value));
+            if let Some(cb) = item.cb {
+                let _ = cb.send(true);
+            }
             Ok(())
         }
 
@@ -251,7 +269,7 @@ mod test {
 
         assert_eq!(
             service.logger.lock().await.events,
-            vec![TestSinkEvent::Item(log.clone()), TestSinkEvent::Flush]
+            vec![TestSinkEvent::Item(log.clone())]
         );
     }
 
@@ -261,15 +279,18 @@ mod test {
         type Error = &'static str;
 
         fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            Poll::Ready(Err("blammo"))
+            Poll::Ready(Ok(()))
         }
 
-        fn start_send(self: Pin<&mut Self>, _: Payload<AuditLogV3>) -> Result<(), Self::Error> {
-            Err("blammo")
+        fn start_send(self: Pin<&mut Self>, value: Payload<AuditLogV3>) -> Result<(), Self::Error> {
+            if let Some(cb) = value.cb {
+                let _ = cb.send(false);
+            }
+            Ok(())
         }
 
         fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            Poll::Ready(Err("blammo"))
+            unimplemented!()
         }
 
         fn poll_close(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

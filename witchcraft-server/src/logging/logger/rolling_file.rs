@@ -493,6 +493,7 @@ impl Sink<Bytes> for FileBytesSink {
             let nwritten = ready!(this.file.as_mut().poll_write(cx, this.pending))?;
             this.pending.advance(nwritten);
         }
+        ready!(this.file.poll_flush(cx))?;
 
         Poll::Ready(Ok(()))
     }

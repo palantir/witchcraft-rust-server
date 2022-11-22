@@ -14,11 +14,13 @@
 use crate::logging::format::LogFormat;
 use crate::logging::logger::Payload;
 use crate::shutdown_hooks::ShutdownHooks;
+use core::fmt;
 use futures_sink::Sink;
 use futures_util::ready;
 use parking_lot::Mutex;
 use pin_project::pin_project;
 use std::collections::VecDeque;
+use std::error;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -26,7 +28,16 @@ use std::task::{Context, Poll, Waker};
 use tokio::task::{self, JoinHandle};
 use witchcraft_metrics::{MetricId, MetricRegistry};
 
+#[derive(Debug)]
 pub struct Closed;
+
+impl fmt::Display for Closed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Sink has already closed")
+    }
+}
+
+impl error::Error for Closed {}
 
 const QUEUE_LIMIT: usize = 10_000;
 
