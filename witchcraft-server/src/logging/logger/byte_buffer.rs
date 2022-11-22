@@ -19,7 +19,7 @@ use pin_project::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-#[pin_project]
+#[pin_project(project = BufBytesSinkProj)]
 pub struct BufBytesSink<S> {
     buf: BytesMut,
     limit: usize,
@@ -43,74 +43,63 @@ impl<S> BufBytesSink<S> {
     }
 }
 
-impl<S> BufBytesSink<S>
+impl<S> BufBytesSinkProj<'_, S>
 where
     S: Sink<Bytes>,
 {
-    fn poll_write_pending(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Result<(), S::Error>> {
-        let mut this = self.as_mut().project();
-
-        let pending_write = match this.pending_write.take() {
+    fn poll_write_pending(&mut self, cx: &mut Context) -> Poll<Result<(), S::Error>> {
+        let pending_write = match self.pending_write.take() {
             Some(buf) => buf,
             None => return Poll::Ready(Ok(())),
         };
 
-        if pending_write.len() <= *this.limit - this.buf.len() {
-            this.buf.extend_from_slice(&pending_write);
+        if pending_write.len() <= *self.limit - self.buf.len() {
+            self.buf.extend_from_slice(&pending_write);
             return Poll::Ready(Ok(()));
         }
 
-        let poll = self.as_mut().poll_write_buf(cx);
-        this = self.project();
+        let poll = self.poll_write_buf(cx);
 
         match poll {
             Poll::Ready(Ok(())) => {}
             poll => {
-                *this.pending_write = Some(pending_write);
+                *self.pending_write = Some(pending_write);
                 return poll;
             }
         }
 
-        debug_assert!(this.buf.is_empty());
-        if pending_write.len() < *this.limit {
-            this.buf.extend_from_slice(&pending_write);
+        debug_assert!(self.buf.is_empty());
+        if pending_write.len() < *self.limit {
+            self.buf.extend_from_slice(&pending_write);
             return Poll::Ready(Ok(()));
         }
 
-        match this.inner.as_mut().poll_ready(cx) {
+        match self.inner.as_mut().poll_ready(cx) {
             Poll::Ready(Ok(())) => {}
             poll => {
-                *this.pending_write = Some(pending_write);
+                *self.pending_write = Some(pending_write);
                 return poll;
             }
         }
 
-        this.inner.start_send(pending_write)?;
+        self.inner.as_mut().start_send(pending_write)?;
         Poll::Ready(Ok(()))
     }
 
-    fn poll_write_buf(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), S::Error>> {
-        let mut this = self.project();
-
-        if this.buf.is_empty() {
+    fn poll_write_buf(&mut self, cx: &mut Context) -> Poll<Result<(), S::Error>> {
+        if self.buf.is_empty() {
             return Poll::Ready(Ok(()));
         }
 
-        ready!(this.inner.as_mut().poll_ready(cx))?;
-        this.inner.start_send(this.buf.split().freeze())?;
+        ready!(self.inner.as_mut().poll_ready(cx))?;
+        self.inner.as_mut().start_send(self.buf.split().freeze())?;
 
         Poll::Ready(Ok(()))
     }
 
-    fn poll_flush_shallow(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Result<(), S::Error>> {
-        ready!(self.as_mut().poll_write_pending(cx))?;
-        ready!(self.as_mut().poll_write_buf(cx))?;
+    fn poll_flush_shallow(&mut self, cx: &mut Context) -> Poll<Result<(), S::Error>> {
+        ready!(self.poll_write_pending(cx))?;
+        ready!(self.poll_write_buf(cx))?;
 
         Poll::Ready(Ok(()))
     }
@@ -123,7 +112,7 @@ where
     type Error = S::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.poll_write_pending(cx)
+        self.project().poll_write_pending(cx)
     }
 
     fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
@@ -133,14 +122,16 @@ where
         Ok(())
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))?;
-        self.project().inner.poll_flush(cx)
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let mut this = self.project();
+        ready!(this.poll_flush_shallow(cx))?;
+        this.inner.poll_flush(cx)
     }
 
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))?;
-        self.project().inner.poll_close(cx)
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let mut this = self.project();
+        ready!(this.poll_flush_shallow(cx))?;
+        this.inner.poll_close(cx)
     }
 }
 
