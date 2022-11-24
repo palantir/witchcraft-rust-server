@@ -28,7 +28,7 @@ default = ["jemalloc"]
 jemalloc = ["tikv-jemalloc-ctl", "tikv-jemallocator"]
 
 [dependencies]
-addr2line = "0.18"
+addr2line = "0.19"
 arc-swap = "1"
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 async-trait = "0.1"
