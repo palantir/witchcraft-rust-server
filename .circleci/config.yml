@@ -22,7 +22,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: rust:1.64.0
+      - image: rust:1.65.0
     environment:
       RUSTFLAGS: -D warnings
       # Work around a Clippy ICE :(

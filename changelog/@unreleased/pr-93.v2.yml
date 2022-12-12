@@ -1,0 +1,6 @@
+type: fix
+fix:
+  description: Fixed a bug where compressed response body chunks couldn't be decompressed
+    until the next chunk was received.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/93
