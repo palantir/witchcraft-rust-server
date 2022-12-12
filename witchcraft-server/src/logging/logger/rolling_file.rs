@@ -33,27 +33,27 @@ use tokio::task;
 const MAX_LOG_SIZE: u64 = 1024 * 1024 * 1024;
 
 struct CurrentFile {
-    file: BufBytesSink<FileBytesSink>,
+    sink: BufBytesSink<FileBytesSink>,
     len: u64,
     date: NaiveDate,
 }
 
 impl CurrentFile {
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.file).poll_ready(cx)
+        Pin::new(&mut self.sink).poll_ready(cx)
     }
 
     fn start_send(&mut self, item: Bytes) -> io::Result<()> {
         self.len += item.remaining() as u64;
-        Pin::new(&mut self.file).start_send(item)
+        Pin::new(&mut self.sink).start_send(item)
     }
 
     fn poll_flush(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.file).poll_flush(cx)
+        Pin::new(&mut self.sink).poll_flush(cx)
     }
 
     fn poll_close(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.file).poll_close(cx)
+        Pin::new(&mut self.sink).poll_close(cx)
     }
 }
 
@@ -127,7 +127,7 @@ impl RollingFileAppender {
 
         Ok(RollingFileAppender {
             state: State::Live(CurrentFile {
-                file: BufBytesSink::new(FileBytesSink::new(file)),
+                sink: BufBytesSink::new(FileBytesSink::new(file)),
                 len,
                 date,
             }),
@@ -175,7 +175,7 @@ impl Sink<Bytes> for RollingFileAppender {
                 State::Rotating(future) => match ready!(future.as_mut().poll(cx)) {
                     Ok(file) => {
                         self.state = State::Live(CurrentFile {
-                            file: BufBytesSink::new(FileBytesSink::new(file)),
+                            sink: BufBytesSink::new(FileBytesSink::new(file)),
                             len: 0,
                             date: Utc::now().date_naive(),
                         });
