@@ -32,7 +32,7 @@ addr2line = "0.19"
 arc-swap = "1"
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 async-trait = "0.1"
-base64 = "0.13"
+base64 = "0.20"
 bytes = "1"
 conjure-error = "3"
 conjure-http = "3"
