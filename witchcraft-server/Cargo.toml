@@ -40,6 +40,7 @@ conjure-object = "3"
 conjure-runtime = "4"
 conjure-serde = "3"
 crash-handler = "0.4"
+flate2 = "1"
 foreign-types = "0.5"
 futures-channel = "0.3"
 futures-sink = "0.3"
@@ -86,7 +87,7 @@ tokio = { version = "1", features = [
     "time",
 ] }
 tokio-openssl = "0.6"
-tokio-util = { version = "0.7", features = ["codec"] }
+tokio-util = "0.7"
 tracing = { version = "0.1", features = ["log"] }
 typed-arena = "2"
 witchcraft-log = "3"
@@ -101,6 +102,5 @@ procinfo = "0.4"
 rstack-self = { version = "0.3", features = ["dw"], default-features = false }
 
 [dev-dependencies]
-flate2 = "1"
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
