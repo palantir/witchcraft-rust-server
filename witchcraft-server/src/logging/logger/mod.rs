@@ -28,6 +28,7 @@ use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 
 pub mod r#async;
+mod byte_buffer;
 pub mod json;
 pub mod metrics;
 pub mod rolling_file;

@@ -11,13 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::logging::logger::byte_buffer::BufBytesSink;
 use async_compression::tokio::write::GzipEncoder;
 use bytes::{Buf, Bytes};
 use conjure_error::Error;
-use conjure_object::chrono::{Date, TimeZone};
+use conjure_object::chrono::NaiveDate;
 use conjure_object::Utc;
 use futures_sink::Sink;
 use futures_util::ready;
+use pin_project::pin_project;
 use regex::Regex;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -25,30 +27,37 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::fs::{self, File, OpenOptions};
-use tokio::io::{self, AsyncWrite, AsyncWriteExt, BufWriter};
+use tokio::io::{self, AsyncWrite, AsyncWriteExt};
 use tokio::task;
 
 const MAX_LOG_SIZE: u64 = 1024 * 1024 * 1024;
 
 struct CurrentFile {
-    file: BufWriter<File>,
+    sink: BufBytesSink<FileBytesSink>,
     len: u64,
-    date: Date<Utc>,
-    pending: Bytes,
+    date: NaiveDate,
 }
 
 impl CurrentFile {
-    fn poll_write(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        while self.pending.has_remaining() {
-            let n = ready!(Pin::new(&mut self.file).poll_write(cx, &self.pending))?;
-            self.len += n as u64;
-            self.pending.advance(n);
-        }
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.sink).poll_ready(cx)
+    }
 
-        Poll::Ready(Ok(()))
+    fn start_send(&mut self, item: Bytes) -> io::Result<()> {
+        self.len += item.remaining() as u64;
+        Pin::new(&mut self.sink).start_send(item)
+    }
+
+    fn poll_flush(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.sink).poll_flush(cx)
+    }
+
+    fn poll_close(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.sink).poll_close(cx)
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum State {
     Live(CurrentFile),
     Rotating(Pin<Box<dyn Future<Output = io::Result<File>> + Sync + Send>>),
@@ -80,7 +89,7 @@ impl RollingFileAppender {
         let len = file.metadata().await.map_err(Error::internal_safe)?.len();
 
         let archive_locator = ArchiveLocator::new(name);
-        let date = Utc::now().date();
+        let date = Utc::now().date_naive();
 
         let next_archive_index = archive_locator
             .archived_logs(dir)
@@ -118,10 +127,9 @@ impl RollingFileAppender {
 
         Ok(RollingFileAppender {
             state: State::Live(CurrentFile {
-                file: BufWriter::new(file),
+                sink: BufBytesSink::new(FileBytesSink::new(file)),
                 len,
                 date,
-                pending: Bytes::new(),
             }),
             next_archive_index,
             name,
@@ -140,14 +148,12 @@ impl Sink<Bytes> for RollingFileAppender {
             let this = &mut *self;
             match &mut this.state {
                 State::Live(file) => {
-                    ready!(file.poll_write(cx))?;
-
-                    let date = Utc::now().date();
+                    let date = Utc::now().date_naive();
                     if file.len < MAX_LOG_SIZE && date <= file.date {
-                        return Poll::Ready(Ok(()));
+                        return file.poll_ready(cx);
                     }
 
-                    ready!(Pin::new(&mut file.file).poll_flush(cx))?;
+                    ready!(file.poll_close(cx))?;
 
                     let number = this.next_archive_index;
                     if date > file.date {
@@ -169,10 +175,9 @@ impl Sink<Bytes> for RollingFileAppender {
                 State::Rotating(future) => match ready!(future.as_mut().poll(cx)) {
                     Ok(file) => {
                         self.state = State::Live(CurrentFile {
-                            file: BufWriter::new(file),
+                            sink: BufBytesSink::new(FileBytesSink::new(file)),
                             len: 0,
-                            date: Utc::now().date(),
-                            pending: Bytes::new(),
+                            date: Utc::now().date_naive(),
                         });
                     }
                     Err(e) => {
@@ -188,32 +193,21 @@ impl Sink<Bytes> for RollingFileAppender {
 
     fn start_send(mut self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
         match &mut self.state {
-            State::Live(file) => {
-                debug_assert!(file.pending.is_empty());
-                file.pending = item;
-            }
+            State::Live(file) => file.start_send(item),
             State::Rotating(_) => panic!("start_send called without poll_ready"),
         }
-
-        Ok(())
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         match &mut self.state {
-            State::Live(file) => {
-                ready!(file.poll_write(cx))?;
-                Pin::new(&mut file.file).poll_flush(cx)
-            }
+            State::Live(file) => file.poll_flush(cx),
             State::Rotating(_) => Poll::Ready(Ok(())),
         }
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         match &mut self.state {
-            State::Live(file) => {
-                ready!(file.poll_write(cx))?;
-                Pin::new(&mut file.file).poll_shutdown(cx)
-            }
+            State::Live(file) => file.poll_close(cx),
             State::Rotating(_) => Poll::Ready(Ok(())),
         }
     }
@@ -238,32 +232,27 @@ fn log_path(dir: &Path, name: &str) -> PathBuf {
     path
 }
 
-fn archive_path(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> PathBuf {
+fn archive_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}-{}-{}.log", name, date.naive_utc(), number,));
+    path.push(format!("{}-{}-{}.log", name, date, number));
     path
 }
 
-fn archive_gz_tmp_path(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> PathBuf {
+fn archive_gz_tmp_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!(
-        "{}-{}-{}.log.gz.tmp",
-        name,
-        date.naive_utc(),
-        number,
-    ));
+    path.push(format!("{}-{}-{}.log.gz.tmp", name, date, number));
     path
 }
 
-fn archive_gz_path(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> PathBuf {
+fn archive_gz_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}-{}-{}.log.gz", name, date.naive_utc(), number,));
+    path.push(format!("{}-{}-{}.log.gz", name, date, number));
     path
 }
 
 async fn clear_old_archives(
     dir: &Path,
-    date: Date<Utc>,
+    date: NaiveDate,
     max_archive_size: u64,
     max_archive_days: u32,
     archive_locator: &ArchiveLocator,
@@ -274,7 +263,7 @@ async fn clear_old_archives(
 
 // split out for testing
 async fn clear_old_archives_inner(
-    date: Date<Utc>,
+    date: NaiveDate,
     max_archive_size: u64,
     max_archive_days: u32,
     mut logs: Vec<ArchivedLog>,
@@ -286,7 +275,7 @@ async fn clear_old_archives_inner(
     let mut date_cutoff = date;
     // do a silly loop to make sure we're correct WRT leap things
     for _ in 0..max_archive_days {
-        date_cutoff = date_cutoff.pred();
+        date_cutoff = date_cutoff.pred_opt().unwrap();
     }
 
     for log in logs {
@@ -326,7 +315,7 @@ async fn restart_compression(
     Ok(())
 }
 
-async fn compress(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> io::Result<()> {
+async fn compress(dir: &Path, name: &str, date: NaiveDate, number: u32) -> io::Result<()> {
     let source_path = archive_path(dir, name, date, number);
     let mut source = File::open(&source_path).await?;
 
@@ -348,7 +337,7 @@ async fn compress(dir: &Path, name: &str, date: Date<Utc>, number: u32) -> io::R
 async fn rotate(
     dir: &Path,
     name: &'static str,
-    date: Date<Utc>,
+    date: NaiveDate,
     number: u32,
     max_archive_size: u64,
     max_archive_days: u32,
@@ -365,7 +354,7 @@ async fn rotate(
         // clear archives based on the current date rather than the date of the log being archived.
         let _ = clear_old_archives(
             &dir,
-            Utc::now().date(),
+            Utc::now().date_naive(),
             max_archive_size,
             max_archive_days,
             &archive_locator,
@@ -433,7 +422,7 @@ impl ArchiveLocator {
             let year = captures[1].parse().unwrap();
             let month = captures[2].parse().unwrap();
             let day = captures[3].parse().unwrap();
-            let date = match Utc.ymd_opt(year, month, day).single() {
+            let date = match NaiveDate::from_ymd_opt(year, month, day) {
                 Some(date) => date,
                 None => continue,
             };
@@ -460,9 +449,56 @@ impl ArchiveLocator {
 #[derive(Debug, PartialEq)]
 struct ArchivedLog {
     path: PathBuf,
-    date: Date<Utc>,
+    date: NaiveDate,
     number: u32,
     len: u64,
+}
+
+#[pin_project]
+struct FileBytesSink {
+    #[pin]
+    file: File,
+    pending: Bytes,
+}
+
+impl FileBytesSink {
+    fn new(file: File) -> Self {
+        FileBytesSink {
+            file,
+            pending: Bytes::new(),
+        }
+    }
+}
+
+impl Sink<Bytes> for FileBytesSink {
+    type Error = io::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+        let this = self.project();
+        debug_assert!(this.pending.is_empty());
+        *this.pending = item;
+
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let mut this = self.project();
+
+        while !this.pending.is_empty() {
+            let nwritten = ready!(this.file.as_mut().poll_write(cx, this.pending))?;
+            this.pending.advance(nwritten);
+        }
+
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx)
+    }
 }
 
 #[cfg(test)]
@@ -481,7 +517,7 @@ mod test {
     #[test]
     fn archive_tmp_path_format() {
         let name = "service";
-        let date = Utc.ymd(2017, 4, 20);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let number = 3;
 
         assert_eq!(
@@ -493,7 +529,7 @@ mod test {
     #[test]
     fn archive_path_format() {
         let name = "service";
-        let date = Utc.ymd(2017, 4, 20);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let number = 3;
 
         assert_eq!(
@@ -507,7 +543,7 @@ mod test {
         let dir = tempfile::tempdir().unwrap();
 
         let name = "service";
-        let date = Utc.ymd(2017, 4, 20);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let number = 3;
 
         let tmp_path = archive_path(dir.path(), name, date, number);
@@ -540,7 +576,7 @@ mod test {
         let file = File::create(&requests_path).await.unwrap();
         file.set_len(2).await.unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         let file = File::create(&service_archive_1_0_path).await.unwrap();
         file.set_len(3).await.unwrap();
@@ -549,7 +585,7 @@ mod test {
         let file = File::create(&service_archive_1_1_path).await.unwrap();
         file.set_len(4).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         let file = File::create(&service_archive_2_0_path).await.unwrap();
         file.set_len(5).await.unwrap();
@@ -601,14 +637,14 @@ mod test {
     async fn clear_old_archives_always_deletes_old_logs() {
         let dir = tempfile::tempdir().unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         File::create(&service_archive_1_0_path).await.unwrap();
 
         let service_archive_1_1_path = archive_gz_path(dir.path(), "service", day1, 1);
         File::create(&service_archive_1_1_path).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         File::create(&service_archive_2_0_path).await.unwrap();
 
@@ -642,7 +678,7 @@ mod test {
             },
         ];
 
-        let date = Utc.ymd(2017, 5, 21);
+        let date = NaiveDate::from_ymd_opt(2017, 5, 21).unwrap();
         clear_old_archives_inner(date, 1024 * 1024 * 1024, 30, logs)
             .await
             .unwrap();
@@ -657,14 +693,14 @@ mod test {
     async fn clear_old_archives_deletes_to_save_space() {
         let dir = tempfile::tempdir().unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         File::create(&service_archive_1_0_path).await.unwrap();
 
         let service_archive_1_1_path = archive_gz_path(dir.path(), "service", day1, 1);
         File::create(&service_archive_1_1_path).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         File::create(&service_archive_2_0_path).await.unwrap();
 
@@ -698,7 +734,7 @@ mod test {
             },
         ];
 
-        let date = Utc.ymd(2017, 4, 21);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         clear_old_archives_inner(date, 1024, 30, logs)
             .await
             .unwrap();
@@ -713,14 +749,14 @@ mod test {
     async fn clear_old_archives_ignores_missing_files() {
         let dir = tempfile::tempdir().unwrap();
 
-        let day1 = Utc.ymd(2017, 4, 20);
+        let day1 = NaiveDate::from_ymd_opt(2017, 4, 20).unwrap();
         let service_archive_1_0_path = archive_gz_path(dir.path(), "service", day1, 0);
         // not actually making this
 
         let service_archive_1_1_path = archive_gz_path(dir.path(), "service", day1, 1);
         File::create(&service_archive_1_1_path).await.unwrap();
 
-        let day2 = Utc.ymd(2017, 4, 21);
+        let day2 = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         let service_archive_2_0_path = archive_gz_path(dir.path(), "service", day2, 0);
         File::create(&service_archive_2_0_path).await.unwrap();
 
@@ -754,7 +790,7 @@ mod test {
             },
         ];
 
-        let date = Utc.ymd(2017, 4, 21);
+        let date = NaiveDate::from_ymd_opt(2017, 4, 21).unwrap();
         clear_old_archives_inner(date, 1024, 30, logs)
             .await
             .unwrap();
