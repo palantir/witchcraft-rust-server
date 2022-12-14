@@ -106,7 +106,7 @@ impl LazySpan {
                         Some(context) => zipkin::new_child(*context),
                         None => zipkin::new_trace(),
                     };
-                    let span = span.with_name(*name).detach();
+                    let span = span.with_name(name).detach();
                     *self = LazySpan::Live(span);
                 }
                 LazySpan::Live(span) => return span,
