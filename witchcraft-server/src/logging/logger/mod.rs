@@ -20,6 +20,7 @@ use crate::logging::logger::stdout::StdoutAppender;
 use crate::shutdown_hooks::ShutdownHooks;
 use bytes::Bytes;
 use conjure_error::Error;
+use futures_channel::oneshot;
 use futures_sink::Sink;
 use serde::Serialize;
 use std::io;
@@ -35,8 +36,11 @@ pub mod rolling_file;
 pub mod stdout;
 
 pub type Appender<T> = AsyncAppender<T>;
-pub type SyncAppender<T> =
-    MetricsAppender<JsonAppender<Pin<Box<dyn Sink<Bytes, Error = io::Error> + Sync + Send>>>, T>;
+
+pub struct Payload<T> {
+    pub value: T,
+    pub cb: Option<oneshot::Sender<bool>>,
+}
 
 pub async fn appender<T>(
     config: &InstallConfig,
@@ -47,20 +51,7 @@ where
     T: Serialize + LogFormat + 'static + Send,
     T::Reporter: 'static + Send,
 {
-    let appender = sync_appender(config, metrics).await?;
-    let appender = AsyncAppender::new(appender, metrics, hooks);
-
-    Ok(appender)
-}
-
-pub async fn sync_appender<T>(
-    config: &InstallConfig,
-    metrics: &MetricRegistry,
-) -> Result<SyncAppender<T>, Error>
-where
-    T: Serialize + LogFormat + 'static + Send,
-{
-    let appender: Pin<Box<dyn Sink<Bytes, Error = io::Error> + Sync + Send>> = if config
+    let appender: Pin<Box<dyn Sink<Payload<Bytes>, Error = io::Error> + Sync + Send>> = if config
         .use_console_log()
     {
         Box::pin(StdoutAppender::new())
@@ -72,6 +63,7 @@ where
 
     let appender = JsonAppender::new(appender);
     let appender = MetricsAppender::new(appender, metrics);
+    let appender = AsyncAppender::new(appender, metrics, hooks);
 
     Ok(appender)
 }

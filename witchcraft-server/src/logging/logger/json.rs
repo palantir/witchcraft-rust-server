@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::logging::logger::Payload;
 use bytes::{BufMut, Bytes, BytesMut};
 use conjure_serde::json;
 use futures_sink::Sink;
@@ -36,10 +37,10 @@ impl<S> JsonAppender<S> {
     }
 }
 
-impl<T, S> Sink<T> for JsonAppender<S>
+impl<T, S> Sink<Payload<T>> for JsonAppender<S>
 where
     T: Serialize,
-    S: Sink<Bytes, Error = io::Error>,
+    S: Sink<Payload<Bytes>, Error = io::Error>,
 {
     type Error = io::Error;
 
@@ -47,13 +48,16 @@ where
         self.project().inner.poll_ready(cx)
     }
 
-    fn start_send(self: Pin<&mut Self>, value: T) -> io::Result<()> {
+    fn start_send(self: Pin<&mut Self>, value: Payload<T>) -> io::Result<()> {
         let this = self.project();
-        json::to_writer(this.buf.writer(), &value)
+        json::to_writer(this.buf.writer(), &value.value)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         this.buf.put_u8(b'\n');
 
-        this.inner.start_send(this.buf.split().freeze())
+        this.inner.start_send(Payload {
+            value: this.buf.split().freeze(),
+            cb: value.cb,
+        })
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {

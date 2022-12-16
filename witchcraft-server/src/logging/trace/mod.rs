@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::api::{Annotation, Endpoint, Span, TraceLogV1};
-use crate::logging::logger::{self, Appender};
+use crate::logging::logger::{self, Appender, Payload};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
 use conjure_object::{SafeLong, Utc};
@@ -126,13 +126,14 @@ impl Report for WitchcraftReporter {
                 .map(|(k, v)| (k.to_string(), v.to_string())),
         );
 
-        let _ = self.appender.try_send(
-            TraceLogV1::builder()
+        let _ = self.appender.try_send(Payload {
+            value: TraceLogV1::builder()
                 .type_("trace.1")
                 .time(Utc::now())
                 .span(span.build())
                 .build(),
-        );
+            cb: None,
+        });
     }
 }
 

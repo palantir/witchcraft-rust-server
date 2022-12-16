@@ -13,7 +13,7 @@
 // limitations under the License.
 use crate::logging;
 use crate::logging::api::{LogLevel, ServiceLogV1, SessionId, TokenId, TraceId, UserId};
-use crate::logging::logger::{self, Appender};
+use crate::logging::logger::{self, Appender, Payload};
 use crate::shutdown_hooks::ShutdownHooks;
 use arc_swap::ArcSwap;
 use conjure_error::{Error, ErrorKind};
@@ -192,7 +192,10 @@ impl Log for ServiceLogger {
 
         match STATE.get() {
             Some(state) => {
-                let _ = state.appender.try_send(message);
+                let _ = state.appender.try_send(Payload {
+                    value: message,
+                    cb: None,
+                });
             }
             None => {
                 let mut buf = json::to_vec(&message).unwrap();

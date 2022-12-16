@@ -16,7 +16,7 @@
 use crate::logging::api::{AuditLogV3, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
-pub(crate) use logger::{Appender, SyncAppender};
+pub(crate) use logger::{Appender, Payload};
 use refreshable::Refreshable;
 use std::sync::Arc;
 use witchcraft_metrics::MetricRegistry;
@@ -40,7 +40,7 @@ pub(crate) const SAMPLED_KEY: &str = "_sampled";
 
 pub(crate) struct Loggers {
     pub request_logger: Appender<RequestLogV2>,
-    pub audit_logger: SyncAppender<AuditLogV3>,
+    pub audit_logger: Appender<AuditLogV3>,
 }
 
 pub(crate) fn early_init() {
@@ -57,7 +57,7 @@ pub(crate) async fn init(
     service::init(metrics, install, runtime, hooks).await?;
     trace::init(metrics, install, runtime, hooks).await?;
     let request_logger = logger::appender(install, metrics, hooks).await?;
-    let audit_logger = logger::sync_appender(install, metrics).await?;
+    let audit_logger = logger::appender(install, metrics, hooks).await?;
 
     cleanup::cleanup_logs().await;
 

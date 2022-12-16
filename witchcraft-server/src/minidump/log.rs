@@ -89,11 +89,9 @@ impl SymbolSupplier for WitchcraftSymbolSupplier {
 fn format_dump(state: &ProcessState) -> String {
     let mut buf = String::new();
 
-    if let Some(crash_reason) = state.crash_reason {
-        writeln!(buf, "Crash reason: {}", crash_reason).unwrap();
-    }
-    if let Some(crash_address) = state.crash_address {
-        writeln!(buf, "Crash address: {:#0x}", crash_address).unwrap();
+    if let Some(info) = &state.exception_info {
+        writeln!(buf, "Crash reason: {}", info.reason).unwrap();
+        writeln!(buf, "Crash address: {:#0x}", info.address).unwrap();
     }
 
     let arena = Arena::new();
