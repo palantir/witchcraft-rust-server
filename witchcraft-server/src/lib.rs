@@ -458,6 +458,7 @@ where
         install_config: install_config.as_ref().clone(),
         thread_pool: None,
         endpoints: vec![],
+        shutdown_hooks: ShutdownHooks::new(),
     };
 
     let status_endpoints = StatusEndpoints::new(
@@ -476,15 +477,10 @@ where
         .health_checks
         .register(Endpoint500sHealthCheck::new(&witchcraft.endpoints));
 
-    let mut server_shutdown_hooks = ShutdownHooks::new();
-    handle.block_on(server::start(
-        &mut witchcraft,
-        &mut server_shutdown_hooks,
-        loggers,
-    ))?;
+    handle.block_on(server::start(&mut witchcraft, loggers))?;
 
     handle.block_on(shutdown(
-        server_shutdown_hooks,
+        witchcraft.shutdown_hooks,
         witchcraft.install_config.server().shutdown_timeout(),
     ))
 }
