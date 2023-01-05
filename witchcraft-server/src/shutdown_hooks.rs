@@ -32,7 +32,8 @@ impl ShutdownHooks {
         }
     }
 
-    pub(crate) fn push<F>(&mut self, future: F)
+    #[allow(dead_code)]
+    pub fn push<F>(&mut self, future: F)
     where
         F: Future<Output = ()> + 'static + Send,
     {
