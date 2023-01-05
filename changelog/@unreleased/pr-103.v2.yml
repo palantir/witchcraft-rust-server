@@ -1,0 +1,8 @@
+type: feature
+feature:
+  description: |-
+    Expose add_shutdown_hook to register server shutdown futures
+
+    Adds a `add_shutdown_hook` method to Witchcraft that allows callers to register a future that will be polled until ready when the server shuts down.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/103
