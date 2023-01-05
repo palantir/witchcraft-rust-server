@@ -143,8 +143,9 @@ impl Witchcraft {
         )
     }
 
-    /// Adds a future that will be polled until ready when the server shuts down
-    pub fn add_shutdown_hook<F>(&mut self, future: F)
+    /// Adds a future that will be polled until ready when the server shuts down. 
+    /// The future will be polled for a limited time until an install configured shutdown duration has elapsed. 
+    pub fn on_shutdown<F>(&mut self, future: F)
     where
         F: Future<Output = ()> + 'static + Send,
     {

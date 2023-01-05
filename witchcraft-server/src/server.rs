@@ -127,7 +127,7 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
         }
     });
 
-    witchcraft.add_shutdown_hook(async move {
+    witchcraft.on_shutdown(async move {
         handle.abort();
     });
 
