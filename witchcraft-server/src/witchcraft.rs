@@ -18,9 +18,11 @@ use crate::endpoint::extended_path::ExtendedPathEndpoint;
 use crate::endpoint::WitchcraftEndpoint;
 use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
+use crate::shutdown_hooks::ShutdownHooks;
 use crate::{blocking, RequestBody, ResponseWriter};
 use conjure_http::server::{AsyncEndpoint, AsyncService, Endpoint, Service};
 use conjure_runtime::ClientFactory;
+use futures_util::Future;
 use std::sync::Arc;
 use tokio::runtime::Handle;
 use witchcraft_metrics::MetricRegistry;
@@ -36,6 +38,7 @@ pub struct Witchcraft {
     pub(crate) install_config: InstallConfig,
     pub(crate) thread_pool: Option<Arc<ThreadPool>>,
     pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
+    pub(crate) shutdown_hooks: ShutdownHooks,
 }
 
 impl Witchcraft {
@@ -138,6 +141,16 @@ impl Witchcraft {
                 .map(|e| Box::new(ConjureBlockingEndpoint::new(&self.metrics, thread_pool, e)))
                 .map(|e| extend_path(e, self.install_config.context_path(), prefix)),
         )
+    }
+
+    /// Adds a future that will be run when the server begins its shutdown process.
+    ///
+    /// The server will not shut down until the future completes or the configured shutdown timeout elapses.
+    pub fn on_shutdown<F>(&mut self, future: F)
+    where
+        F: Future<Output = ()> + 'static + Send,
+    {
+        self.shutdown_hooks.push(future)
     }
 }
 

@@ -1,0 +1,6 @@
+type: feature
+feature:
+  description: |-
+    Expose`on_shutdown` method in Witchcraft to register server shutdown operations.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/103

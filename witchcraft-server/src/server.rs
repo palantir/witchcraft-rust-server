@@ -46,7 +46,6 @@ use crate::service::unverified_jwt::UnverifiedJwtLayer;
 use crate::service::web_security::WebSecurityLayer;
 use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
-use crate::shutdown_hooks::ShutdownHooks;
 use crate::Witchcraft;
 use conjure_error::Error;
 use std::future::Future;
@@ -58,11 +57,7 @@ use witchcraft_log::debug;
 
 pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 
-pub(crate) async fn start(
-    witchcraft: &mut Witchcraft,
-    shutdown_hooks: &mut ShutdownHooks,
-    loggers: Loggers,
-) -> Result<(), Error> {
+pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Result<(), Error> {
     // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
         .layer(RoutingLayer::new(mem::take(&mut witchcraft.endpoints)))
@@ -95,7 +90,7 @@ pub(crate) async fn start(
         .layer(TlsLayer::new(&witchcraft.install_config)?)
         .layer(TlsMetricsLayer::new(&witchcraft.metrics))
         .layer(ClientCertificateLayer)
-        .layer(GracefulShutdownLayer::new(shutdown_hooks))
+        .layer(GracefulShutdownLayer::new(&mut witchcraft.shutdown_hooks))
         .layer(IdleConnectionLayer::new(&witchcraft.install_config))
         .service(HyperService::new(request_service));
     let handle_service = Arc::new(handle_service);
@@ -132,7 +127,7 @@ pub(crate) async fn start(
         }
     });
 
-    shutdown_hooks.push(async move {
+    witchcraft.on_shutdown(async move {
         handle.abort();
     });
 
