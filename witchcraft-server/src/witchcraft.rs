@@ -143,8 +143,9 @@ impl Witchcraft {
         )
     }
 
-    /// Adds a future that will be polled when the server shuts down.
-    /// The future will be polled until it is ready or the server shutdown duration has elapsed.
+    /// Adds a future that will be run when the server begins its shutdown process.
+    ///
+    /// The server will not shut down until the future completes or the configured shutdown timeout elapses.
     pub fn on_shutdown<F>(&mut self, future: F)
     where
         F: Future<Output = ()> + 'static + Send,
