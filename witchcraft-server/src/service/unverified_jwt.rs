@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::{Layer, Service};
-use base64::alphabet;
-use base64::engine::fast_portable::{self, FastPortable};
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
+use base64::Engine;
 use conjure_object::Uuid;
 use http::header::AUTHORIZATION;
 use http::Request;
@@ -91,11 +91,7 @@ impl UnverifiedJwt {
             return None;
         }
 
-        let payload = base64::decode_engine(
-            payload,
-            &FastPortable::from(&alphabet::URL_SAFE, fast_portable::NO_PAD),
-        )
-        .ok()?;
+        let payload = URL_SAFE_NO_PAD.decode(payload).ok()?;
 
         serde_json::from_slice(&payload).ok()
     }
@@ -119,8 +115,9 @@ where
         where
             E: Error,
         {
-            let bytes =
-                base64::decode(v).map_err(|_| Error::invalid_value(Unexpected::Str(v), &self))?;
+            let bytes = STANDARD
+                .decode(v)
+                .map_err(|_| Error::invalid_value(Unexpected::Str(v), &self))?;
 
             Uuid::from_slice(&bytes).map_err(|_| Error::invalid_value(Unexpected::Str(v), &self))
         }
