@@ -59,7 +59,7 @@ where
     }
 }
 
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Deserialize)]
 pub struct UnverifiedJwt {
     #[serde(deserialize_with = "de_uuid")]
     sub: Uuid,
