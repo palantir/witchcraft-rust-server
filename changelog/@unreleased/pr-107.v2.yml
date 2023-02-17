@@ -1,0 +1,6 @@
+type: feature
+feature:
+  description: Request logs now contain the auth token's `org` field as the `_org`
+    param if present.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/107
