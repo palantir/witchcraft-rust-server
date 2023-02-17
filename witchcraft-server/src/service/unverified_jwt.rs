@@ -59,7 +59,7 @@ where
     }
 }
 
-#[derive(Deserialize)]
+#[derive(PartialEq, Eq, Debug, Deserialize)]
 pub struct UnverifiedJwt {
     #[serde(deserialize_with = "de_uuid")]
     sub: Uuid,
@@ -67,6 +67,8 @@ pub struct UnverifiedJwt {
     sid: Option<Uuid>,
     #[serde(default, deserialize_with = "de_opt_uuid")]
     jti: Option<Uuid>,
+    #[serde(default, deserialize_with = "de_opt_uuid")]
+    org: Option<Uuid>,
 }
 
 impl UnverifiedJwt {
@@ -80,6 +82,10 @@ impl UnverifiedJwt {
 
     pub fn unverified_token_id(&self) -> Option<Uuid> {
         self.jti
+    }
+
+    pub fn unverified_organization_id(&self) -> Option<Uuid> {
+        self.org
     }
 }
 
@@ -162,4 +168,29 @@ where
     }
 
     deserializer.deserialize_option(V)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse() {
+        let token = "header.\
+            eyJzdWIiOiJ3NVAyV1FNQlEwNnB5WEl3U2xCLy9BPT0iLCJzaWQiOiJQOFpqMUQ1SVRlMjZUdGVLK1l1RFl3PT0\
+            iLCJqdGkiOiJwRm0wb1ZDSlQrQ0dWZFhmMmJLMy9RPT0iLCJvcmciOiJGQlMycTgvbFQvMnNBRktxZ09pUW13PT\
+            0iLCJleHAiOiAxNTc3ODY1NjAwfQ\
+            .signature";
+
+        let parsed = UnverifiedJwt::parse(token).unwrap();
+
+        let expected = UnverifiedJwt {
+            sub: "c393f659-0301-434e-a9c9-72304a507ffc".parse().unwrap(),
+            sid: Some("3fc663d4-3e48-4ded-ba4e-d78af98b8363".parse().unwrap()),
+            jti: Some("a459b4a1-5089-4fe0-8655-d5dfd9b2b7fd".parse().unwrap()),
+            org: Some("1414b6ab-cfe5-4ffd-ac00-52aa80e8909b".parse().unwrap()),
+        };
+
+        assert_eq!(expected, parsed);
+    }
 }

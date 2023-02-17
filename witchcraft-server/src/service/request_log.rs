@@ -14,6 +14,7 @@
 use crate::logging::api::{RequestLogV2, SessionId, TokenId, TraceId, UserId};
 use crate::logging::{self, Appender, Payload};
 use crate::service::routing::Route;
+use crate::service::unverified_jwt::UnverifiedJwt;
 use crate::service::{Layer, Service};
 use bytes::Buf;
 use conjure_http::SafeParams;
@@ -119,24 +120,24 @@ where
         };
 
         let mdc = mdc::snapshot();
-        let uid = mdc
-            .safe()
-            .get(logging::mdc::UID_KEY)
-            .and_then(|v| UserId::deserialize(v.clone()).ok());
-        let sid = mdc
-            .safe()
-            .get(logging::mdc::SID_KEY)
-            .and_then(|v| SessionId::deserialize(v.clone()).ok());
-        let token_id = mdc
-            .safe()
-            .get(logging::mdc::TOKEN_ID_KEY)
-            .and_then(|v| TokenId::deserialize(v.clone()).ok());
         let trace_id = mdc
             .safe()
             .get(logging::mdc::TRACE_ID_KEY)
             .and_then(|v| TraceId::deserialize(v.clone()).ok());
 
         let mut params = vec![];
+
+        let unverified_jwt = req.extensions().get::<UnverifiedJwt>();
+        let uid = unverified_jwt.map(|v| UserId(v.unverified_user_id().to_string()));
+        let sid = unverified_jwt
+            .and_then(UnverifiedJwt::unverified_session_id)
+            .map(|v| SessionId(v.to_string()));
+        let token_id = unverified_jwt
+            .and_then(UnverifiedJwt::unverified_token_id)
+            .map(|v| TokenId(v.to_string()));
+        if let Some(org_id) = unverified_jwt.and_then(UnverifiedJwt::unverified_organization_id) {
+            params.push(("_org".to_string(), Any::new(org_id).unwrap()));
+        }
 
         for key in MDC_KEYS {
             if let Some(value) = mdc.safe().get(key) {
