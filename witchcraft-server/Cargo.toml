@@ -79,7 +79,7 @@ tikv-jemallocator = { version = "0.5", features = [
     "background_threads",
     "profiling",
 ], optional = true }
-tokio = { version = "1", features = [
+tokio = { version = "1.27", features = [
     "fs",
     "macros",
     "rt-multi-thread",
