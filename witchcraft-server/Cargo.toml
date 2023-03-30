@@ -98,7 +98,6 @@ witchcraft-server-config = { version = "3.4.0", path = "../witchcraft-server-con
 witchcraft-server-macros = { version = "3.4.0", path = "../witchcraft-server-macros" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-procinfo = "0.4"
 rstack-self = { version = "0.3", features = ["dw"], default-features = false }
 
 [dev-dependencies]
