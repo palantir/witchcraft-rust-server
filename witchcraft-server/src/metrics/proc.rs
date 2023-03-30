@@ -23,7 +23,10 @@ pub fn register_metrics(metrics: &MetricRegistry) {
 
 fn num_threads() -> Option<i64> {
     let stat = fs::read_to_string("/proc/self/stat").ok()?;
+    parse_num_threads(&stat)
+}
 
+fn parse_num_threads(stat: &str) -> Option<i64> {
     // The stat pseudo-file is nominally a sequence of space separated values, but one, comm, is
     // the process name truncated to 16 characters and parenthesized. Since the process name itself
     // can contain both ` ` and `)`, we first split on the last `)` and then split on spaces from
@@ -61,5 +64,20 @@ impl Rlimit {
 
     pub fn cur(&self) -> u64 {
         self.0.rlim_cur as u64
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn num_threads() {
+        let stat = "9 (cat) R 1 9 1 34816 9 4194304 80 0 0 0 0 0 0 0 20 0 1 0 4977616 2138112 113 \
+            18446744073709551615 187650934964224 187650934994048 281474646050032 0 0 0 0 0 0 0 0 0 \
+            17 7 0 0 0 0 0 187650935060992 187650935062800 187651580477440 281474646051178 \
+            281474646051198 281474646051198 281474646052843 0";
+
+        assert_eq!(parse_num_threads(stat), Some(1));
     }
 }
