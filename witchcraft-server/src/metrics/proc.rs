@@ -11,17 +11,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use procinfo::pid;
 use std::mem::MaybeUninit;
 use std::{fs, io};
 use witchcraft_metrics::MetricRegistry;
 
 pub fn register_metrics(metrics: &MetricRegistry) {
-    metrics.gauge("process.threads", || {
-        pid::stat_self().map_or(0, |s| s.num_threads)
-    });
+    metrics.gauge("process.threads", || num_threads().unwrap_or(0));
 
     metrics.gauge("process.filedescriptor", || filedescriptor().unwrap_or(0.));
+}
+
+fn num_threads() -> Option<i64> {
+    let stat = fs::read_to_string("/proc/self/stat").ok()?;
+
+    // The stat pseudo-file is nominally a sequence of space separated values, but one, comm, is
+    // the process name truncated to 16 characters and parenthesized. Since the process name itself
+    // can contain both ` ` and `)`, we first split on the last `)` and then split on spaces from
+    // there. Fortunately, comm is the only non-numeric value.
+    //
+    // num_threads is entry 20, which maps out to index 18 after the handling of comm.
+    stat.rsplit(')').next()?.split(' ').nth(18)?.parse().ok()
 }
 
 fn filedescriptor() -> io::Result<f32> {
