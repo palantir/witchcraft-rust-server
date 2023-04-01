@@ -165,6 +165,7 @@ where
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[pin_project(project = TlsFutureProj)]
 pub enum TlsFuture<S, R, L>
 where
