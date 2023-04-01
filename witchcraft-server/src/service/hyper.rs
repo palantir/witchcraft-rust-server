@@ -23,7 +23,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_openssl::SslStream;
+use tokio_rustls::server::TlsStream;
 
 pub struct NewConnection<S, L> {
     pub stream: S,
@@ -47,7 +47,7 @@ impl<S> HyperService<S> {
     }
 }
 
-impl<S, R, L, B> Service<NewConnection<SslStream<R>, L>> for HyperService<S>
+impl<S, R, L, B> Service<NewConnection<TlsStream<R>, L>> for HyperService<S>
 where
     L: Layer<Arc<S>>,
     L::Service: Service<Request<hyper::Body>, Response = Response<B>>,
@@ -59,12 +59,12 @@ where
 {
     type Response = Result<(), Error>;
 
-    type Future = HyperFuture<L::Service, SslStream<R>, B>;
+    type Future = HyperFuture<L::Service, TlsStream<R>, B>;
 
-    fn call(&self, req: NewConnection<SslStream<R>, L>) -> Self::Future {
+    fn call(&self, req: NewConnection<TlsStream<R>, L>) -> Self::Future {
         let mut http = Http::new();
 
-        if req.stream.ssl().selected_alpn_protocol() == Some(b"h2") {
+        if req.stream.get_ref().1.alpn_protocol() == Some(b"h2") {
             http.http2_only(true);
         } else {
             http.http1_only(true).http1_half_close(false);

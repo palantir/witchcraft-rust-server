@@ -23,10 +23,10 @@ use conjure_http::server::{
 use conjure_serde::json;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use http::{Extensions, HeaderValue, Method, Request, Response, StatusCode};
-use openssl::memcmp;
 use refreshable::Refreshable;
 use std::borrow::Cow;
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tokio::task;
 use witchcraft_server_config::runtime::RuntimeConfig;
 
@@ -173,10 +173,7 @@ impl AsyncEndpoint<RequestBody, ResponseWriter> for HealthEndpoint {
         };
 
         let expected = self.state.health_check_auth.get();
-        // Using OpenSSL's constant time equality check, which requires the buffer lengths match
-        if authorization.len() != expected.len()
-            || !memcmp::eq(authorization.as_bytes(), expected.as_bytes())
-        {
+        if !bool::from(authorization.as_bytes().ct_eq(expected.as_bytes())) {
             return Err(Error::service_safe(
                 "invalid health check secret",
                 PermissionDenied::new(),

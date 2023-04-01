@@ -14,7 +14,7 @@
 use crate::service::hyper::NewConnection;
 use crate::service::{Layer, Service};
 use std::sync::Arc;
-use tokio_openssl::SslStream;
+use tokio_rustls::server::TlsStream;
 use witchcraft_metrics::{MetricId, MetricRegistry};
 
 /// A layer which records metrics about TLS handshakes.
@@ -46,29 +46,35 @@ pub struct TlsMetricsService<S> {
     metrics: Arc<MetricRegistry>,
 }
 
-impl<S, R, L> Service<NewConnection<SslStream<R>, L>> for TlsMetricsService<S>
+impl<S, R, L> Service<NewConnection<TlsStream<R>, L>> for TlsMetricsService<S>
 where
-    S: Service<NewConnection<SslStream<R>, L>>,
+    S: Service<NewConnection<TlsStream<R>, L>>,
 {
     type Response = S::Response;
 
     type Future = S::Future;
 
-    fn call(&self, req: NewConnection<SslStream<R>, L>) -> Self::Future {
+    fn call(&self, req: NewConnection<TlsStream<R>, L>) -> Self::Future {
+        let protocol = req
+            .stream
+            .get_ref()
+            .1
+            .protocol_version()
+            .expect("session is active");
+
         let cipher = req
             .stream
-            .ssl()
-            .current_cipher()
+            .get_ref()
+            .1
+            .negotiated_cipher_suite()
             .expect("session is active");
+
         self.metrics
             .meter(
                 MetricId::new("tls.handshake")
                     .with_tag("context", "server")
-                    .with_tag("protocol", req.stream.ssl().version_str())
-                    .with_tag(
-                        "cipher",
-                        cipher.standard_name().unwrap_or_else(|| cipher.name()),
-                    ),
+                    .with_tag("protocol", protocol.as_str().unwrap_or("unknown"))
+                    .with_tag("cipher", cipher.suite().as_str().unwrap_or("unknown")),
             )
             .mark(1);
 
