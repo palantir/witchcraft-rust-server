@@ -91,7 +91,7 @@ fn format_dump(state: &ProcessState) -> String {
 
     if let Some(info) = &state.exception_info {
         writeln!(buf, "Crash reason: {}", info.reason).unwrap();
-        writeln!(buf, "Crash address: {:#0x}", info.address).unwrap();
+        writeln!(buf, "Crash address: {}", info.address).unwrap();
     }
 
     let arena = Arena::new();
