@@ -26,7 +26,6 @@ use std::time::Duration;
 use std::{env, fs, io, mem, thread};
 use witchcraft_log::{debug, error};
 
-mod frame_resolver;
 mod log;
 
 const SOCKET_ADDR: &str = "var/data/tmp/minidump.sock";
