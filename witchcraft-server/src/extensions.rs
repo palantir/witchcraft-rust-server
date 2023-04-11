@@ -22,7 +22,7 @@ use std::ops::Deref;
 ///
 /// It will be present in the extensions of every request.
 #[derive(Copy, Clone)]
-pub struct PeerAddr(pub(crate) SocketAddr);
+pub struct PeerAddr(pub SocketAddr);
 
 impl Deref for PeerAddr {
     type Target = SocketAddr;

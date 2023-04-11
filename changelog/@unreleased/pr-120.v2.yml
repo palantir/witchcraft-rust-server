@@ -1,0 +1,5 @@
+type: feature
+feature:
+  description: '`PeerAddr`''s field is now public.'
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/120
