@@ -62,6 +62,7 @@ impl Rlimit {
         }
     }
 
+    #[allow(clippy::unnecessary_cast)]
     pub fn cur(&self) -> u64 {
         self.0.rlim_cur as u64
     }
