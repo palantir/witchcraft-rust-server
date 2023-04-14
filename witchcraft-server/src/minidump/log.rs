@@ -12,28 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::minidump::frame_resolver::FrameResolver;
-use async_trait::async_trait;
+use crate::minidump::symbol_provider::{Arena, WitchcraftSymbolProvider};
 use conjure_error::Error;
-use minidump::{Minidump, Module};
-use minidump_processor::{
-    CallStack, FileError, FileKind, ProcessState, StackFrame, SymbolError, SymbolFile,
-    SymbolSupplier, Symbolizer,
-};
+use minidump::Minidump;
+use minidump_processor::{CallStack, ProcessState, StackFrame};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
-use symbolic::cfi::CfiCache;
-use symbolic::common::ByteView;
-use symbolic::debuginfo::Object;
-use typed_arena::Arena;
-use witchcraft_log::{fatal, warn};
+use std::path::Path;
+use witchcraft_log::fatal;
 
 pub async fn log_minidump(p: &Path) -> Result<(), Error> {
     let dump = Minidump::read_path(p).map_err(Error::internal_safe)?;
 
-    let symbolizer = Symbolizer::new(WitchcraftSymbolSupplier);
+    let arena = Arena::new();
+    let symbol_provider = WitchcraftSymbolProvider::new(&arena);
 
-    let state = minidump_processor::process_minidump(&dump, &symbolizer)
+    let state = minidump_processor::process_minidump(&dump, &symbol_provider)
         .await
         .map_err(Error::internal_safe)?;
 
@@ -48,44 +41,6 @@ pub async fn log_minidump(p: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-// minidump_processor doesn't yet support inline frames internally, so we only provide CFI info for unwinding.
-struct WitchcraftSymbolSupplier;
-
-#[async_trait]
-impl SymbolSupplier for WitchcraftSymbolSupplier {
-    async fn locate_symbols(
-        &self,
-        module: &(dyn Module + Sync),
-    ) -> Result<SymbolFile, SymbolError> {
-        let buf = ByteView::open(&*module.code_file()).map_err(SymbolError::LoadError)?;
-        let object = Object::parse(&buf).map_err(|_| SymbolError::NotFound)?;
-
-        if module.code_identifier() != object.code_id() {
-            warn!(
-                "code ID mismatch for module, unwinding will be inaccurate",
-                safe: {
-                    file: module.code_file(),
-                    expected: format_args!("{:?}", module.code_identifier()),
-                    actual: format_args!("{:?}", object.code_id()),
-                },
-            );
-            return Err(SymbolError::NotFound);
-        }
-
-        let cfi_cache = CfiCache::from_object(&object).map_err(|_| SymbolError::NotFound)?;
-
-        SymbolFile::from_bytes(cfi_cache.as_slice())
-    }
-
-    async fn locate_file(
-        &self,
-        _module: &(dyn Module + Sync),
-        _file_kind: FileKind,
-    ) -> Result<PathBuf, FileError> {
-        Err(FileError::NotFound)
-    }
-}
-
 fn format_dump(state: &ProcessState) -> String {
     let mut buf = String::new();
 
@@ -94,17 +49,10 @@ fn format_dump(state: &ProcessState) -> String {
         writeln!(buf, "Crash address: {}", info.address).unwrap();
     }
 
-    let arena = Arena::new();
-    let mut frame_resolver = FrameResolver::new(&arena);
-
     if let Some(requesting_thread) = state.requesting_thread {
         writeln!(buf).unwrap();
         writeln!(buf, "Crashed thread:").unwrap();
-        format_thread(
-            &mut buf,
-            &state.threads[requesting_thread],
-            &mut frame_resolver,
-        );
+        format_thread(&mut buf, &state.threads[requesting_thread]);
     }
 
     writeln!(buf, "Threads:").unwrap();
@@ -113,13 +61,13 @@ fn format_dump(state: &ProcessState) -> String {
             continue;
         }
 
-        format_thread(&mut buf, thread, &mut frame_resolver);
+        format_thread(&mut buf, thread);
     }
 
     buf
 }
 
-fn format_thread(buf: &mut String, thread: &CallStack, frame_resolver: &mut FrameResolver<'_>) {
+fn format_thread(buf: &mut String, thread: &CallStack) {
     match &thread.thread_name {
         Some(thread_name) => {
             writeln!(buf, "Thread {} - {}", thread.thread_id, thread_name).unwrap()
@@ -128,29 +76,49 @@ fn format_thread(buf: &mut String, thread: &CallStack, frame_resolver: &mut Fram
     }
 
     for (i, frame) in thread.frames.iter().enumerate() {
-        format_frame(buf, frame, i, frame_resolver);
+        format_frame(buf, frame, i);
     }
 
     writeln!(buf).unwrap();
 }
 
-fn format_frame(
+fn format_frame(buf: &mut String, frame: &StackFrame, idx: usize) {
+    let mut idx = Some(idx);
+    for inline in &frame.inlines {
+        format_frame_entry(
+            buf,
+            &mut idx,
+            &inline.function_name,
+            inline.source_file_name.as_deref(),
+            inline.source_line,
+        );
+    }
+
+    format_frame_entry(
+        buf,
+        &mut idx,
+        frame.function_name.as_deref().unwrap_or("???"),
+        frame.source_file_name.as_deref(),
+        frame.source_line,
+    );
+}
+
+fn format_frame_entry(
     buf: &mut String,
-    frame: &StackFrame,
-    idx: usize,
-    frame_resolver: &mut FrameResolver<'_>,
+    idx: &mut Option<usize>,
+    name: &str,
+    file: Option<&str>,
+    line: Option<u32>,
 ) {
-    let mut first = true;
-    frame_resolver.resolve(frame, |entry| {
-        if first {
-            write!(buf, "{idx:4}: ").unwrap();
-            first = false;
-        } else {
-            write!(buf, "      ").unwrap();
+    match *idx {
+        Some(i) => {
+            write!(buf, "{i:4} ").unwrap();
+            *idx = None;
         }
-        writeln!(buf, "{}", entry.name.unwrap_or("???")).unwrap();
-        if let Some(file) = entry.file {
-            writeln!(buf, "              at {}:{}", file, entry.line.unwrap_or(0)).unwrap();
-        }
-    });
+        None => write!(buf, "     ").unwrap(),
+    }
+    writeln!(buf, "{name}").unwrap();
+    if let Some(file) = file {
+        writeln!(buf, "              at {}:{}", file, line.unwrap_or(0)).unwrap();
+    }
 }

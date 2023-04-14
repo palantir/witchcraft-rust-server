@@ -34,6 +34,7 @@ async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 async-trait = "0.1"
 base64 = "0.21"
 bytes = "1"
+cachemap2 = "0.2"
 conjure-error = "3"
 conjure-http = "3"
 conjure-object = "3"
@@ -89,7 +90,6 @@ tokio = { version = "1.27", features = [
 tokio-openssl = "0.6"
 tokio-util = "0.7"
 tracing = { version = "0.1", features = ["log"] }
-typed-arena = "2"
 witchcraft-log = "3"
 witchcraft-metrics = "1"
 zipkin = "0.4"
