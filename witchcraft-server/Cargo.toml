@@ -16,7 +16,7 @@ type = "metric.names.v1"
 docs = "All currently emitted metrics and their tags."
 
 [[package.metadata.sls.diagnostics]]
-type = "rust.heap.status.v1"
+type = "rust.heap.stats.v1"
 docs = "Statistics about the memory allocator, in jemalloc's default text format."
 
 [[package.metadata.sls.diagnostics]]
