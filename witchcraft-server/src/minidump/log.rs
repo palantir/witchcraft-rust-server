@@ -21,6 +21,20 @@ use std::path::Path;
 use witchcraft_log::fatal;
 
 pub async fn log_minidump(p: &Path) -> Result<(), Error> {
+    let info = process_minidump(p).await?;
+
+    fatal!(
+        "a previous instance of the process crashed",
+        safe: {
+            info: info,
+            minidump: p.to_string_lossy()
+        },
+    );
+
+    Ok(())
+}
+
+pub async fn process_minidump(p: &Path) -> Result<String, Error> {
     let dump = Minidump::read_path(p).map_err(Error::internal_safe)?;
 
     let arena = Arena::new();
@@ -29,16 +43,9 @@ pub async fn log_minidump(p: &Path) -> Result<(), Error> {
     let state = minidump_processor::process_minidump(&dump, &symbol_provider)
         .await
         .map_err(Error::internal_safe)?;
+    let info = format_dump(&state);
 
-    fatal!(
-        "a previous instance of the process crashed",
-        safe: {
-            info: format_dump(&state),
-            minidump: p.to_string_lossy()
-        },
-    );
-
-    Ok(())
+    Ok(info)
 }
 
 fn format_dump(state: &ProcessState) -> String {

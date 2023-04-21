@@ -17,6 +17,7 @@ use http::{HeaderMap, HeaderValue};
 use hyper::body::HttpBody;
 use hyper::{body, Body, Request, StatusCode};
 use server::Server;
+use std::env;
 use std::pin::Pin;
 use std::str;
 use std::task::{Context, Poll};
@@ -204,6 +205,46 @@ async fn diagnostic_types_diagnostic() {
         let body = body::to_bytes(response.into_body()).await.unwrap();
         let body = str::from_utf8(&body).unwrap();
         assert!(body.contains("\"diagnostic.types.v1\""));
+
+        server.shutdown().await;
+    })
+    .await;
+}
+
+#[tokio::test]
+#[cfg(target_os = "linux")]
+async fn thread_dump_diagnostic() {
+    // FIXME https://github.com/palantir/witchcraft-rust-server/issues/74
+    if env::var_os("CI").is_some() {
+        return;
+    }
+
+    Server::with(|server| async move {
+        let request = Request::builder()
+            .uri("/witchcraft-ete/debug/diagnostic/rust.thread.dump.v1")
+            .header("Authorization", "Bearer debug")
+            .body(Body::empty())
+            .unwrap();
+        let response = server
+            .client()
+            .await
+            .unwrap()
+            .send_request(request)
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get("Safe-Loggable").unwrap(), "true");
+        assert_eq!(
+            response.headers().get("Content-Type").unwrap(),
+            "text/plain"
+        );
+
+        let body = body::to_bytes(response.into_body()).await.unwrap();
+        let body = str::from_utf8(&body).unwrap();
+        // We know there should be one thread in the thread dump diagnostic code, so this is an
+        // easy way to infer if we were able to symbolicate the stack traces.
+        assert!(body.contains("ThreadDumpDiagnostic"));
 
         server.shutdown().await;
     })
