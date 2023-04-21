@@ -222,6 +222,7 @@ impl<'a> ObjectState<'a> {
             .context
             .as_ref()?
             .find_frames(addr)
+            .skip_all_loads()
             .ok()?
             .collect::<Vec<_>>()
             .ok()?;
