@@ -272,7 +272,7 @@ impl<'a> ObjectState<'a> {
         match symbol {
             Some(symbol) => {
                 frame.set_function(
-                    &rustc_demangle::demangle(symbol.name()).to_string(),
+                    &addr2line::demangle_auto(Cow::Borrowed(symbol.name()), None),
                     symbol.address(),
                     0,
                 );
