@@ -49,6 +49,12 @@ struct State<T> {
     closed: bool,
 }
 
+impl<T> Drop for State<T> {
+    fn drop(&mut self) {
+        self.start_close();
+    }
+}
+
 impl<T> State<T> {
     fn ready(&self) -> bool {
         self.queue.len() < QUEUE_LIMIT
@@ -89,12 +95,6 @@ impl<T> Clone for AsyncAppender<T> {
         AsyncAppender {
             state: self.state.clone(),
         }
-    }
-}
-
-impl<T> Drop for AsyncAppender<T> {
-    fn drop(&mut self) {
-        self.state.lock().start_close();
     }
 }
 
