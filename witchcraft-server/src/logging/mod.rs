@@ -25,6 +25,7 @@ use std::sync::Arc;
 use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
+use crate::extensions::AuditLogEntry;
 
 /// Conjure-generated type definitions for log formats.
 #[allow(warnings)]
@@ -64,8 +65,9 @@ pub(crate) async fn init(
     let request_logger = logger::appender(install, metrics, hooks).await?;
     let audit_logger = logger::appender(install, metrics, hooks).await?;
 
-    // ignore if the audit logger is already filled
-    let _ = AUDIT_LOGGER.fill(audit_logger.clone());
+    AUDIT_LOGGER.fill(audit_logger.clone()).map_err(|_| {
+        Error::internal_safe("Audit logger already initialized")
+    })?;
     cleanup::cleanup_logs().await;
 
     Ok(Loggers {
@@ -78,7 +80,7 @@ pub(crate) async fn init(
 /// Returns an error if the global audit logger is not initialized.
 ///
 /// The returned future completes once the audit log has been successfully written.
-pub async fn audit_v3_log(entry: AuditLogV3) -> Result<(), Error> {
+pub async fn audit_v3_log(AuditLogEntry(v3_log): AuditLogEntry) -> Result<(), Error> {
     let audit_logger = AUDIT_LOGGER
         .borrow()
         .ok_or_else(|| Error::internal_safe("Audit logger not initialized"))?;
@@ -87,7 +89,7 @@ pub async fn audit_v3_log(entry: AuditLogV3) -> Result<(), Error> {
 
     audit_logger
         .try_send(Payload {
-            value: entry,
+            value: v3_log,
             cb: Some(tx),
         })
         .map_err(|_| Error::internal_safe("Audit logger is closed or not ready"))?;
@@ -101,6 +103,6 @@ pub async fn audit_v3_log(entry: AuditLogV3) -> Result<(), Error> {
 
 /// Blocking variant of [audit_v3_log] that only returns once the the audit log has been
 /// successfully written or if the audit log has failed.
-pub fn audit_v3_log_blocking(entry: AuditLogV3) -> Result<(), Error> {
+pub fn audit_log_blocking(entry: AuditLogEntry) -> Result<(), Error> {
     block_on(audit_v3_log(entry))
 }
