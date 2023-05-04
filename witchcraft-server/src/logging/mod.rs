@@ -16,6 +16,9 @@
 use crate::logging::api::{AuditLogV3, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
+use futures::executor::block_on;
+use futures_channel::oneshot;
+use lazycell::AtomicLazyCell;
 pub(crate) use logger::{Appender, Payload};
 use refreshable::Refreshable;
 use std::sync::Arc;
@@ -34,6 +37,8 @@ pub mod mdc;
 mod metric;
 mod service;
 mod trace;
+
+pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Appender<AuditLogV3>> = AtomicLazyCell::NONE;
 
 pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
@@ -59,10 +64,43 @@ pub(crate) async fn init(
     let request_logger = logger::appender(install, metrics, hooks).await?;
     let audit_logger = logger::appender(install, metrics, hooks).await?;
 
+    // ignore if the audit logger is already filled
+    let _ = AUDIT_LOGGER.fill(audit_logger.clone());
     cleanup::cleanup_logs().await;
 
     Ok(Loggers {
         request_logger,
         audit_logger,
     })
+}
+
+/// Write the provided v3 audit log entry to the audit log using the global audit logger.
+/// Returns an error if the global audit logger is not initialized.
+///
+/// The returned future completes once the audit log has been successfully written.
+pub async fn audit_v3_log(entry: AuditLogV3) -> Result<(), Error> {
+    let audit_logger = AUDIT_LOGGER
+        .borrow()
+        .ok_or_else(|| Error::internal_safe("Audit logger not initialized"))?;
+
+    let (tx, rx) = oneshot::channel();
+
+    audit_logger
+        .try_send(Payload {
+            value: entry,
+            cb: Some(tx),
+        })
+        .map_err(|_| Error::internal_safe("Audit logger is closed or not ready"))?;
+
+    match rx.await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(Error::internal_safe("Error writing audit log")),
+        Err(error) => Err(Error::internal_safe(error)),
+    }
+}
+
+/// Blocking variant of [audit_v3_log] that only returns once the the audit log has been
+/// successfully written or if the audit log has failed.
+pub fn audit_v3_log_blocking(entry: AuditLogV3) -> Result<(), Error> {
+    block_on(audit_v3_log(entry))
 }

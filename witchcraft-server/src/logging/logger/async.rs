@@ -84,6 +84,14 @@ pub struct AsyncAppender<T> {
     state: Arc<Mutex<State<T>>>,
 }
 
+impl<T> Clone for AsyncAppender<T> {
+    fn clone(&self) -> Self {
+        AsyncAppender {
+            state: self.state.clone(),
+        }
+    }
+}
+
 impl<T> Drop for AsyncAppender<T> {
     fn drop(&mut self) {
         self.state.lock().start_close();
