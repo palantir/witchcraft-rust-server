@@ -23,6 +23,7 @@ use lazycell::AtomicLazyCell;
 pub(crate) use logger::{Appender, Payload};
 use refreshable::Refreshable;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
@@ -39,14 +40,15 @@ mod metric;
 mod service;
 mod trace;
 
-pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Appender<AuditLogV3>> = AtomicLazyCell::NONE;
+pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Arc<Mutex<Appender<AuditLogV3>>>> =
+    AtomicLazyCell::NONE;
 
 pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
 
 pub(crate) struct Loggers {
     pub request_logger: Appender<RequestLogV2>,
-    pub audit_logger: Appender<AuditLogV3>,
+    pub audit_logger: Arc<Mutex<Appender<AuditLogV3>>>,
 }
 
 pub(crate) fn early_init() {
@@ -64,6 +66,8 @@ pub(crate) async fn init(
     trace::init(metrics, install, runtime, hooks).await?;
     let request_logger = logger::appender(install, metrics, hooks).await?;
     let audit_logger = logger::appender(install, metrics, hooks).await?;
+
+    let audit_logger = Arc::new(Mutex::new(audit_logger));
 
     AUDIT_LOGGER
         .fill(audit_logger.clone())
@@ -90,6 +94,8 @@ pub async fn audit_log(entry: AuditLogEntry) -> Result<(), Error> {
     let (tx, rx) = oneshot::channel();
 
     audit_logger
+        .lock()
+        .await
         .try_send(Payload {
             value: entry.0,
             cb: Some(tx),
