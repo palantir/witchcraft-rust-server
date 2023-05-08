@@ -13,12 +13,17 @@
 // limitations under the License.
 
 //! Logging APIs
+use crate::extensions::AuditLogEntry;
 use crate::logging::api::{AuditLogV3, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
+use futures::executor::block_on;
+use futures_channel::oneshot;
+use lazycell::AtomicLazyCell;
 pub(crate) use logger::{Appender, Payload};
 use refreshable::Refreshable;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
@@ -35,12 +40,15 @@ mod metric;
 mod service;
 mod trace;
 
+pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Arc<Mutex<Appender<AuditLogV3>>>> =
+    AtomicLazyCell::NONE;
+
 pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
 
 pub(crate) struct Loggers {
     pub request_logger: Appender<RequestLogV2>,
-    pub audit_logger: Appender<AuditLogV3>,
+    pub audit_logger: Arc<Mutex<Appender<AuditLogV3>>>,
 }
 
 pub(crate) fn early_init() {
@@ -59,10 +67,50 @@ pub(crate) async fn init(
     let request_logger = logger::appender(install, metrics, hooks).await?;
     let audit_logger = logger::appender(install, metrics, hooks).await?;
 
+    let audit_logger = Arc::new(Mutex::new(audit_logger));
+
+    AUDIT_LOGGER
+        .fill(audit_logger.clone())
+        .ok()
+        .expect("Audit logger already initialized");
+
     cleanup::cleanup_logs().await;
 
     Ok(Loggers {
         request_logger,
         audit_logger,
     })
+}
+
+/// Write the provided v3 audit log entry to the audit log using the global audit logger.
+/// Returns an error if the global audit logger is not initialized.
+///
+/// The returned future completes once the audit log has been successfully written.
+pub async fn audit_log(entry: AuditLogEntry) -> Result<(), Error> {
+    let audit_logger = AUDIT_LOGGER
+        .borrow()
+        .ok_or_else(|| Error::internal_safe("Audit logger not initialized"))?;
+
+    let (tx, rx) = oneshot::channel();
+
+    audit_logger
+        .lock()
+        .await
+        .try_send(Payload {
+            value: entry.0,
+            cb: Some(tx),
+        })
+        .map_err(|_| Error::internal_safe("Audit logger is closed or not ready"))?;
+
+    match rx.await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(Error::internal_safe("Error writing audit log")),
+        Err(error) => Err(Error::internal_safe(error)),
+    }
+}
+
+/// Blocking variant of [audit_log] that only returns once the the audit log has been
+/// successfully written or if the audit log has failed.
+pub fn audit_log_blocking(entry: AuditLogEntry) -> Result<(), Error> {
+    block_on(audit_log(entry))
 }

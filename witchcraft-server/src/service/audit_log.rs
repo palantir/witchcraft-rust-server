@@ -39,11 +39,11 @@ use witchcraft_log::error;
 ///
 /// Since it can change the response it must installed after request logging.
 pub struct AuditLogLayer<T> {
-    logger: T,
+    logger: Arc<Mutex<T>>,
 }
 
 impl<T> AuditLogLayer<T> {
-    pub fn new(logger: T) -> Self {
+    pub fn new(logger: Arc<Mutex<T>>) -> Self {
         AuditLogLayer { logger }
     }
 }
@@ -53,7 +53,7 @@ impl<S, T> Layer<S> for AuditLogLayer<T> {
 
     fn layer(self, inner: S) -> Self::Service {
         AuditLogService {
-            logger: Arc::new(Mutex::new(self.logger)),
+            logger: self.logger,
             inner,
         }
     }
@@ -228,7 +228,7 @@ mod test {
 
     #[tokio::test]
     async fn no_op_with_no_audit_event() {
-        let service = AuditLogLayer::new(TestSink { events: vec![] })
+        let service = AuditLogLayer::new(Arc::new(Mutex::new(TestSink { events: vec![] })))
             .layer(service_fn(|_| async { Response::new(()) }));
 
         let response = service.call(()).await;
@@ -254,14 +254,16 @@ mod test {
             .result(AuditResult::Success)
             .build();
 
-        let service = AuditLogLayer::new(TestSink { events: vec![] }).layer(service_fn(|_| {
-            let log = log.clone();
-            async {
-                let mut response = Response::new(());
-                response.extensions_mut().insert(AuditLogEntry::v3(log));
-                response
-            }
-        }));
+        let service = AuditLogLayer::new(Arc::new(Mutex::new(TestSink { events: vec![] }))).layer(
+            service_fn(|_| {
+                let log = log.clone();
+                async {
+                    let mut response = Response::new(());
+                    response.extensions_mut().insert(AuditLogEntry::v3(log));
+                    response
+                }
+            }),
+        );
 
         let response = service.call(()).await;
         assert_eq!(response.status(), StatusCode::OK);
@@ -300,24 +302,25 @@ mod test {
 
     #[tokio::test]
     async fn failed_log_returns_500() {
-        let service = AuditLogLayer::new(FailingSink).layer(service_fn(|_| async {
-            let log = AuditLogV3::builder()
-                .type_("audit.3")
-                .deployment("foo")
-                .host("bar")
-                .product("baz")
-                .product_version("1")
-                .producer_type(AuditProducer::Server)
-                .event_id(Uuid::new_v4())
-                .time(Utc::now())
-                .name("PUT_FILE")
-                .result(AuditResult::Success)
-                .build();
+        let service =
+            AuditLogLayer::new(Arc::new(Mutex::new(FailingSink))).layer(service_fn(|_| async {
+                let log = AuditLogV3::builder()
+                    .type_("audit.3")
+                    .deployment("foo")
+                    .host("bar")
+                    .product("baz")
+                    .product_version("1")
+                    .producer_type(AuditProducer::Server)
+                    .event_id(Uuid::new_v4())
+                    .time(Utc::now())
+                    .name("PUT_FILE")
+                    .result(AuditResult::Success)
+                    .build();
 
-            let mut response = Response::new(());
-            response.extensions_mut().insert(AuditLogEntry::v3(log));
-            response
-        }));
+                let mut response = Response::new(());
+                response.extensions_mut().insert(AuditLogEntry::v3(log));
+                response
+            }));
 
         let response = service.call(()).await;
 
