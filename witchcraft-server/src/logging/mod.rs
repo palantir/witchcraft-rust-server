@@ -71,8 +71,8 @@ pub(crate) async fn init(
 
     AUDIT_LOGGER
         .fill(audit_logger.clone())
-        .map_err(|_| Error::internal_safe("Audit logger already initialized"))
-        .unwrap();
+        .ok()
+        .expect("Audit logger already initialized");
 
     cleanup::cleanup_logs().await;
 
