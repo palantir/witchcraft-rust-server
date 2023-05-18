@@ -26,5 +26,7 @@ pub const UID_KEY: &str = "\0witchcraft-uid";
 pub const SID_KEY: &str = "\0witchcraft-sid";
 /// The safe MDC key storing the value for the `tokenId` field in service logs.
 pub const TOKEN_ID_KEY: &str = "\0witchcraft-token-id";
+/// The safe MDC key storing the value for the `orgId` field in service logs.
+pub const ORG_ID_KEY: &str = "\0witchcraft-org-id";
 /// The safe MDC key storing the value for the `traceId` field in service logs.
 pub const TRACE_ID_KEY: &str = "\0witchcraft-trace-id";
