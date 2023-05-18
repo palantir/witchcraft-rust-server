@@ -24,12 +24,12 @@ impl Organization {
     pub fn builder() -> BuilderStage0 {
         Default::default()
     }
-    ///Organization ID. Not exposed to downstream consumers.
+    ///Organization RID. Not exposed to downstream consumers.
     #[inline]
     pub fn id(&self) -> &str {
         &*self.id
     }
-    ///Explaination of why this organization was attributed to this log.
+    ///Explanation of why this organization was attributed to this log.
     #[inline]
     pub fn reason(&self) -> &str {
         &*self.reason
@@ -54,7 +54,7 @@ impl From<Organization> for BuilderStage2 {
 #[derive(Debug, Clone)]
 pub struct BuilderStage0 {}
 impl BuilderStage0 {
-    ///Organization ID. Not exposed to downstream consumers.
+    ///Organization RID. Not exposed to downstream consumers.
     #[inline]
     pub fn id<T>(self, id: T) -> BuilderStage1
     where
@@ -69,7 +69,7 @@ pub struct BuilderStage1 {
     id: String,
 }
 impl BuilderStage1 {
-    ///Explaination of why this organization was attributed to this log.
+    ///Explanation of why this organization was attributed to this log.
     #[inline]
     pub fn reason<T>(self, reason: T) -> BuilderStage2
     where
@@ -88,7 +88,7 @@ pub struct BuilderStage2 {
     reason: String,
 }
 impl BuilderStage2 {
-    ///Organization ID. Not exposed to downstream consumers.
+    ///Organization RID. Not exposed to downstream consumers.
     #[inline]
     pub fn id<T>(mut self, id: T) -> Self
     where
@@ -97,7 +97,7 @@ impl BuilderStage2 {
         self.id = id.into();
         self
     }
-    ///Explaination of why this organization was attributed to this log.
+    ///Explanation of why this organization was attributed to this log.
     #[inline]
     pub fn reason<T>(mut self, reason: T) -> Self
     where

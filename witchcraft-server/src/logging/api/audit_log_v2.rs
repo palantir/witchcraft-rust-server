@@ -9,6 +9,7 @@ pub struct AuditLogV2 {
     uid: Option<super::UserId>,
     sid: Option<super::SessionId>,
     token_id: Option<super::TokenId>,
+    org_id: Option<super::OrganizationId>,
     trace_id: Option<super::TraceId>,
     other_uids: Vec<super::UserId>,
     origin: Option<String>,
@@ -46,6 +47,11 @@ impl AuditLogV2 {
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
+    }
+    ///Organization id (if available)
+    #[inline]
+    pub fn org_id(&self) -> Option<&super::OrganizationId> {
+        self.org_id.as_ref().map(|o| &*o)
     }
     ///Zipkin trace id (if available)
     #[inline]
@@ -103,6 +109,7 @@ impl From<AuditLogV2> for BuilderStage4 {
             uid: value.uid,
             sid: value.sid,
             token_id: value.token_id,
+            org_id: value.org_id,
             trace_id: value.trace_id,
             other_uids: value.other_uids,
             origin: value.origin,
@@ -184,6 +191,7 @@ impl BuilderStage3 {
             uid: Default::default(),
             sid: Default::default(),
             token_id: Default::default(),
+            org_id: Default::default(),
             trace_id: Default::default(),
             other_uids: Default::default(),
             origin: Default::default(),
@@ -202,6 +210,7 @@ pub struct BuilderStage4 {
     uid: Option<super::UserId>,
     sid: Option<super::SessionId>,
     token_id: Option<super::TokenId>,
+    org_id: Option<super::OrganizationId>,
     trace_id: Option<super::TraceId>,
     other_uids: Vec<super::UserId>,
     origin: Option<String>,
@@ -263,6 +272,15 @@ impl BuilderStage4 {
         T: Into<Option<super::TokenId>>,
     {
         self.token_id = token_id.into();
+        self
+    }
+    ///Organization id (if available)
+    #[inline]
+    pub fn org_id<T>(mut self, org_id: T) -> Self
+    where
+        T: Into<Option<super::OrganizationId>>,
+    {
+        self.org_id = org_id.into();
         self
     }
     ///Zipkin trace id (if available)
@@ -381,6 +399,7 @@ impl BuilderStage4 {
             uid: self.uid,
             sid: self.sid,
             token_id: self.token_id,
+            org_id: self.org_id,
             trace_id: self.trace_id,
             other_uids: self.other_uids,
             origin: self.origin,
@@ -407,6 +426,10 @@ impl ser::Serialize for AuditLogV2 {
         }
         let skip_token_id = self.token_id.is_none();
         if !skip_token_id {
+            size += 1;
+        }
+        let skip_org_id = self.org_id.is_none();
+        if !skip_org_id {
             size += 1;
         }
         let skip_trace_id = self.trace_id.is_none();
@@ -446,6 +469,11 @@ impl ser::Serialize for AuditLogV2 {
             s.skip_field("tokenId")?;
         } else {
             s.serialize_field("tokenId", &self.token_id)?;
+        }
+        if skip_org_id {
+            s.skip_field("orgId")?;
+        } else {
+            s.serialize_field("orgId", &self.org_id)?;
         }
         if skip_trace_id {
             s.skip_field("traceId")?;
@@ -490,6 +518,7 @@ impl<'de> de::Deserialize<'de> for AuditLogV2 {
                 "uid",
                 "sid",
                 "tokenId",
+                "orgId",
                 "traceId",
                 "otherUids",
                 "origin",
@@ -517,6 +546,7 @@ impl<'de> de::Visitor<'de> for Visitor_ {
         let mut uid = None;
         let mut sid = None;
         let mut token_id = None;
+        let mut org_id = None;
         let mut trace_id = None;
         let mut other_uids = None;
         let mut origin = None;
@@ -531,6 +561,7 @@ impl<'de> de::Visitor<'de> for Visitor_ {
                 Field_::Uid => uid = Some(map_.next_value()?),
                 Field_::Sid => sid = Some(map_.next_value()?),
                 Field_::TokenId => token_id = Some(map_.next_value()?),
+                Field_::OrgId => org_id = Some(map_.next_value()?),
                 Field_::TraceId => trace_id = Some(map_.next_value()?),
                 Field_::OtherUids => other_uids = Some(map_.next_value()?),
                 Field_::Origin => origin = Some(map_.next_value()?),
@@ -560,6 +591,10 @@ impl<'de> de::Visitor<'de> for Visitor_ {
             None => Default::default(),
         };
         let token_id = match token_id {
+            Some(v) => v,
+            None => Default::default(),
+        };
+        let org_id = match org_id {
             Some(v) => v,
             None => Default::default(),
         };
@@ -597,6 +632,7 @@ impl<'de> de::Visitor<'de> for Visitor_ {
             uid,
             sid,
             token_id,
+            org_id,
             trace_id,
             other_uids,
             origin,
@@ -613,6 +649,7 @@ enum Field_ {
     Uid,
     Sid,
     TokenId,
+    OrgId,
     TraceId,
     OtherUids,
     Origin,
@@ -646,6 +683,7 @@ impl<'de> de::Visitor<'de> for FieldVisitor_ {
             "uid" => Field_::Uid,
             "sid" => Field_::Sid,
             "tokenId" => Field_::TokenId,
+            "orgId" => Field_::OrgId,
             "traceId" => Field_::TraceId,
             "otherUids" => Field_::OtherUids,
             "origin" => Field_::Origin,
