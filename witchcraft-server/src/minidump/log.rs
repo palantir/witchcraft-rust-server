@@ -15,7 +15,8 @@
 use crate::minidump::symbol_provider::{Arena, WitchcraftSymbolProvider};
 use conjure_error::Error;
 use minidump::Minidump;
-use minidump_processor::{CallStack, ProcessState, StackFrame};
+use minidump_processor::ProcessState;
+use minidump_unwind::{CallStack, StackFrame};
 use std::fmt::Write;
 use std::path::Path;
 use witchcraft_log::fatal;

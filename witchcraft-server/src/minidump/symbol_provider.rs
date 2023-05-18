@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use cachemap2::CacheMap;
 use conjure_error::Error;
 use minidump::Module;
-use minidump_processor::{
+use minidump_unwind::{
     FileError, FileKind, FillSymbolError, FrameSymbolizer, FrameWalker, SymbolFile, SymbolProvider,
 };
 use std::borrow::Cow;
