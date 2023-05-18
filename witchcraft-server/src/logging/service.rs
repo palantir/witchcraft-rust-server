@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging;
-use crate::logging::api::{LogLevel, ServiceLogV1, SessionId, TokenId, TraceId, UserId};
+use crate::logging::api::{
+    LogLevel, OrganizationId, ServiceLogV1, SessionId, TokenId, TraceId, UserId,
+};
 use crate::logging::logger::{self, Appender, Payload};
 use crate::shutdown_hooks::ShutdownHooks;
 use arc_swap::ArcSwap;
@@ -116,23 +118,28 @@ impl Log for ServiceLogger {
         for (key, value) in mdc.safe().iter() {
             match key {
                 logging::mdc::UID_KEY => {
-                    if let Ok(uid) = String::deserialize(value.clone()) {
-                        message = message.uid(UserId(uid));
+                    if let Ok(uid) = UserId::deserialize(value.clone()) {
+                        message = message.uid(uid);
                     }
                 }
                 logging::mdc::SID_KEY => {
-                    if let Ok(sid) = String::deserialize(value.clone()) {
-                        message = message.sid(SessionId(sid));
+                    if let Ok(sid) = SessionId::deserialize(value.clone()) {
+                        message = message.sid(sid);
                     }
                 }
                 logging::mdc::TOKEN_ID_KEY => {
-                    if let Ok(token_id) = String::deserialize(value.clone()) {
-                        message = message.token_id(TokenId(token_id));
+                    if let Ok(token_id) = TokenId::deserialize(value.clone()) {
+                        message = message.token_id(token_id);
+                    }
+                }
+                logging::mdc::ORG_ID_KEY => {
+                    if let Ok(org_id) = OrganizationId::deserialize(value.clone()) {
+                        message = message.org_id(org_id);
                     }
                 }
                 logging::mdc::TRACE_ID_KEY => {
-                    if let Ok(trace_id) = String::deserialize(value.clone()) {
-                        message = message.trace_id(TraceId(trace_id));
+                    if let Ok(trace_id) = TraceId::deserialize(value.clone()) {
+                        message = message.trace_id(trace_id);
                     }
                 }
                 key => message = message.insert_params(key, value),

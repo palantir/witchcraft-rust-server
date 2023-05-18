@@ -11,10 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::logging::api::{RequestLogV2, SessionId, TokenId, TraceId, UserId};
+use crate::logging::api::{OrganizationId, RequestLogV2, SessionId, TokenId, TraceId, UserId};
 use crate::logging::{self, Appender, Payload};
 use crate::service::routing::Route;
-use crate::service::unverified_jwt::UnverifiedJwt;
 use crate::service::{Layer, Service};
 use bytes::Buf;
 use conjure_http::SafeParams;
@@ -120,24 +119,28 @@ where
         };
 
         let mdc = mdc::snapshot();
+        let uid = mdc
+            .safe()
+            .get(logging::mdc::UID_KEY)
+            .and_then(|v| UserId::deserialize(v.clone()).ok());
+        let sid = mdc
+            .safe()
+            .get(logging::mdc::SID_KEY)
+            .and_then(|v| SessionId::deserialize(v.clone()).ok());
+        let token_id = mdc
+            .safe()
+            .get(logging::mdc::TOKEN_ID_KEY)
+            .and_then(|v| TokenId::deserialize(v.clone()).ok());
+        let org_id = mdc
+            .safe()
+            .get(logging::mdc::ORG_ID_KEY)
+            .and_then(|v| OrganizationId::deserialize(v.clone()).ok());
         let trace_id = mdc
             .safe()
             .get(logging::mdc::TRACE_ID_KEY)
             .and_then(|v| TraceId::deserialize(v.clone()).ok());
 
         let mut params = vec![];
-
-        let unverified_jwt = req.extensions().get::<UnverifiedJwt>();
-        let uid = unverified_jwt.map(|v| UserId(v.unverified_user_id().to_string()));
-        let sid = unverified_jwt
-            .and_then(UnverifiedJwt::unverified_session_id)
-            .map(|v| SessionId(v.to_string()));
-        let token_id = unverified_jwt
-            .and_then(UnverifiedJwt::unverified_token_id)
-            .map(|v| TokenId(v.to_string()));
-        if let Some(org_id) = unverified_jwt.and_then(UnverifiedJwt::unverified_organization_id) {
-            params.push(("_org".to_string(), Any::new(org_id).unwrap()));
-        }
 
         for key in MDC_KEYS {
             if let Some(value) = mdc.safe().get(key) {
@@ -196,6 +199,7 @@ where
                 sid,
                 uid,
                 token_id,
+                org_id,
                 trace_id,
                 params,
                 unsafe_params,
@@ -337,6 +341,7 @@ struct State {
     uid: Option<UserId>,
     sid: Option<SessionId>,
     token_id: Option<TokenId>,
+    org_id: Option<OrganizationId>,
     trace_id: Option<TraceId>,
     params: Vec<(String, Any)>,
     unsafe_params: Vec<(String, Any)>,
@@ -371,6 +376,7 @@ impl Drop for State {
             .uid(self.uid.take())
             .sid(self.sid.take())
             .token_id(self.token_id.take())
+            .org_id(self.org_id.take())
             .trace_id(self.trace_id.take())
             .extend_params(self.params.drain(..))
             .extend_unsafe_params(self.unsafe_params.drain(..))

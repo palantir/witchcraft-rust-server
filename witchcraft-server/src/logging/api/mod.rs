@@ -29,6 +29,8 @@ pub use self::metric_log_v1::MetricLogV1;
 #[doc(inline)]
 pub use self::organization::Organization;
 #[doc(inline)]
+pub use self::organization_id::OrganizationId;
+#[doc(inline)]
 pub use self::request_log::RequestLog;
 #[doc(inline)]
 pub use self::request_log_v1::RequestLogV1;
@@ -79,6 +81,7 @@ pub mod generic_diagnostic;
 pub mod log_level;
 pub mod metric_log_v1;
 pub mod organization;
+pub mod organization_id;
 pub mod request_log;
 pub mod request_log_v1;
 pub mod request_log_v2;
