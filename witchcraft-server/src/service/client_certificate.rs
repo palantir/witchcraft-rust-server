@@ -15,7 +15,7 @@ use crate::service::hyper::NewConnection;
 use crate::service::{Layer, Service, Stack};
 use crate::tls::ClientCertificate;
 use http::Request;
-use tokio_openssl::SslStream;
+use tokio_rustls::server::TlsStream;
 
 /// A layer which injects a [`ClientCertificate`] extension into all requests made over the connection.
 pub struct ClientCertificateLayer;
@@ -32,19 +32,22 @@ pub struct ClientCertificateService<S> {
     inner: S,
 }
 
-impl<S, T, L> Service<NewConnection<SslStream<T>, L>> for ClientCertificateService<S>
+impl<S, T, L> Service<NewConnection<TlsStream<T>, L>> for ClientCertificateService<S>
 where
-    S: Service<NewConnection<SslStream<T>, Stack<L, ClientCertificateRequestLayer>>>,
+    S: Service<NewConnection<TlsStream<T>, Stack<L, ClientCertificateRequestLayer>>>,
 {
     type Response = S::Response;
 
     type Future = S::Future;
 
-    fn call(&self, req: NewConnection<SslStream<T>, L>) -> Self::Future {
+    fn call(&self, req: NewConnection<TlsStream<T>, L>) -> Self::Future {
         let cert = req
             .stream
-            .ssl()
-            .peer_certificate()
+            .get_ref()
+            .1
+            .peer_certificates()
+            .and_then(|c| c.first())
+            .cloned()
             .map(ClientCertificate::new);
 
         self.inner.call(NewConnection {

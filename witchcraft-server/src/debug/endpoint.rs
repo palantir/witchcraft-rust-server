@@ -22,10 +22,10 @@ use conjure_http::{PathParams, SafeParams};
 use http::header::{HeaderName, AUTHORIZATION, CONTENT_TYPE};
 use http::{Extensions, HeaderValue, Method, Request, Response};
 use once_cell::sync::Lazy;
-use openssl::memcmp;
 use refreshable::Refreshable;
 use std::borrow::Cow;
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tokio::task;
 use witchcraft_server_config::runtime::RuntimeConfig;
 
@@ -131,10 +131,7 @@ impl AsyncEndpoint<RequestBody, ResponseWriter> for DiagnosticEndpoint {
         };
 
         let expected = self.state.auth.get();
-        // Using OpenSSL's constant time equality check, which requires the buffer lengths match
-        if authorization.len() != expected.len()
-            || !memcmp::eq(authorization.as_bytes(), expected.as_bytes())
-        {
+        if !bool::from(authorization.as_bytes().ct_eq(expected.as_bytes())) {
             return Err(Error::service_safe(
                 "invalid diagnostic check secret",
                 PermissionDenied::new(),

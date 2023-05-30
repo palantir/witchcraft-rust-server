@@ -9,6 +9,7 @@ pub struct TraceLogV1 {
     uid: Option<super::UserId>,
     sid: Option<super::SessionId>,
     token_id: Option<super::TokenId>,
+    org_id: Option<super::OrganizationId>,
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
     span: Box<super::Span>,
 }
@@ -39,6 +40,10 @@ impl TraceLogV1 {
         self.token_id.as_ref().map(|o| &*o)
     }
     #[inline]
+    pub fn org_id(&self) -> Option<&super::OrganizationId> {
+        self.org_id.as_ref().map(|o| &*o)
+    }
+    #[inline]
     pub fn unsafe_params(
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
@@ -64,6 +69,7 @@ impl From<TraceLogV1> for BuilderStage3 {
             uid: value.uid,
             sid: value.sid,
             token_id: value.token_id,
+            org_id: value.org_id,
             unsafe_params: value.unsafe_params,
             span: value.span,
         }
@@ -116,6 +122,7 @@ impl BuilderStage2 {
             uid: Default::default(),
             sid: Default::default(),
             token_id: Default::default(),
+            org_id: Default::default(),
             unsafe_params: Default::default(),
         }
     }
@@ -129,6 +136,7 @@ pub struct BuilderStage3 {
     uid: Option<super::UserId>,
     sid: Option<super::SessionId>,
     token_id: Option<super::TokenId>,
+    org_id: Option<super::OrganizationId>,
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl BuilderStage3 {
@@ -175,6 +183,14 @@ impl BuilderStage3 {
         self
     }
     #[inline]
+    pub fn org_id<T>(mut self, org_id: T) -> Self
+    where
+        T: Into<Option<super::OrganizationId>>,
+    {
+        self.org_id = org_id.into();
+        self
+    }
+    #[inline]
     pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
     where
         T: IntoIterator<Item = (String, conjure_object::Any)>,
@@ -212,6 +228,7 @@ impl BuilderStage3 {
             uid: self.uid,
             sid: self.sid,
             token_id: self.token_id,
+            org_id: self.org_id,
             unsafe_params: self.unsafe_params,
             span: self.span,
         }
@@ -233,6 +250,10 @@ impl ser::Serialize for TraceLogV1 {
         }
         let skip_token_id = self.token_id.is_none();
         if !skip_token_id {
+            size += 1;
+        }
+        let skip_org_id = self.org_id.is_none();
+        if !skip_org_id {
             size += 1;
         }
         let skip_unsafe_params = self.unsafe_params.is_empty();
@@ -257,6 +278,11 @@ impl ser::Serialize for TraceLogV1 {
         } else {
             s.serialize_field("tokenId", &self.token_id)?;
         }
+        if skip_org_id {
+            s.skip_field("orgId")?;
+        } else {
+            s.serialize_field("orgId", &self.org_id)?;
+        }
         if skip_unsafe_params {
             s.skip_field("unsafeParams")?;
         } else {
@@ -273,7 +299,7 @@ impl<'de> de::Deserialize<'de> for TraceLogV1 {
     {
         d.deserialize_struct(
             "TraceLogV1",
-            &["type", "time", "uid", "sid", "tokenId", "unsafeParams", "span"],
+            &["type", "time", "uid", "sid", "tokenId", "orgId", "unsafeParams", "span"],
             Visitor_,
         )
     }
@@ -293,6 +319,7 @@ impl<'de> de::Visitor<'de> for Visitor_ {
         let mut uid = None;
         let mut sid = None;
         let mut token_id = None;
+        let mut org_id = None;
         let mut unsafe_params = None;
         let mut span = None;
         while let Some(field_) = map_.next_key()? {
@@ -302,6 +329,7 @@ impl<'de> de::Visitor<'de> for Visitor_ {
                 Field_::Uid => uid = Some(map_.next_value()?),
                 Field_::Sid => sid = Some(map_.next_value()?),
                 Field_::TokenId => token_id = Some(map_.next_value()?),
+                Field_::OrgId => org_id = Some(map_.next_value()?),
                 Field_::UnsafeParams => unsafe_params = Some(map_.next_value()?),
                 Field_::Span => span = Some(map_.next_value()?),
                 Field_::Unknown_ => {
@@ -329,6 +357,10 @@ impl<'de> de::Visitor<'de> for Visitor_ {
             Some(v) => v,
             None => Default::default(),
         };
+        let org_id = match org_id {
+            Some(v) => v,
+            None => Default::default(),
+        };
         let unsafe_params = match unsafe_params {
             Some(v) => v,
             None => Default::default(),
@@ -343,6 +375,7 @@ impl<'de> de::Visitor<'de> for Visitor_ {
             uid,
             sid,
             token_id,
+            org_id,
             unsafe_params,
             span,
         })
@@ -354,6 +387,7 @@ enum Field_ {
     Uid,
     Sid,
     TokenId,
+    OrgId,
     UnsafeParams,
     Span,
     Unknown_,
@@ -382,6 +416,7 @@ impl<'de> de::Visitor<'de> for FieldVisitor_ {
             "uid" => Field_::Uid,
             "sid" => Field_::Sid,
             "tokenId" => Field_::TokenId,
+            "orgId" => Field_::OrgId,
             "unsafeParams" => Field_::UnsafeParams,
             "span" => Field_::Span,
             _ => Field_::Unknown_,

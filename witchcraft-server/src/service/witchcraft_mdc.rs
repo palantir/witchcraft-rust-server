@@ -53,6 +53,9 @@ where
             if let Some(token_id) = jwt.unverified_token_id() {
                 mdc::insert_safe(logging::mdc::TOKEN_ID_KEY, token_id);
             }
+            if let Some(org_id) = jwt.unverified_organization_id() {
+                mdc::insert_safe(logging::mdc::ORG_ID_KEY, org_id);
+            }
         }
 
         let context = zipkin::current().expect("zipkin trace not initialized");

@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use openssl::x509::{X509Ref, X509};
+
+use tokio_rustls::rustls::Certificate;
 
 /// A client's identity provided during the TLS handshake.
 ///
@@ -19,16 +20,16 @@ use openssl::x509::{X509Ref, X509};
 /// to the extensions of each request made on that connection.
 #[derive(Clone)]
 pub struct ClientCertificate {
-    cert: X509,
+    cert: Certificate,
 }
 
-// FIXME(sfackler) what accessors should we expose here? We probably want to avoid exposing `openssl` APIs directly.
+// FIXME(sfackler) what accessors should we expose here? We probably want to avoid exposing `rustls` APIs directly.
 impl ClientCertificate {
-    pub(crate) fn new(cert: X509) -> Self {
+    pub(crate) fn new(cert: Certificate) -> Self {
         ClientCertificate { cert }
     }
 
-    pub(crate) fn x509(&self) -> &X509Ref {
+    pub(crate) fn cert(&self) -> &Certificate {
         &self.cert
     }
 }

@@ -19,19 +19,16 @@ use conjure_http::server::{
     ResponseBody, Service,
 };
 use http::{Extensions, Method, Request, Response};
-use openssl::nid::Nid;
-use openssl::stack::Stack;
-use openssl::x509::{GeneralName, X509NameRef};
 use refreshable::Refreshable;
 use std::collections::HashSet;
 use std::str;
 use std::sync::Arc;
+use webpki::{EndEntityCert, SubjectNameRef};
 
-/// A service adapter which validates a client's certificate against a collection of allowed common names.
+/// A service adapter which validates a client's certificate against a collection of allowed subject names.
 ///
 /// Requests will be rejected if the client did not provide a certificate or if the certificate does not have an allowed
-/// subject name. The validation logic prioritizes subject alternate name entries - the certificate's subject name will
-/// only be inspected if no SAN entries are present. Only DNSname entries are supported.
+/// subject name.
 pub struct TlsClientAuthenticationService<T> {
     inner: T,
     trusted_subject_names: Arc<Refreshable<HashSet<String>, Error>>,
@@ -106,53 +103,21 @@ impl<T> TlsClientAuthenticationEndpoint<T> {
             }
         };
 
-        let matches = match client_cert.x509().subject_alt_names() {
-            Some(sans) => self.check_subject_alternate_names(sans),
-            None => self.check_subject_name(client_cert.x509().subject_name()),
-        };
+        let cert = EndEntityCert::try_from(&*client_cert.cert().0).map_err(Error::internal_safe)?;
+        let valid = self
+            .trusted_subject_names
+            .get()
+            .iter()
+            .flat_map(|name| SubjectNameRef::try_from_ascii_str(name).ok())
+            .any(|name| cert.verify_is_valid_for_subject_name(name).is_ok());
 
-        if matches {
+        if valid {
             Ok(())
         } else {
-            Err(Error::service_safe(
-                "client certificate's subject name(s) not allowed",
-                PermissionDenied::new(),
+            Err(Error::internal_safe(
+                "Client certificate is not valid for any trusted subject name",
             ))
         }
-    }
-
-    fn check_subject_alternate_names(&self, sans: Stack<GeneralName>) -> bool {
-        let trusted_subject_names = self.trusted_subject_names.get();
-
-        for san in sans {
-            let dnsname = match san.dnsname() {
-                Some(dnsname) => dnsname,
-                None => continue,
-            };
-
-            if trusted_subject_names.contains(dnsname) {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    fn check_subject_name(&self, subject_name: &X509NameRef) -> bool {
-        let trusted_subject_names = self.trusted_subject_names.get();
-
-        for common_name in subject_name.entries_by_nid(Nid::COMMONNAME) {
-            let common_name = match str::from_utf8(common_name.data().as_slice()) {
-                Ok(common_name) => common_name,
-                Err(_) => continue,
-            };
-
-            if trusted_subject_names.contains(common_name) {
-                return true;
-            }
-        }
-
-        false
     }
 }
 
