@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use cachemap2::CacheMap;
 use conjure_error::Error;
 use minidump::Module;
-use minidump_processor::{
+use minidump_unwind::{
     FileError, FileKind, FillSymbolError, FrameSymbolizer, FrameWalker, SymbolFile, SymbolProvider,
 };
 use std::borrow::Cow;
@@ -222,6 +222,7 @@ impl<'a> ObjectState<'a> {
             .context
             .as_ref()?
             .find_frames(addr)
+            .skip_all_loads()
             .ok()?
             .collect::<Vec<_>>()
             .ok()?;
@@ -271,7 +272,7 @@ impl<'a> ObjectState<'a> {
         match symbol {
             Some(symbol) => {
                 frame.set_function(
-                    &rustc_demangle::demangle(symbol.name()).to_string(),
+                    &addr2line::demangle_auto(Cow::Borrowed(symbol.name()), None),
                     symbol.address(),
                     0,
                 );

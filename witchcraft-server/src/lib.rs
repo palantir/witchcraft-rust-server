@@ -374,12 +374,6 @@ where
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
 {
-    #[cfg(target_os = "linux")]
-    if env::args_os().nth(1).map_or(false, |a| a == "rstack") {
-        let _ = rstack_self::child();
-        return Ok(());
-    }
-
     if env::args_os().nth(1).map_or(false, |a| a == "minidump") {
         return minidump::server();
     }

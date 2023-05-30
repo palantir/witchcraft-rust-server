@@ -26,7 +26,7 @@ use std::time::Duration;
 use std::{env, fs, io, mem, thread};
 use witchcraft_log::{debug, error};
 
-mod log;
+pub mod log;
 mod symbol_provider;
 
 const SOCKET_ADDR: &str = "var/data/tmp/minidump.sock";
@@ -46,7 +46,7 @@ pub async fn init() -> Result<(), Error> {
     // Ensure that the child's stdin says open until this process exits since that's how it detects the parent exiting.
     mem::forget(child.stdin);
 
-    let client = wait_for_client()?;
+    let client = connect()?;
 
     let guard = CrashHandler::attach(unsafe {
         crash_handler::make_crash_event(move |context| {
@@ -60,7 +60,7 @@ pub async fn init() -> Result<(), Error> {
     Ok(())
 }
 
-fn wait_for_client() -> Result<minidumper::Client, Error> {
+pub fn connect() -> Result<minidumper::Client, Error> {
     for _ in 0..50 {
         match minidumper::Client::with_name(Path::new(SOCKET_ADDR)) {
             Ok(client) => return Ok(client),
@@ -112,7 +112,10 @@ impl ServerHandler for WitchcraftServerHandler {
         LoopAction::Continue
     }
 
-    fn on_message(&self, _kind: u32, _buffer: Vec<u8>) {}
+    fn on_message(&self, _kind: u32, _buffer: Vec<u8>) {
+        #[cfg(target_os = "linux")]
+        crate::debug::thread_dump::handle_request(_buffer);
+    }
 }
 
 pub async fn log_dumps() -> Result<(), Error> {

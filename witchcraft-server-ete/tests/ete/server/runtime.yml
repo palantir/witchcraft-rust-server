@@ -4,3 +4,6 @@ health-checks:
   shared-secret: ${enc:tJzsI5Y8Y8DU4jqfib70s06/FSEtQ8JNT+b0UtAAr205SotjsUhU3NnMON0psZms1WunUmQw6rfwBBBK}
 logging:
   trace-rate: 1
+  loggers:
+    # we don't want warnings during minidump processing to break the thread dump test
+    minidump_processor: error
