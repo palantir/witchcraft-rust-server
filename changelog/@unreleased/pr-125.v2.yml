@@ -1,0 +1,6 @@
+type: improvement
+improvement:
+  description: Reimplemented the thread dump diagnostic, removing the native elfutils
+    dependency.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/125
