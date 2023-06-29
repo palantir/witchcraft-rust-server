@@ -51,7 +51,7 @@ http = "0.2"
 http-body = "0.4"
 http-zipkin = "0.3"
 hyper = { version = "0.14", features = ["http1", "http2", "server"] }
-itertools = "0.10"
+itertools = "0.11"
 lazycell = "1.0"
 libc = "0.2"
 log = "0.4"
