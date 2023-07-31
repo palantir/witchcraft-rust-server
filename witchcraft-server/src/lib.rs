@@ -172,7 +172,7 @@
 //! * `metric.names.v1` - Returns a JSON-encoded list of the names of all metrics registered with the server.
 //! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process. Only supported when running on
 //!     Linux.
-//!     
+//!
 //! # Logging
 //!
 //! `witchcraft-server` emits JSON-encoded logs following the [witchcraft-api spec]. By default, logs will be written to
@@ -282,10 +282,7 @@ use crate::debug::endpoint::DebugEndpoints;
 #[cfg(feature = "jemalloc")]
 use crate::debug::heap_stats::HeapStatsDiagnostic;
 use crate::debug::metric_names::MetricNamesDiagnostic;
-#[cfg(all(
-    target_os = "linux",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))]
+#[cfg(all(target_os = "linux", feature = "minidump"))]
 use crate::debug::thread_dump::ThreadDumpDiagnostic;
 use crate::debug::DiagnosticRegistry;
 use crate::health::config_reload::ConfigReloadHealthCheck;
@@ -305,7 +302,6 @@ use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
-use std::env;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -334,6 +330,7 @@ pub mod extensions;
 pub mod health;
 pub mod logging;
 mod metrics;
+#[cfg(feature = "minidump")]
 mod minidump;
 pub mod readiness;
 mod server;
@@ -374,7 +371,11 @@ where
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
 {
-    if env::args_os().nth(1).map_or(false, |a| a == "minidump") {
+    #[cfg(feature = "minidump")]
+    if std::env::args_os()
+        .nth(1)
+        .map_or(false, |a| a == "minidump")
+    {
         return minidump::server();
     }
 
@@ -411,6 +412,7 @@ where
 
     info!("server starting");
 
+    #[cfg(feature = "minidump")]
     handle.block_on(minidump::init())?;
 
     metrics::init(&metrics);
@@ -428,7 +430,7 @@ where
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
     diagnostics.register(HeapStatsDiagnostic);
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", feature = "minidump"))]
     diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.finalize();
 

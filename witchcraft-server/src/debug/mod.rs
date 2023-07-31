@@ -26,7 +26,7 @@ pub mod endpoint;
 #[cfg(feature = "jemalloc")]
 pub mod heap_stats;
 pub mod metric_names;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "minidump"))]
 pub mod thread_dump;
 
 static TYPE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z0-9]+\.)+v[0-9]+").unwrap());
