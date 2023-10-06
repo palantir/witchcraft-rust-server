@@ -48,9 +48,7 @@ use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;
-use std::future::Future;
 use std::mem;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
@@ -115,11 +113,7 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
             task::spawn({
                 let handle_service = handle_service.clone();
                 async move {
-                    // The compiler hits a `higher-ranked lifetime error` if we don't box this future :/
-                    // https://github.com/rust-lang/rust/issues/102211
-                    let f: Pin<Box<dyn Future<Output = Result<(), Error>> + Send>> =
-                        Box::pin(handle_service.call(connection));
-                    if let Err(e) = f.await {
+                    if let Err(e) = handle_service.call(connection).await {
                         debug!("http connection terminated", error: e);
                     }
                 }
