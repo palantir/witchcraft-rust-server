@@ -26,7 +26,6 @@ use std::{fs, io};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::{self, Sleep};
 use witchcraft_log::warn;
-use witchcraft_server_config::install::InstallConfig;
 
 // This is pretty arbitrary - I just copied it from some Cloudflare blog post.
 const TCP_KEEPALIVE: Duration = Duration::from_secs(3 * 60);
@@ -37,8 +36,8 @@ pub struct AcceptService {
 }
 
 impl AcceptService {
-    pub fn new(config: &InstallConfig) -> Result<Self, Error> {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.port());
+    pub fn new(port: u16) -> Result<Self, Error> {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
 
         let listener =
             Socket::new(Domain::IPV4, Type::STREAM, None).map_err(Error::internal_safe)?;

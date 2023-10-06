@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::server::Listener;
 use crate::service::{Layer, Service};
 use futures_util::ready;
 use http::{HeaderMap, Response, StatusCode};
@@ -20,7 +21,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use witchcraft_metrics::{Counter, Meter, MetricRegistry};
+use witchcraft_metrics::{Counter, Meter, MetricId, MetricRegistry};
 
 struct Metrics {
     request_active: Arc<Counter>,
@@ -36,10 +37,12 @@ pub struct ServerMetricsLayer {
 }
 
 impl ServerMetricsLayer {
-    pub fn new(metrics: &MetricRegistry) -> Self {
+    pub fn new(metrics: &MetricRegistry, listener: Listener) -> Self {
         ServerMetricsLayer {
             metrics: Arc::new(Metrics {
-                request_active: metrics.counter("server.request.active"),
+                request_active: metrics.counter(
+                    MetricId::new("server.request.active").with_tag("listener", listener.tag()),
+                ),
                 request_unmatched: metrics.meter("server.request.unmatched"),
                 response_all: metrics.meter("server.response.all"),
                 response_xxx: [

@@ -55,7 +55,27 @@ use witchcraft_log::debug;
 
 pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 
-pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Result<(), Error> {
+#[derive(Copy, Clone)]
+pub enum Listener {
+    Service,
+    Management,
+}
+
+impl Listener {
+    pub fn tag(&self) -> &'static str {
+        match self {
+            Listener::Service => "service",
+            Listener::Management => "management",
+        }
+    }
+}
+
+pub(crate) async fn start(
+    witchcraft: &mut Witchcraft,
+    loggers: &Loggers,
+    listener: Listener,
+    port: u16,
+) -> Result<(), Error> {
     // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
         .layer(RoutingLayer::new(mem::take(&mut witchcraft.endpoints)))
@@ -65,8 +85,8 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
         .layer(UnverifiedJwtLayer)
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
-        .layer(RequestLogLayer::new(loggers.request_logger))
-        .layer(AuditLogLayer::new(loggers.audit_logger))
+        .layer(RequestLogLayer::new(loggers.request_logger.clone()))
+        .layer(AuditLogLayer::new(loggers.audit_logger.clone()))
         .layer(CancellationLayer)
         .layer(GzipLayer::new(&witchcraft.install_config))
         .layer(DeprecationHeaderLayer)
@@ -75,7 +95,7 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
         .layer(NoCachingLayer)
         .layer(WebSecurityLayer)
         .layer(TraceIdHeaderLayer)
-        .layer(ServerMetricsLayer::new(&witchcraft.metrics))
+        .layer(ServerMetricsLayer::new(&witchcraft.metrics, listener))
         .layer(EndpointMetricsLayer)
         .layer(EndpointHealthLayer)
         .layer(ErrorLogLayer)
@@ -99,8 +119,9 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
         .layer(ConnectionMetricsLayer::new(
             &witchcraft.install_config,
             &witchcraft.metrics,
+            listener,
         ))
-        .service(AcceptService::new(&witchcraft.install_config)?);
+        .service(AcceptService::new(port)?);
 
     let handle = task::spawn(async move {
         loop {

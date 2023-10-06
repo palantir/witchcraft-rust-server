@@ -365,3 +365,71 @@ async fn io_after_eof() {
     })
     .await;
 }
+
+#[tokio::test]
+async fn management_port() {
+    Server::builder()
+        .management_port()
+        .with(|server| async move {
+            let request = Request::builder()
+                .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
+                .header("Authorization", "Bearer debug")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .management_client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let request = Request::builder()
+                .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
+                .header("Authorization", "Bearer debug")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+            let request = Request::builder()
+                .uri("/witchcraft-ete/status/liveness")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .management_client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+            let request = Request::builder()
+                .uri("/witchcraft-ete/status/liveness")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+            server.shutdown().await;
+        })
+        .await;
+}
