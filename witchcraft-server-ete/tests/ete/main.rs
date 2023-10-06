@@ -214,7 +214,7 @@ async fn diagnostic_types_diagnostic() {
 #[cfg(target_os = "linux")]
 async fn thread_dump_diagnostic() {
     // FIXME https://github.com/palantir/witchcraft-rust-server/issues/74
-    if env::var_os("CI").is_some() {
+    if std::env::var_os("CI").is_some() {
         return;
     }
 
