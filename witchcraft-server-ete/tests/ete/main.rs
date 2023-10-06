@@ -17,7 +17,6 @@ use http::{HeaderMap, HeaderValue};
 use hyper::body::HttpBody;
 use hyper::{body, Body, Request, StatusCode};
 use server::Server;
-use std::env;
 use std::pin::Pin;
 use std::str;
 use std::task::{Context, Poll};
