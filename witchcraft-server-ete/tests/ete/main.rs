@@ -17,7 +17,6 @@ use http::{HeaderMap, HeaderValue};
 use hyper::body::HttpBody;
 use hyper::{body, Body, Request, StatusCode};
 use server::Server;
-use std::env;
 use std::pin::Pin;
 use std::str;
 use std::task::{Context, Poll};
@@ -215,7 +214,7 @@ async fn diagnostic_types_diagnostic() {
 #[cfg(target_os = "linux")]
 async fn thread_dump_diagnostic() {
     // FIXME https://github.com/palantir/witchcraft-rust-server/issues/74
-    if env::var_os("CI").is_some() {
+    if std::env::var_os("CI").is_some() {
         return;
     }
 
@@ -365,4 +364,72 @@ async fn io_after_eof() {
         server.shutdown().await;
     })
     .await;
+}
+
+#[tokio::test]
+async fn management_port() {
+    Server::builder()
+        .management_port()
+        .with(|server| async move {
+            let request = Request::builder()
+                .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
+                .header("Authorization", "Bearer debug")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .management_client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let request = Request::builder()
+                .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
+                .header("Authorization", "Bearer debug")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+            let request = Request::builder()
+                .uri("/witchcraft-ete/status/liveness")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .management_client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+            let request = Request::builder()
+                .uri("/witchcraft-ete/status/liveness")
+                .body(Body::empty())
+                .unwrap();
+            let response = server
+                .client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+            server.shutdown().await;
+        })
+        .await;
 }

@@ -48,16 +48,34 @@ use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;
-use std::future::Future;
 use std::mem;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
 
 pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
 
-pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Result<(), Error> {
+#[derive(Copy, Clone)]
+pub enum Listener {
+    Service,
+    Management,
+}
+
+impl Listener {
+    pub fn tag(&self) -> &'static str {
+        match self {
+            Listener::Service => "service",
+            Listener::Management => "management",
+        }
+    }
+}
+
+pub(crate) async fn start(
+    witchcraft: &mut Witchcraft,
+    loggers: &Loggers,
+    listener: Listener,
+    port: u16,
+) -> Result<(), Error> {
     // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
         .layer(RoutingLayer::new(mem::take(&mut witchcraft.endpoints)))
@@ -67,8 +85,8 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
         .layer(UnverifiedJwtLayer)
         .layer(MdcLayer)
         .layer(WitchcraftMdcLayer)
-        .layer(RequestLogLayer::new(loggers.request_logger))
-        .layer(AuditLogLayer::new(loggers.audit_logger))
+        .layer(RequestLogLayer::new(loggers.request_logger.clone()))
+        .layer(AuditLogLayer::new(loggers.audit_logger.clone()))
         .layer(CancellationLayer)
         .layer(GzipLayer::new(&witchcraft.install_config))
         .layer(DeprecationHeaderLayer)
@@ -77,7 +95,7 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
         .layer(NoCachingLayer)
         .layer(WebSecurityLayer)
         .layer(TraceIdHeaderLayer)
-        .layer(ServerMetricsLayer::new(&witchcraft.metrics))
+        .layer(ServerMetricsLayer::new(&witchcraft.metrics, listener))
         .layer(EndpointMetricsLayer)
         .layer(EndpointHealthLayer)
         .layer(ErrorLogLayer)
@@ -101,8 +119,9 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
         .layer(ConnectionMetricsLayer::new(
             &witchcraft.install_config,
             &witchcraft.metrics,
+            listener,
         ))
-        .service(AcceptService::new(&witchcraft.install_config)?);
+        .service(AcceptService::new(port)?);
 
     let handle = task::spawn(async move {
         loop {
@@ -115,11 +134,7 @@ pub(crate) async fn start(witchcraft: &mut Witchcraft, loggers: Loggers) -> Resu
             task::spawn({
                 let handle_service = handle_service.clone();
                 async move {
-                    // The compiler hits a `higher-ranked lifetime error` if we don't box this future :/
-                    // https://github.com/rust-lang/rust/issues/102211
-                    let f: Pin<Box<dyn Future<Output = Result<(), Error>> + Send>> =
-                        Box::pin(handle_service.call(connection));
-                    if let Err(e) = f.await {
+                    if let Err(e) = handle_service.call(connection).await {
                         debug!("http connection terminated", error: e);
                     }
                 }

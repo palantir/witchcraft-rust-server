@@ -21,6 +21,7 @@ pub struct InstallConfig {
     pub product_name: String,
     pub product_version: String,
     pub port: u16,
+    pub management_port: Option<u16>,
     pub keystore: Option<super::KeystoreConfig>,
     pub client_auth_truststore: Option<super::ClientAuthTruststoreConfig>,
     pub context_path: Option<String>,

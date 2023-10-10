@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::server::Listener;
 use crate::service::peer_addr::GetPeerAddr;
 use crate::service::{Layer, Service};
 use futures_util::ready;
@@ -21,7 +22,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use witchcraft_metrics::{Counter, MetricRegistry};
+use witchcraft_metrics::{Counter, MetricId, MetricRegistry};
 use witchcraft_server_config::install::InstallConfig;
 
 /// A layer which tracks active connection metrics.
@@ -30,14 +31,19 @@ pub struct ConnectionMetricsLayer {
 }
 
 impl ConnectionMetricsLayer {
-    pub fn new(config: &InstallConfig, metrics: &MetricRegistry) -> Self {
-        let active_connections = metrics.counter("server.connection.active");
+    pub fn new(config: &InstallConfig, metrics: &MetricRegistry, listener: Listener) -> Self {
+        let active_connections = metrics.counter(
+            MetricId::new("server.connection.active").with_tag("listener", listener.tag()),
+        );
 
-        metrics.gauge("server.connection.utilization", {
-            let active_connections = active_connections.clone();
-            let max_connections = config.server().max_connections();
-            move || active_connections.count() as f64 / max_connections as f64
-        });
+        metrics.gauge(
+            MetricId::new("server.connection.utilization").with_tag("listener", listener.tag()),
+            {
+                let active_connections = active_connections.clone();
+                let max_connections = config.server().max_connections();
+                move || active_connections.count() as f64 / max_connections as f64
+            },
+        );
 
         ConnectionMetricsLayer { active_connections }
     }

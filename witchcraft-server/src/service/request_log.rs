@@ -75,10 +75,8 @@ pub struct RequestLogLayer {
 }
 
 impl RequestLogLayer {
-    pub fn new(appender: Appender<RequestLogV2>) -> Self {
-        RequestLogLayer {
-            appender: Arc::new(appender),
-        }
+    pub fn new(appender: Arc<Appender<RequestLogV2>>) -> Self {
+        RequestLogLayer { appender }
     }
 }
 

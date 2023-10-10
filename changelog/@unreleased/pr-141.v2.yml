@@ -1,0 +1,5 @@
+type: feature
+feature:
+  description: Management endpoints can now be exposed on a separate port.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/141

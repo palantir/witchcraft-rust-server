@@ -51,6 +51,12 @@ fn setup_config(dir: &Path, builder: &Builder, port: u16) {
         conf.join("install.yml"),
         include_str!("install.yml")
             .replace("<PORT>", &port.to_string())
+            .replace(
+                "<MANAGEMENT_PORT>",
+                &builder
+                    .management_port
+                    .map_or("null".to_string(), |p| p.to_string()),
+            )
             .replace("<HTTP2>", &builder.http2.to_string()),
     )
     .unwrap();
@@ -68,6 +74,7 @@ pub struct Server {
     stdout_rx: Option<oneshot::Receiver<String>>,
     ctx: SslConnector,
     port: u16,
+    management_port: Option<u16>,
     shutdown: bool,
     http2: bool,
 }
@@ -88,7 +95,10 @@ impl Drop for Server {
 
 impl Server {
     pub fn builder() -> Builder {
-        Builder { http2: false }
+        Builder {
+            management_port: None,
+            http2: false,
+        }
     }
 
     pub async fn with<F, G>(test: F)
@@ -145,6 +155,7 @@ impl Server {
             stdout_rx: Some(stdout_rx),
             ctx,
             port,
+            management_port: builder.management_port,
             shutdown: false,
             http2: builder.http2,
         };
@@ -156,7 +167,12 @@ impl Server {
 
     async fn wait_for_ready(&self) {
         for _ in 0..50 {
-            let mut client = match self.client().await {
+            let client = match self.management_port {
+                Some(_) => self.management_client().await,
+                None => self.client().await,
+            };
+
+            let mut client = match client {
                 Ok(client) => client,
                 Err(_) => {
                     time::sleep(Duration::from_millis(100)).await;
@@ -184,7 +200,28 @@ impl Server {
         B::Data: Send,
         B::Error: Into<Box<dyn error::Error + Sync + Send>>,
     {
-        let stream = TcpStream::connect(("127.0.0.1", self.port)).await?;
+        self.client_inner(self.port).await
+    }
+
+    pub async fn management_client<B>(&self) -> Result<SendRequest<B>, Box<dyn Error + Sync + Send>>
+    where
+        B: HttpBody + 'static + Send,
+        B::Data: Send,
+        B::Error: Into<Box<dyn error::Error + Sync + Send>>,
+    {
+        self.client_inner(self.management_port.unwrap()).await
+    }
+
+    async fn client_inner<B>(
+        &self,
+        port: u16,
+    ) -> Result<SendRequest<B>, Box<dyn Error + Sync + Send>>
+    where
+        B: HttpBody + 'static + Send,
+        B::Data: Send,
+        B::Error: Into<Box<dyn error::Error + Sync + Send>>,
+    {
+        let stream = TcpStream::connect(("127.0.0.1", port)).await?;
         let ssl = self.ctx.configure()?.into_ssl("localhost")?;
         let mut stream = SslStream::new(ssl, stream)?;
         Pin::new(&mut stream).connect().await?;
@@ -238,10 +275,16 @@ impl Server {
 }
 
 pub struct Builder {
+    management_port: Option<u16>,
     http2: bool,
 }
 
 impl Builder {
+    pub fn management_port(mut self) -> Self {
+        self.management_port = Some(open_port());
+        self
+    }
+
     pub fn http2(mut self, http2: bool) -> Self {
         self.http2 = http2;
         self
