@@ -16,7 +16,7 @@ async-trait = "0.1"
 conjure-error = "3"
 conjure-http = "3"
 conjure-object = "3"
-http = "0.2"
+http = "1.0"
 refreshable = "1"
 tokio = "1"
 
