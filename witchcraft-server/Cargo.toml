@@ -48,7 +48,7 @@ futures-channel = "0.3"
 futures-sink = "0.3"
 futures-util = "0.3"
 http = "0.2"
-http-body = "0.4"
+http-body = "1.0"
 http-zipkin = "0.3"
 hyper = { version = "0.14", features = ["http1", "http2", "server"] }
 itertools = "0.12"
