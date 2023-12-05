@@ -93,7 +93,7 @@ tokio = { version = "1.27", features = [
     "signal",
     "time",
 ] }
-tokio-rustls = "0.24"
+tokio-rustls = "0.25"
 tokio-util = "0.7"
 tracing = { version = "0.1", features = ["log"] }
 witchcraft-log = "3"
