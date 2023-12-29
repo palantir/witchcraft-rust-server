@@ -65,7 +65,8 @@ pub struct ConnectionMetricsService<S> {
 
 impl<S, R> Service<R> for ConnectionMetricsService<S>
 where
-    S: Service<R>,
+    S: Service<R> + Sync,
+    R: Send,
 {
     type Response = ConnectionMetricsStream<S::Response>;
 

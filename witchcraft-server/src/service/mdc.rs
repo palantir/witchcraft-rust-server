@@ -37,7 +37,8 @@ pub struct MdcService<S> {
 
 impl<S, R, B> Service<R> for MdcService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = Response<MdcBody<B>>;
 

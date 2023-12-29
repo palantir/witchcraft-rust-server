@@ -97,7 +97,8 @@ pub struct RequestLogService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for RequestLogService<S>
 where
-    S: Service<Request<RequestLogRequestBody<B1>>, Response = Response<B2>>,
+    S: Service<Request<RequestLogRequestBody<B1>>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = Response<RequestLogResponseBody<B2>>;
 

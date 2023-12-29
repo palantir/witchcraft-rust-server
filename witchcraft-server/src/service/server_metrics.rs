@@ -31,13 +31,13 @@ struct Metrics {
 
 /// A layer that records global metrics about requests.
 pub struct ServerMetricsLayer {
-    metrics: Arc<Metrics>,
+    metrics: Metrics,
 }
 
 impl ServerMetricsLayer {
     pub fn new(metrics: &MetricRegistry, listener: Listener) -> Self {
         ServerMetricsLayer {
-            metrics: Arc::new(Metrics {
+            metrics: Metrics {
                 request_active: metrics.counter(
                     MetricId::new("server.request.active").with_tag("listener", listener.tag()),
                 ),
@@ -51,7 +51,7 @@ impl ServerMetricsLayer {
                     metrics.meter("server.response.5xx"),
                 ],
                 response_500: metrics.meter("server.response.500"),
-            }),
+            },
         }
     }
 }
@@ -69,19 +69,20 @@ impl<S> Layer<S> for ServerMetricsLayer {
 
 pub struct ServerMetricsService<S> {
     inner: S,
-    metrics: Arc<Metrics>,
+    metrics: Metrics,
 }
 
 impl<S, R, B> Service<R> for ServerMetricsService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = Response<ServerMetricsBody<B>>;
 
     async fn call(&self, req: R) -> Self::Response {
         self.metrics.request_active.inc();
         let guard = ActiveGuard {
-            metrics: self.metrics.clone(),
+            request_active: self.metrics.request_active.clone(),
         };
 
         let response = self.inner.call(req).await;
@@ -146,11 +147,11 @@ where
 }
 
 struct ActiveGuard {
-    metrics: Arc<Metrics>,
+    request_active: Arc<Counter>,
 }
 
 impl Drop for ActiveGuard {
     fn drop(&mut self) {
-        self.metrics.request_active.dec();
+        self.request_active.dec();
     }
 }

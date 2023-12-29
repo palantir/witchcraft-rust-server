@@ -40,8 +40,10 @@ pub struct PeerAddrService<S> {
 
 impl<S, T, L, R> Service<NewConnection<T, L>> for PeerAddrService<S>
 where
-    S: Service<NewConnection<T, Stack<L, PeerAddrRequestLayer>>, Response = Result<R, Error>>,
-    T: GetPeerAddr,
+    S: Service<NewConnection<T, Stack<L, PeerAddrRequestLayer>>, Response = Result<R, Error>>
+        + Sync,
+    T: GetPeerAddr + Send,
+    L: Send,
 {
     type Response = S::Response;
 
@@ -79,7 +81,8 @@ pub struct PeerAddrRequestService<S> {
 
 impl<S, B> Service<Request<B>> for PeerAddrRequestService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Sync,
+    B: Send,
 {
     type Response = S::Response;
 

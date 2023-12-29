@@ -34,7 +34,8 @@ pub struct EndpointHealthService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for EndpointHealthService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = S::Response;
 

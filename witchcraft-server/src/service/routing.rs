@@ -182,7 +182,8 @@ impl<S> RoutingService<S> {
 
 impl<S, B> Service<Request<B>> for RoutingService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Sync,
+    B: Send,
 {
     type Response = S::Response;
 

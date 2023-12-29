@@ -33,7 +33,8 @@ pub struct ErrorLogService<S> {
 
 impl<S, R, B> Service<R> for ErrorLogService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = S::Response;
 

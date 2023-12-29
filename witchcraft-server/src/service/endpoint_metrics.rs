@@ -23,6 +23,7 @@ use std::task::{Context, Poll};
 use tokio::time::Instant;
 use witchcraft_metrics::{Meter, MetricId, MetricRegistry, Timer};
 
+#[derive(Clone)]
 pub struct EndpointMetrics {
     response: Arc<Timer>,
     response_error: Arc<Meter>,
@@ -64,7 +65,8 @@ pub struct EndpointMetricsService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for EndpointMetricsService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = Response<EndpointMetricsBody<B2>>;
 
@@ -74,14 +76,14 @@ where
             .get::<Route>()
             .expect("Route missing from request extensions")
         {
-            Route::Resolved(endpoint) => endpoint.metrics(),
+            Route::Resolved(endpoint) => endpoint.metrics().cloned(),
             _ => None,
         };
 
         let start_time = Instant::now();
         let response = self.inner.call(req).await;
         if response.status().is_server_error() {
-            if let Some(metrics) = endpoint_metrics {
+            if let Some(metrics) = &endpoint_metrics {
                 metrics.response_error.mark(1);
             }
         }

@@ -40,14 +40,15 @@ pub struct NoCachingService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for NoCachingService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = S::Response;
 
     async fn call(&self, req: Request<B1>) -> Self::Response {
         let is_get = req.method() == Method::GET;
 
-        let response = self.inner.call(req).await;
+        let mut response = self.inner.call(req).await;
         if is_get {
             if let Entry::Vacant(e) = response.headers_mut().entry(CACHE_CONTROL) {
                 e.insert(DO_NOT_CACHE);

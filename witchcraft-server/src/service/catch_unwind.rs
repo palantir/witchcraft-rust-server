@@ -39,19 +39,20 @@ pub struct CatchUnwindService<S> {
 
 impl<S, R, B> Service<R> for CatchUnwindService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = Response<CatchUnwindBody<B>>;
 
     async fn call(&self, req: R) -> Self::Response {
         let r = match panic::catch_unwind(AssertUnwindSafe(|| self.inner.call(req))) {
-            Ok(future) => AssertUnwindSafe(future).await,
+            Ok(future) => AssertUnwindSafe(future).catch_unwind().await,
             Err(e) => Err(e),
         };
 
         match r {
             Ok(response) => response.map(|inner| CatchUnwindBody { inner: Some(inner) }),
-            Err(e) => panic_response(),
+            Err(_) => panic_response(),
         }
     }
 }

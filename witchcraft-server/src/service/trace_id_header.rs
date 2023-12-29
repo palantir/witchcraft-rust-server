@@ -15,6 +15,7 @@ use crate::service::{Layer, Service};
 use http::header::HeaderName;
 use http::{HeaderValue, Response};
 
+#[allow(clippy::declare_interior_mutable_const)]
 const TRACE_ID: HeaderName = HeaderName::from_static("x-b3-traceid");
 
 /// A layer which adds an `X-B3-TraceId` header to responses.
@@ -36,7 +37,8 @@ pub struct TraceIdHeaderService<S> {
 
 impl<S, R, B> Service<R> for TraceIdHeaderService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = S::Response;
 
@@ -45,7 +47,7 @@ where
         let context = zipkin::current().expect("zipkin trace not initialized");
         response.headers_mut().insert(
             TRACE_ID,
-            HeaderValue::from_str(&context.trace_id().to_striong()).unwrap(),
+            HeaderValue::from_str(&context.trace_id().to_string()).unwrap(),
         );
         response
     }

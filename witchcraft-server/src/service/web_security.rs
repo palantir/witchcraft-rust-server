@@ -32,6 +32,7 @@ const X_FRAME_OPTIONS_VALUE: HeaderValue = HeaderValue::from_static("sameorigin"
 #[allow(clippy::declare_interior_mutable_const)]
 const X_XSS_PROTECTION_VALUE: HeaderValue = HeaderValue::from_static("1; mode=block");
 
+#[allow(clippy::declare_interior_mutable_const)]
 const X_CONTENT_SECURITY_POLICY: HeaderName = HeaderName::from_static("x-content-security-policy");
 
 const USER_AGENT_IE_10: &str = "MSIE 10";
@@ -54,7 +55,8 @@ pub struct WebSecurityService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for WebSecurityService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = S::Response;
 
@@ -84,10 +86,9 @@ where
             .headers_mut()
             .insert(X_XSS_PROTECTION, X_XSS_PROTECTION_VALUE);
         if is_ie {
-            response.headers_mut().insert(
-                X_CONTENT_SECURITY_POLICY.clone(),
-                CONTENT_SECURITY_POLICY_VALUE,
-            );
+            response
+                .headers_mut()
+                .insert(X_CONTENT_SECURITY_POLICY, CONTENT_SECURITY_POLICY_VALUE);
         }
 
         response

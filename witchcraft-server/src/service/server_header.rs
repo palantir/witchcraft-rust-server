@@ -53,7 +53,8 @@ pub struct ServerHeaderService<S> {
 
 impl<S, R, B> Service<R> for ServerHeaderService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = S::Response;
 

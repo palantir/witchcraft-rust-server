@@ -38,7 +38,8 @@ pub struct SpansService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for SpansService<S>
 where
-    S: Service<Request<SpannedBody<B1>>, Response = Response<B2>>,
+    S: Service<Request<SpannedBody<B1>>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = Response<SpannedBody<B2>>;
 

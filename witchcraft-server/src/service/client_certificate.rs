@@ -34,7 +34,9 @@ pub struct ClientCertificateService<S> {
 
 impl<S, T, L> Service<NewConnection<TlsStream<T>, L>> for ClientCertificateService<S>
 where
-    S: Service<NewConnection<TlsStream<T>, Stack<L, ClientCertificateRequestLayer>>>,
+    S: Service<NewConnection<TlsStream<T>, Stack<L, ClientCertificateRequestLayer>>> + Sync,
+    T: Send,
+    L: Send,
 {
     type Response = S::Response;
 
@@ -81,7 +83,8 @@ pub struct ClientCertificateRequestService<S> {
 
 impl<S, B> Service<Request<B>> for ClientCertificateRequestService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Sync,
+    B: Send,
 {
     type Response = S::Response;
 

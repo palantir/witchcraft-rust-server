@@ -21,6 +21,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+#[allow(clippy::declare_interior_mutable_const)]
 const DEPRECATION: HeaderName = HeaderName::from_static("deprecation");
 #[allow(clippy::declare_interior_mutable_const)]
 const IS_DEPRECATED: HeaderValue = HeaderValue::from_static("true");
@@ -44,7 +45,8 @@ pub struct DeprecationHeaderService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for DeprecationHeaderService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = S::Response;
 
@@ -86,9 +88,7 @@ where
 
         let mut response = ready!(this.inner.poll(cx));
         if *this.deprecated {
-            response
-                .headers_mut()
-                .insert(DEPRECATION.clone(), IS_DEPRECATED);
+            response.headers_mut().insert(DEPRECATION, IS_DEPRECATED);
         }
         Poll::Ready(response)
     }

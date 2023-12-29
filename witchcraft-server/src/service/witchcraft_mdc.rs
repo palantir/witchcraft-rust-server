@@ -38,7 +38,8 @@ pub struct WitchcraftMdcService<S> {
 
 impl<S, B> Service<Request<B>> for WitchcraftMdcService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Sync,
+    B: Send,
 {
     type Response = S::Response;
 

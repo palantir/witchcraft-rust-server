@@ -65,17 +65,16 @@ pub struct AuditLogService<S, T> {
 
 impl<S, T, R, B> Service<R> for AuditLogService<S, T>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
     T: Sink<Payload<AuditLogV3>> + Unpin + 'static + Send,
     T::Error: Into<Box<dyn error::Error + Sync + Send>>,
+    R: Send,
     B: Send,
 {
     type Response = Response<AuditLogResponseBody<B>>;
 
     async fn call(&self, req: R) -> Self::Response {
-        let inner = self.inner.call(req).await;
-
-        let mut response = inner.await;
+        let mut response = self.inner.call(req).await;
 
         if let Some(audit_log_entry) = response.extensions_mut().remove::<AuditLogEntry>() {
             let (tx, rx) = oneshot::channel();

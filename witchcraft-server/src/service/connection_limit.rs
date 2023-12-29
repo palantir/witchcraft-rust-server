@@ -55,14 +55,18 @@ pub struct ConnectionLimitService<S> {
 
 impl<S, R> Service<R> for ConnectionLimitService<S>
 where
-    S: Service<R>,
+    S: Service<R> + Sync + Send,
+    R: Send,
 {
     type Response = ConnectionLimitStream<S::Response>;
 
     async fn call(&self, req: R) -> Self::Response {
-        let permit = self.semaphore.acquire().await;
+        let permit = self.semaphore.clone().acquire_owned().await;
         let inner = self.inner.call(req).await;
-        ConnectionLimitStream { inner, permit }
+        ConnectionLimitStream {
+            inner,
+            permit: permit.unwrap(),
+        }
     }
 }
 

@@ -144,13 +144,18 @@ pub struct TlsService<S> {
 
 impl<S, R, L> Service<NewConnection<R, L>> for TlsService<S>
 where
-    S: Service<NewConnection<TlsStream<R>, L>, Response = Result<(), Error>>,
-    R: AsyncRead + AsyncWrite + Unpin,
+    S: Service<NewConnection<TlsStream<R>, L>, Response = Result<(), Error>> + Sync,
+    R: AsyncRead + AsyncWrite + Unpin + Send,
+    L: Send,
 {
     type Response = S::Response;
 
     async fn call(&self, req: NewConnection<R, L>) -> Self::Response {
-        let stream = self.acceptor.accept(req.stream).await?;
+        let stream = self
+            .acceptor
+            .accept(req.stream)
+            .await
+            .map_err(Error::internal_safe)?;
         self.inner
             .call(NewConnection {
                 stream,

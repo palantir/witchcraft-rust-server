@@ -25,8 +25,9 @@ pub struct ServiceFn<F>(F);
 
 impl<T, F, I, O> Service<I> for ServiceFn<T>
 where
-    T: Fn(I) -> F,
-    F: Future<Output = O>,
+    T: Fn(I) -> F + Sync,
+    F: Future<Output = O> + Send,
+    I: Send,
 {
     type Response = O;
 

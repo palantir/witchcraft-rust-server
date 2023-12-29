@@ -16,6 +16,7 @@ use http::header::HeaderName;
 use http::{HeaderValue, Request, Response, Version};
 use witchcraft_server_config::install::InstallConfig;
 
+#[allow(clippy::declare_interior_mutable_const)]
 const KEEP_ALIVE: HeaderName = HeaderName::from_static("keep-alive");
 
 /// A layer which adds a `Keep-Alive` header to responses.
@@ -52,7 +53,8 @@ pub struct KeepAliveHeaderService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for KeepAliveHeaderService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = S::Response;
 

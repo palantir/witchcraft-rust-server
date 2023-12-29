@@ -76,7 +76,8 @@ pub struct GzipService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for GzipService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
     B2: Body<Data = Bytes>,
     B2::Error: Into<Box<dyn error::Error + Sync + Send>>,
 {
@@ -85,7 +86,7 @@ where
     async fn call(&self, req: Request<B1>) -> Self::Response {
         let can_gzip = self.enabled && can_gzip(&req);
 
-        let response = self.inner.call(req).await;
+        let mut response = self.inner.call(req).await;
         let encoder = if can_gzip && should_gzip(&response) {
             response.headers_mut().remove(CONTENT_LENGTH);
             response.headers_mut().insert(CONTENT_ENCODING, GZIP);

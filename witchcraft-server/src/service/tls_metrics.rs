@@ -48,7 +48,9 @@ pub struct TlsMetricsService<S> {
 
 impl<S, R, L> Service<NewConnection<TlsStream<R>, L>> for TlsMetricsService<S>
 where
-    S: Service<NewConnection<TlsStream<R>, L>>,
+    S: Service<NewConnection<TlsStream<R>, L>> + Sync,
+    R: Send,
+    L: Send,
 {
     type Response = S::Response;
 

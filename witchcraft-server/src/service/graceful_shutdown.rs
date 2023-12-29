@@ -24,6 +24,8 @@ use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 use tokio_util::sync::CancellationToken;
 
+use super::hyper::ShutdownService;
+
 /// A layer which registers a shutdown hook to initiate a graceful shutdown of all futures returned by the delegate
 /// service, and waits for them to complete.
 pub struct GracefulShutdownLayer {
@@ -87,14 +89,11 @@ pub struct GracefulShutdownService<S> {
 
 impl<S, R> Service<R> for GracefulShutdownService<S>
 where
-    S: Service<R>,
-    S::Future: GracefulShutdown,
+    S: ShutdownService<R>,
 {
     type Response = S::Response;
 
-    type Future = GracefulShutdownFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
+    fn call(&self, req: R) -> impl Future<Output = Self::Response> + Send {
         // Do this first so we don't leak a connection if it panics
         let inner = self.inner.call(req);
 
@@ -164,7 +163,6 @@ struct Shared {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::service::test_util::service_fn;
     use std::time::Duration;
     use tokio::task;
     use tokio::time::{self, Instant, Sleep};
@@ -200,24 +198,58 @@ mod test {
         }
     }
 
+    struct TestService;
+
+    impl<F> ShutdownService<F> for TestService
+    where
+        F: Future + GracefulShutdown + Send,
+    {
+        type Response = F::Output;
+
+        fn call(&self, req: F) -> impl Future<Output = Self::Response> + GracefulShutdown + Send {
+            req
+        }
+    }
+
     #[tokio::test(start_paused = true)]
     async fn basic() {
         let mut hooks = ShutdownHooks::new();
 
-        let service = GracefulShutdownLayer::new(&mut hooks).layer(service_fn(|f| f));
+        let service = Arc::new(GracefulShutdownLayer::new(&mut hooks).layer(TestService));
 
-        let a = task::spawn(service.call(TestFuture::new(
-            Duration::from_secs(1),
-            Duration::from_secs(1000),
-        )));
-        let b = task::spawn(service.call(TestFuture::new(
-            Duration::from_secs(1000),
-            Duration::from_secs(1),
-        )));
-        let c = task::spawn(service.call(TestFuture::new(
-            Duration::from_secs(1000),
-            Duration::from_secs(2),
-        )));
+        let a = task::spawn({
+            let service = service.clone();
+            async move {
+                service
+                    .call(TestFuture::new(
+                        Duration::from_secs(1),
+                        Duration::from_secs(1000),
+                    ))
+                    .await
+            }
+        });
+        let b = task::spawn({
+            let service = service.clone();
+            async move {
+                service
+                    .call(TestFuture::new(
+                        Duration::from_secs(1000),
+                        Duration::from_secs(1),
+                    ))
+                    .await
+            }
+        });
+        let c = task::spawn({
+            let service = service.clone();
+            async move {
+                service
+                    .call(TestFuture::new(
+                        Duration::from_secs(1000),
+                        Duration::from_secs(2),
+                    ))
+                    .await
+            }
+        });
 
         let start = Instant::now();
         a.await.unwrap();

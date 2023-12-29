@@ -31,12 +31,13 @@ pub struct CancellationService<S> {
 
 impl<S, R> Service<R> for CancellationService<S>
 where
-    S: Service<R>,
+    S: Service<R> + Sync,
+    R: Send,
 {
     type Response = S::Response;
 
     async fn call(&self, req: R) -> Self::Response {
-        let guard = DropGuard { complete: false };
+        let mut guard = DropGuard { complete: false };
         let r = self.inner.call(req).await;
         guard.complete = true;
         r
