@@ -64,7 +64,8 @@ impl Diagnostic for ThreadDumpDiagnostic {
 pub fn handle_request(buf: Vec<u8>) {
     let target_file = PathBuf::from(OsString::from_vec(buf));
     let ppid = process::parent_id();
-    let Ok(minidump) = MinidumpWriter::new(ppid as _, ppid as _).dump(&mut Cursor::new(vec![])) else {
+    let Ok(minidump) = MinidumpWriter::new(ppid as _, ppid as _).dump(&mut Cursor::new(vec![]))
+    else {
         // We are in the child process so we unfortunately can't really log
         return;
     };
