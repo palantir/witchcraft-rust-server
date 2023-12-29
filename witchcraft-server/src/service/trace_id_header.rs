@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use http::header::HeaderName;
 use http::{HeaderValue, Response};
-use once_cell::sync::Lazy;
-use pin_project::pin_project;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
-static TRACE_ID: Lazy<HeaderName> = Lazy::new(|| HeaderName::from_static("x-b3-traceid"));
+const TRACE_ID: HeaderName = HeaderName::from_static("x-b3-traceid");
 
 /// A layer which adds an `X-B3-TraceId` header to responses.
 ///
@@ -46,37 +40,13 @@ where
 {
     type Response = S::Response;
 
-    type Future = TraceIdHeaderFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
-        TraceIdHeaderFuture {
-            inner: self.inner.call(req),
-        }
-    }
-}
-
-#[pin_project]
-pub struct TraceIdHeaderFuture<F> {
-    #[pin]
-    inner: F,
-}
-
-impl<F, B> Future for TraceIdHeaderFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let mut response = ready!(this.inner.poll(cx));
+    async fn call(&self, req: R) -> Self::Response {
+        let mut response = self.inner.call(req).await;
         let context = zipkin::current().expect("zipkin trace not initialized");
         response.headers_mut().insert(
-            TRACE_ID.clone(),
-            HeaderValue::from_str(&context.trace_id().to_string()).unwrap(),
+            TRACE_ID,
+            HeaderValue::from_str(&context.trace_id().to_striong()).unwrap(),
         );
-
-        Poll::Ready(response)
+        response
     }
 }

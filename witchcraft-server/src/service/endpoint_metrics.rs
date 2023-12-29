@@ -14,11 +14,9 @@
 use crate::service::routing::Route;
 use crate::service::{Layer, Service};
 use conjure_http::server::EndpointMetadata;
-use futures_util::ready;
 use http::{HeaderMap, Request, Response};
 use http_body::Body;
 use pin_project::{pin_project, pinned_drop};
-use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -31,7 +29,6 @@ pub struct EndpointMetrics {
 }
 
 impl EndpointMetrics {
-    #[allow(dead_code)]
     pub fn new(metrics: &MetricRegistry, endpoint: &dyn EndpointMetadata) -> Self {
         EndpointMetrics {
             response: metrics.timer(
@@ -71,9 +68,7 @@ where
 {
     type Response = Response<EndpointMetricsBody<B2>>;
 
-    type Future = EndpointMetricsFuture<S::Future>;
-
-    fn call(&self, req: Request<B1>) -> Self::Future {
+    async fn call(&self, req: Request<B1>) -> Self::Response {
         let endpoint_metrics = match req
             .extensions()
             .get::<Route>()
@@ -83,45 +78,19 @@ where
             _ => None,
         };
 
-        EndpointMetricsFuture {
-            start_time: Instant::now(),
-            response: endpoint_metrics.map(|e| e.response.clone()),
-            response_error: endpoint_metrics.map(|e| e.response_error.clone()),
-            inner: self.inner.call(req),
-        }
-    }
-}
-
-#[pin_project]
-pub struct EndpointMetricsFuture<F> {
-    #[pin]
-    inner: F,
-    start_time: Instant,
-    response: Option<Arc<Timer>>,
-    response_error: Option<Arc<Meter>>,
-}
-
-impl<F, B> Future for EndpointMetricsFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = Response<EndpointMetricsBody<B>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let response = ready!(this.inner.poll(cx));
+        let start_time = Instant::now();
+        let response = self.inner.call(req).await;
         if response.status().is_server_error() {
-            if let Some(response_error) = this.response_error {
-                response_error.mark(1);
+            if let Some(metrics) = endpoint_metrics {
+                metrics.response_error.mark(1);
             }
         }
 
-        Poll::Ready(response.map(|inner| EndpointMetricsBody {
+        response.map(|inner| EndpointMetricsBody {
             inner,
-            start_time: *this.start_time,
-            response: this.response.take(),
-        }))
+            start_time,
+            response: endpoint_metrics.map(|m| m.response.clone()),
+        })
     }
 }
 

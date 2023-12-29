@@ -13,11 +13,9 @@
 // limitations under the License.
 use crate::server::Listener;
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use http::{HeaderMap, Response, StatusCode};
 use http_body::Body;
 use pin_project::pin_project;
-use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -80,42 +78,18 @@ where
 {
     type Response = Response<ServerMetricsBody<B>>;
 
-    type Future = ServerMetricsFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
+    async fn call(&self, req: R) -> Self::Response {
         self.metrics.request_active.inc();
-        ServerMetricsFuture {
-            guard: Some(ActiveGuard {
-                metrics: self.metrics.clone(),
-            }),
-            inner: self.inner.call(req),
-        }
-    }
-}
+        let guard = ActiveGuard {
+            metrics: self.metrics.clone(),
+        };
 
-#[pin_project]
-pub struct ServerMetricsFuture<F> {
-    #[pin]
-    inner: F,
-    guard: Option<ActiveGuard>,
-}
-
-impl<F, B> Future for ServerMetricsFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = Response<ServerMetricsBody<B>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let response = ready!(this.inner.poll(cx));
-        let guard = this.guard.take().unwrap();
+        let response = self.inner.call(req).await;
         if response.status() == StatusCode::NOT_FOUND {
-            guard.metrics.request_unmatched.mark(1);
+            self.metrics.request_unmatched.mark(1);
         }
-        guard.metrics.response_all.mark(1);
-        if let Some(gauge) = guard
+        self.metrics.response_all.mark(1);
+        if let Some(gauge) = self
             .metrics
             .response_xxx
             .get(response.status().as_u16() as usize / 100 - 1)
@@ -123,13 +97,13 @@ where
             gauge.mark(1);
         }
         if response.status() == StatusCode::INTERNAL_SERVER_ERROR {
-            guard.metrics.response_500.mark(1);
+            self.metrics.response_500.mark(1);
         }
 
-        Poll::Ready(response.map(|inner| ServerMetricsBody {
+        response.map(|inner| ServerMetricsBody {
             inner,
             _guard: guard,
-        }))
+        })
     }
 }
 

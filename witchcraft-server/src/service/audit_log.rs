@@ -19,7 +19,6 @@ use crate::service::{Layer, Service};
 use conjure_error::Error;
 use futures_channel::oneshot;
 use futures_sink::Sink;
-use futures_util::future::BoxFuture;
 use futures_util::SinkExt;
 use http::{HeaderMap, Response, StatusCode};
 use http_body::{Body, SizeHint};
@@ -67,60 +66,51 @@ pub struct AuditLogService<S, T> {
 impl<S, T, R, B> Service<R> for AuditLogService<S, T>
 where
     S: Service<R, Response = Response<B>>,
-    S::Future: 'static + Send,
     T: Sink<Payload<AuditLogV3>> + Unpin + 'static + Send,
     T::Error: Into<Box<dyn error::Error + Sync + Send>>,
     B: Send,
 {
     type Response = Response<AuditLogResponseBody<B>>;
 
-    type Future = BoxFuture<'static, Self::Response>;
+    async fn call(&self, req: R) -> Self::Response {
+        let inner = self.inner.call(req).await;
 
-    fn call(&self, req: R) -> Self::Future {
-        let inner = self.inner.call(req);
+        let mut response = inner.await;
 
-        // Mutex::lock is an async method so we have to box regardless
-        Box::pin({
-            let logger = self.logger.clone();
-            async move {
-                let mut response = inner.await;
+        if let Some(audit_log_entry) = response.extensions_mut().remove::<AuditLogEntry>() {
+            let (tx, rx) = oneshot::channel();
 
-                if let Some(audit_log_entry) = response.extensions_mut().remove::<AuditLogEntry>() {
-                    let (tx, rx) = oneshot::channel();
+            let payload = Payload {
+                value: audit_log_entry.0,
+                cb: Some(tx),
+            };
 
-                    let payload = Payload {
-                        value: audit_log_entry.0,
-                        cb: Some(tx),
-                    };
-
-                    // NB: This assumes our sink doesn't need to be driven manually by flushes
-                    let send = async {
-                        logger
-                            .lock()
-                            .await
-                            .feed(payload)
-                            .await
-                            .map_err(Error::internal_safe)?;
-                        if rx.await != Ok(true) {
-                            return Err(Error::internal_safe("failed to flush audit log entry"));
-                        }
-
-                        Ok(())
-                    };
-
-                    if let Err(e) = send.await {
-                        error!("error persisting audit log entry", error: e);
-
-                        let mut response = Response::new(AuditLogResponseBody { inner: None });
-                        *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-
-                        return response;
-                    }
+            // NB: This assumes our sink doesn't need to be driven manually by flushes
+            let send = async {
+                self.logger
+                    .lock()
+                    .await
+                    .feed(payload)
+                    .await
+                    .map_err(Error::internal_safe)?;
+                if rx.await != Ok(true) {
+                    return Err(Error::internal_safe("failed to flush audit log entry"));
                 }
 
-                response.map(|inner| AuditLogResponseBody { inner: Some(inner) })
+                Ok(())
+            };
+
+            if let Err(e) = send.await {
+                error!("error persisting audit log entry", error: e);
+
+                let mut response = Response::new(AuditLogResponseBody { inner: None });
+                *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+
+                return response;
             }
-        })
+        }
+
+        response.map(|inner| AuditLogResponseBody { inner: Some(inner) })
     }
 }
 

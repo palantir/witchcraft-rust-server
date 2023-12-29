@@ -42,9 +42,7 @@ where
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, req: Request<B>) -> Self::Future {
+    async fn call(&self, req: Request<B>) -> Self::Response {
         if let Some(jwt) = req.extensions().get::<UnverifiedJwt>() {
             mdc::insert_safe(logging::mdc::UID_KEY, jwt.unverified_user_id());
             if let Some(session_id) = jwt.unverified_session_id() {
@@ -70,6 +68,6 @@ where
             .expect("RequestId missing from request extensions");
         mdc::insert_safe(logging::REQUEST_ID_KEY, request_id.to_string());
 
-        self.inner.call(req)
+        self.inner.call(req).await
     }
 }

@@ -16,7 +16,6 @@ use crate::extensions::PeerAddr;
 use crate::service::hyper::NewConnection;
 use crate::service::{Layer, Service, Stack};
 use conjure_error::Error;
-use futures_util::future::{self, Either};
 use http::Request;
 use std::net::SocketAddr;
 
@@ -46,18 +45,15 @@ where
 {
     type Response = S::Response;
 
-    type Future = Either<S::Future, future::Ready<Result<R, Error>>>;
+    async fn call(&self, req: NewConnection<T, L>) -> Self::Response {
+        let addr = req.stream.peer_addr()?;
 
-    fn call(&self, req: NewConnection<T, L>) -> Self::Future {
-        let addr = match req.stream.peer_addr() {
-            Ok(addr) => addr,
-            Err(e) => return Either::Right(future::ready(Err(e))),
-        };
-
-        Either::Left(self.inner.call(NewConnection {
-            stream: req.stream,
-            service_builder: req.service_builder.layer(PeerAddrRequestLayer { addr }),
-        }))
+        self.inner
+            .call(NewConnection {
+                stream: req.stream,
+                service_builder: req.service_builder.layer(PeerAddrRequestLayer { addr }),
+            })
+            .await
     }
 }
 
@@ -87,11 +83,9 @@ where
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, mut req: Request<B>) -> Self::Future {
+    async fn call(&self, mut req: Request<B>) -> Self::Response {
         req.extensions_mut().insert(PeerAddr(self.addr));
 
-        self.inner.call(req)
+        self.inner.call(req).await
     }
 }

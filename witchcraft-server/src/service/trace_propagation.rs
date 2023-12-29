@@ -48,9 +48,7 @@ where
 {
     type Response = Response<TracePropagationBody<B2>>;
 
-    type Future = TracePropagationFuture<S::Future>;
-
-    fn call(&self, req: Request<B1>) -> Self::Future {
+    async fn call(&self, req: Request<B1>) -> Self::Response {
         let route = req
             .extensions()
             .get::<Route>()
@@ -95,6 +93,7 @@ where
             inner: self.inner.call(req),
             span: Some(span.detach()),
         }
+        .await
     }
 }
 

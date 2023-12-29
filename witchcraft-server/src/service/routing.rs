@@ -186,9 +186,7 @@ where
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, mut req: Request<B>) -> Self::Future {
+    async fn call(&self, mut req: Request<B>) -> Self::Response {
         let (route, endpoint) = if req.method() == Method::OPTIONS && req.uri() == "*" {
             (Route::StarOptions, None)
         } else {
@@ -226,7 +224,7 @@ where
         }
 
         req.extensions_mut().insert(route);
-        self.inner.call(req)
+        self.inner.call(req).await
     }
 }
 

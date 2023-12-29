@@ -15,7 +15,6 @@ use crate::server::RawBody;
 use crate::service::routing::Route;
 use crate::service::Service;
 use bytes::Bytes;
-use futures_util::future::BoxFuture;
 use http::header::ALLOW;
 use http::{HeaderMap, HeaderValue, Method, Request, Response, StatusCode};
 use http_body::combinators::BoxBody;
@@ -33,37 +32,35 @@ pub struct HandlerService;
 impl Service<Request<RawBody>> for HandlerService {
     type Response = Response<BoxBody<Bytes, BodyWriteAborted>>;
 
-    type Future = BoxFuture<'static, Self::Response>;
-
-    fn call(&self, mut req: Request<RawBody>) -> Self::Future {
+    async fn call(&self, mut req: Request<RawBody>) -> Self::Response {
         let route = req
             .extensions_mut()
             .remove::<Route>()
             .expect("Route missing from request extensions");
 
         match route {
-            Route::Resolved(endpoint) => Box::pin(async move { endpoint.handle(req).await }),
+            Route::Resolved(endpoint) => endpoint.handle(req).await,
             Route::MethodNotAllowed(methods) => {
                 let mut response = Response::new(EmptyBody.boxed());
                 *response.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
                 response.headers_mut().insert(ALLOW, allow_header(&methods));
-                Box::pin(async { response })
+                response
             }
             Route::StarOptions => {
                 let mut response = Response::new(EmptyBody.boxed());
                 *response.status_mut() = StatusCode::NO_CONTENT;
-                Box::pin(async { response })
+                response
             }
             Route::Options(methods) => {
                 let mut response = Response::new(EmptyBody.boxed());
                 *response.status_mut() = StatusCode::NO_CONTENT;
                 response.headers_mut().insert(ALLOW, allow_header(&methods));
-                Box::pin(async { response })
+                response
             }
             Route::Unresolved => {
                 let mut response = Response::new(EmptyBody.boxed());
                 *response.status_mut() = StatusCode::NOT_FOUND;
-                Box::pin(async { response })
+                response
             }
         }
     }

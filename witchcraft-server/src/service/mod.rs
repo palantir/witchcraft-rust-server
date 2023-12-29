@@ -65,9 +65,7 @@ pub trait Layer<S> {
 pub trait Service<R> {
     type Response;
 
-    type Future: Future<Output = Self::Response>;
-
-    fn call(&self, req: R) -> Self::Future;
+    fn call(&self, req: R) -> impl Future<Output = Self::Response> + Send;
 }
 
 impl<S, R> Service<R> for Arc<S>
@@ -76,10 +74,8 @@ where
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
     #[inline]
-    fn call(&self, req: R) -> Self::Future {
+    fn call(&self, req: R) -> impl Future<Output = Self::Response> + Send {
         (**self).call(req)
     }
 }

@@ -52,9 +52,7 @@ where
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, req: NewConnection<TlsStream<R>, L>) -> Self::Future {
+    async fn call(&self, req: NewConnection<TlsStream<R>, L>) -> Self::Response {
         let protocol = req
             .stream
             .get_ref()
@@ -78,6 +76,6 @@ where
             )
             .mark(1);
 
-        self.inner.call(req)
+        self.inner.call(req).await
     }
 }

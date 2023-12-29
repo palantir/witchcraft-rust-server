@@ -30,10 +30,8 @@ where
 {
     type Response = O;
 
-    type Future = F;
-
-    fn call(&self, req: I) -> Self::Future {
-        self.0(req)
+    async fn call(&self, req: I) -> Self::Response {
+        self.0(req).await
     }
 }
 

@@ -14,9 +14,7 @@
 use crate::server::Listener;
 use crate::service::peer_addr::GetPeerAddr;
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use pin_project::{pin_project, pinned_drop};
-use std::future::Future;
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -71,39 +69,14 @@ where
 {
     type Response = ConnectionMetricsStream<S::Response>;
 
-    type Future = ConnectionMetricsFuture<S::Future>;
+    async fn call(&self, req: R) -> Self::Response {
+        let inner = self.inner.call(req).await;
+        self.active_connections.inc();
 
-    fn call(&self, req: R) -> Self::Future {
-        ConnectionMetricsFuture {
-            inner: self.inner.call(req),
+        ConnectionMetricsStream {
+            inner,
             active_connections: self.active_connections.clone(),
         }
-    }
-}
-
-#[pin_project]
-pub struct ConnectionMetricsFuture<F> {
-    #[pin]
-    inner: F,
-    active_connections: Arc<Counter>,
-}
-
-impl<F> Future for ConnectionMetricsFuture<F>
-where
-    F: Future,
-{
-    type Output = ConnectionMetricsStream<F::Output>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let inner = ready!(this.inner.poll(cx));
-        this.active_connections.inc();
-
-        Poll::Ready(ConnectionMetricsStream {
-            inner,
-            active_connections: this.active_connections.clone(),
-        })
     }
 }
 

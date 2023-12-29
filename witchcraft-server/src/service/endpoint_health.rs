@@ -11,16 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::health::endpoint_500s::EndpointHealth;
 use crate::service::routing::Route;
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use http::{Request, Response};
-use pin_project::pin_project;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
 
 /// A layer which updates the [`EndpointHealth`] state based on request outcomes.
 ///
@@ -45,9 +38,7 @@ where
 {
     type Response = S::Response;
 
-    type Future = EndpointHealthFuture<S::Future>;
-
-    fn call(&self, req: Request<B1>) -> Self::Future {
+    async fn call(&self, req: Request<B1>) -> Self::Response {
         let metrics = match req
             .extensions()
             .get::<Route>()
@@ -57,33 +48,10 @@ where
             _ => None,
         };
 
-        EndpointHealthFuture {
-            inner: self.inner.call(req),
-            metrics,
-        }
-    }
-}
-
-#[pin_project]
-pub struct EndpointHealthFuture<F> {
-    #[pin]
-    inner: F,
-    metrics: Option<Arc<EndpointHealth>>,
-}
-
-impl<F, B> Future for EndpointHealthFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let response = ready!(this.inner.poll(cx));
-        if let Some(metrics) = this.metrics {
+        let response = self.inner.call(req).await;
+        if let Some(metrics) = metrics {
             metrics.mark(response.status());
         }
-        Poll::Ready(response)
+        response
     }
 }
