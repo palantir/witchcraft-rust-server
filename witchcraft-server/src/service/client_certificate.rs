@@ -16,6 +16,7 @@ use crate::service::{Layer, Service, Stack};
 use crate::tls::ClientCertificate;
 use http::Request;
 use tokio_rustls::server::TlsStream;
+use webpki::types::CertificateDer;
 
 /// A layer which injects a [`ClientCertificate`] extension into all requests made over the connection.
 pub struct ClientCertificateLayer;
@@ -48,6 +49,7 @@ where
             .peer_certificates()
             .and_then(|c| c.first())
             .cloned()
+            .map(CertificateDer::into_owned)
             .map(ClientCertificate::new);
 
         self.inner

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use tokio_rustls::rustls::Certificate;
+use webpki::types::CertificateDer;
 
 /// A client's identity provided during the TLS handshake.
 ///
@@ -20,16 +20,16 @@ use tokio_rustls::rustls::Certificate;
 /// to the extensions of each request made on that connection.
 #[derive(Clone)]
 pub struct ClientCertificate {
-    cert: Certificate,
+    cert: CertificateDer<'static>,
 }
 
 // FIXME(sfackler) what accessors should we expose here? We probably want to avoid exposing `rustls` APIs directly.
 impl ClientCertificate {
-    pub(crate) fn new(cert: Certificate) -> Self {
+    pub(crate) fn new(cert: CertificateDer<'static>) -> Self {
         ClientCertificate { cert }
     }
 
-    pub(crate) fn cert(&self) -> &Certificate {
+    pub(crate) fn cert(&self) -> &CertificateDer<'static> {
         &self.cert
     }
 }

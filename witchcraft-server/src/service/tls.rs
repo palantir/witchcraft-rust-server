@@ -20,21 +20,22 @@ use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_rustls::rustls::cipher_suite::{
+use tokio_rustls::rustls::crypto::ring::cipher_suite::{
     TLS13_AES_128_GCM_SHA256, TLS13_AES_256_GCM_SHA384, TLS13_CHACHA20_POLY1305_SHA256,
     TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
     TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
     TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
 };
-use tokio_rustls::rustls::kx_group::{SECP256R1, SECP384R1, X25519};
-use tokio_rustls::rustls::server::AllowAnyAnonymousOrAuthenticatedClient;
+use tokio_rustls::rustls::crypto::ring::kx_group::{SECP256R1, SECP384R1, X25519};
+use tokio_rustls::rustls::crypto::{ring, CryptoProvider, SupportedKxGroup};
+use tokio_rustls::rustls::server::WebPkiClientVerifier;
 use tokio_rustls::rustls::version::{TLS12, TLS13};
 use tokio_rustls::rustls::{
-    Certificate, PrivateKey, RootCertStore, ServerConfig, SupportedCipherSuite, SupportedKxGroup,
-    SupportedProtocolVersion,
+    RootCertStore, ServerConfig, SupportedCipherSuite, SupportedProtocolVersion,
 };
 use tokio_rustls::server::TlsStream;
 use tokio_rustls::TlsAcceptor;
+use webpki::types::{CertificateDer, PrivateKeyDer};
 use witchcraft_server_config::install::InstallConfig;
 
 static CIPHER_SUITES: [SupportedCipherSuite; 9] = [
@@ -49,7 +50,7 @@ static CIPHER_SUITES: [SupportedCipherSuite; 9] = [
     TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
 ];
 
-static KX_GROUPS: [&SupportedKxGroup; 3] = [&SECP256R1, &SECP384R1, &X25519];
+static KX_GROUPS: [&dyn SupportedKxGroup; 3] = [SECP256R1, SECP384R1, X25519];
 
 static PROTOCOL_VERSIONS: [&SupportedProtocolVersion; 2] = [&TLS12, &TLS13];
 
@@ -60,9 +61,13 @@ pub struct TlsLayer {
 
 impl TlsLayer {
     pub fn new(config: &InstallConfig) -> Result<Self, Error> {
-        let builder = ServerConfig::builder()
-            .with_cipher_suites(&CIPHER_SUITES)
-            .with_kx_groups(&KX_GROUPS)
+        let provider = CryptoProvider {
+            cipher_suites: CIPHER_SUITES.to_vec(),
+            kx_groups: KX_GROUPS.to_vec(),
+            ..ring::default_provider()
+        };
+
+        let builder = ServerConfig::builder_with_provider(Arc::new(provider))
             .with_protocol_versions(&PROTOCOL_VERSIONS)
             .map_err(Error::internal_safe)?;
 
@@ -70,19 +75,18 @@ impl TlsLayer {
             Some(client_auth_truststore) => {
                 let certs = load_certificates(client_auth_truststore.path())?;
                 let mut store = RootCertStore::empty();
-                store.add_parsable_certificates(&certs);
-                builder.with_client_cert_verifier(Arc::new(
-                    AllowAnyAnonymousOrAuthenticatedClient::new(store),
-                ))
+                store.add_parsable_certificates(certs);
+                builder.with_client_cert_verifier(
+                    WebPkiClientVerifier::builder(Arc::new(store))
+                        .allow_unauthenticated()
+                        .build()
+                        .map_err(Error::internal_safe)?,
+                )
             }
             None => builder.with_no_client_auth(),
         };
 
-        let cert_chain = load_certificates(config.keystore().cert_path())?
-            .into_iter()
-            .map(Certificate)
-            .collect();
-
+        let cert_chain = load_certificates(config.keystore().cert_path())?;
         let key_der = load_private_key(config.keystore().key_path())?;
 
         let mut server_config = builder
@@ -100,17 +104,21 @@ impl TlsLayer {
     }
 }
 
-fn load_certificates(path: &Path) -> Result<Vec<Vec<u8>>, Error> {
+fn load_certificates(path: &Path) -> Result<Vec<CertificateDer<'static>>, Error> {
     let file = File::open(path).map_err(Error::internal_safe)?;
     let mut reader = BufReader::new(file);
-    rustls_pemfile::certs(&mut reader).map_err(Error::internal_safe)
+    rustls_pemfile::certs(&mut reader)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(Error::internal_safe)
 }
 
-fn load_private_key(path: &Path) -> Result<PrivateKey, Error> {
+fn load_private_key(path: &Path) -> Result<PrivateKeyDer<'static>, Error> {
     let file = File::open(path).map_err(Error::internal_safe)?;
     let mut reader = BufReader::new(file);
 
-    let mut items = rustls_pemfile::read_all(&mut reader).map_err(Error::internal_safe)?;
+    let mut items = rustls_pemfile::read_all(&mut reader)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(Error::internal_safe)?;
 
     if items.len() != 1 {
         return Err(Error::internal_safe(
@@ -119,7 +127,9 @@ fn load_private_key(path: &Path) -> Result<PrivateKey, Error> {
     }
 
     match items.pop().unwrap() {
-        Item::RSAKey(buf) | Item::PKCS8Key(buf) | Item::ECKey(buf) => Ok(PrivateKey(buf)),
+        Item::Pkcs1Key(key) => Ok(key.into()),
+        Item::Pkcs8Key(key) => Ok(key.into()),
+        Item::Sec1Key(key) => Ok(key.into()),
         _ => Err(Error::internal_safe(
             "expected a PKCS#1, PKCS#8, or Sec1 private key",
         )),
