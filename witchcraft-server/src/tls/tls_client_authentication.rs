@@ -23,7 +23,8 @@ use refreshable::Refreshable;
 use std::collections::HashSet;
 use std::str;
 use std::sync::Arc;
-use webpki::{EndEntityCert, SubjectNameRef};
+use webpki::types::ServerName;
+use webpki::EndEntityCert;
 
 /// A service adapter which validates a client's certificate against a collection of allowed subject names.
 ///
@@ -103,13 +104,13 @@ impl<T> TlsClientAuthenticationEndpoint<T> {
             }
         };
 
-        let cert = EndEntityCert::try_from(&*client_cert.cert().0).map_err(Error::internal_safe)?;
+        let cert = EndEntityCert::try_from(client_cert.cert()).map_err(Error::internal_safe)?;
         let valid = self
             .trusted_subject_names
             .get()
             .iter()
-            .flat_map(|name| SubjectNameRef::try_from_ascii_str(name).ok())
-            .any(|name| cert.verify_is_valid_for_subject_name(name).is_ok());
+            .flat_map(|name| ServerName::try_from(&**name).ok())
+            .any(|name| cert.verify_is_valid_for_subject_name(&name).is_ok());
 
         if valid {
             Ok(())
