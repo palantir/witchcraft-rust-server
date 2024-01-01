@@ -64,7 +64,7 @@ impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
         body.read_to_end(&mut bytes).await.unwrap();
         assert_eq!(bytes, b"expected request body");
 
-        let trailers = body.trailers().await.unwrap().unwrap();
+        let trailers = body.trailers().unwrap();
         assert_eq!(
             trailers.get("Request-Trailer").unwrap(),
             "expected request trailer value",

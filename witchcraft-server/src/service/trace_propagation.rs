@@ -16,8 +16,8 @@ use crate::service::routing::Route;
 use crate::service::{Layer, Service};
 use futures_util::ready;
 use http::header::USER_AGENT;
-use http::{HeaderMap, Request, Response};
-use http_body::Body;
+use http::{Request, Response};
+use http_body::{Body, Frame};
 use pin_project::pin_project;
 use std::future::Future;
 use std::pin::Pin;
@@ -139,22 +139,13 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
         let _guard = zipkin::set_current(this.span.context());
-        this.inner.poll_data(cx)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        let this = self.project();
-        let _guard = zipkin::set_current(this.span.context());
-        this.inner.poll_trailers(cx)
+        this.inner.poll_frame(cx)
     }
 
     fn is_end_stream(&self) -> bool {

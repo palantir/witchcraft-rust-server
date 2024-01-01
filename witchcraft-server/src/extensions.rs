@@ -37,6 +37,7 @@ impl Deref for PeerAddr {
 ///
 /// If this is present in the response extensions of a request, it will be written to the audit log before the server
 /// sends the response to the client. An error logging the entry will cause the request to fail.
+#[derive(Clone)]
 pub struct AuditLogEntry(pub(crate) AuditLogV3);
 
 impl AuditLogEntry {

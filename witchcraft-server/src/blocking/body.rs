@@ -18,7 +18,8 @@ use conjure_error::Error;
 use futures_channel::mpsc;
 use futures_util::{Future, SinkExt};
 use http::HeaderMap;
-use http_body::Body;
+use http_body::Frame;
+use http_body_util::BodyExt;
 use std::io::{BufRead, Read, Write};
 use std::time::Duration;
 use std::{error, io, mem};
@@ -32,6 +33,7 @@ pub struct RequestBody {
     inner: RawBody,
     handle: Handle,
     cur: Bytes,
+    trailers: Option<HeaderMap>,
 }
 
 impl RequestBody {
@@ -40,26 +42,40 @@ impl RequestBody {
             inner,
             handle,
             cur: Bytes::new(),
+            trailers: None,
         }
     }
 
     /// Returns the request's trailers, if any are present.
     ///
     /// The body must have been completely read before this is called.
-    pub fn trailers(&mut self) -> Result<Option<HeaderMap>, Error> {
-        self.handle
-            .block_on(async { time::timeout(IO_TIMEOUT, self.inner.trailers()).await })
-            .map_err(|e| Error::service_safe(e, ClientIo))?
-            .map_err(|e| Error::service_safe(e, ClientIo))
+    pub fn trailers(&mut self) -> Option<HeaderMap> {
+        self.trailers.take()
     }
 
     fn next_raw(&mut self) -> Result<Option<Bytes>, Box<dyn error::Error + Sync + Send>> {
-        let next = self
-            .handle
-            .block_on(async { time::timeout(IO_TIMEOUT, self.inner.data()).await })?
-            .transpose()?;
+        loop {
+            let next = self
+                .handle
+                .block_on(async { time::timeout(IO_TIMEOUT, self.inner.frame()).await })?
+                .transpose()?;
 
-        Ok(next)
+            let Some(next) = next else {
+                return Ok(None);
+            };
+
+            let next = match next.into_data() {
+                Ok(data) => return Ok(Some(data)),
+                Err(next) => next,
+            };
+
+            if let Ok(trailers) = next.into_trailers() {
+                match &mut self.trailers {
+                    Some(base) => base.extend(trailers),
+                    None => self.trailers = Some(trailers),
+                }
+            }
+        }
     }
 }
 
@@ -108,8 +124,7 @@ impl BufRead for RequestBody {
 }
 
 pub enum BodyPart {
-    Data(Bytes),
-    Trailers(HeaderMap),
+    Frame(Frame<Bytes>),
     Done,
 }
 
@@ -134,14 +149,14 @@ impl ResponseWriter {
     /// Compared to `ResponseWriter`'s [`Write`] implementation, this method can avoid some copies if the data is
     /// already represented as a [`Bytes`] value.
     pub fn send(&mut self, bytes: Bytes) -> Result<(), Error> {
-        self.send_inner(BodyPart::Data(bytes))
+        self.send_inner(BodyPart::Frame(Frame::data(bytes)))
     }
 
     /// Writes the response's trailers.
     ///
     /// The body must be fully written before calling this method.
     pub fn send_trailers(&mut self, trailers: HeaderMap) -> Result<(), Error> {
-        self.send_inner(BodyPart::Trailers(trailers))
+        self.send_inner(BodyPart::Frame(Frame::trailers(trailers)))
     }
 
     fn send_inner(&mut self, part: BodyPart) -> Result<(), Error> {
@@ -174,7 +189,8 @@ impl ResponseWriter {
 
         Self::with_timeout(
             &self.handle,
-            self.sender.feed(BodyPart::Data(self.buf.split().freeze())),
+            self.sender
+                .feed(BodyPart::Frame(Frame::data(self.buf.split().freeze()))),
         )
     }
 
