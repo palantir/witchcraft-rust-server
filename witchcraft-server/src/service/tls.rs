@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::hyper::NewConnection;
-use crate::service::{Layer, Service, ServiceBuilder};
+use crate::service::{Layer, Service};
 use conjure_error::Error;
-use futures_util::ready;
-use pin_project::pin_project;
 use rustls_pemfile::Item;
 use std::fs::File;
-use std::future::Future;
 use std::io::BufReader;
 use std::path::Path;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_rustls::rustls::crypto::ring::cipher_suite::{
     TLS13_AES_128_GCM_SHA256, TLS13_AES_256_GCM_SHA384, TLS13_CHACHA20_POLY1305_SHA256,
@@ -39,7 +34,7 @@ use tokio_rustls::rustls::{
     RootCertStore, ServerConfig, SupportedCipherSuite, SupportedProtocolVersion,
 };
 use tokio_rustls::server::TlsStream;
-use tokio_rustls::{Accept, TlsAcceptor};
+use tokio_rustls::TlsAcceptor;
 use webpki::types::{CertificateDer, PrivateKeyDer};
 use witchcraft_server_config::install::InstallConfig;
 
@@ -146,80 +141,36 @@ impl<S> Layer<S> for TlsLayer {
 
     fn layer(self, inner: S) -> Self::Service {
         TlsService {
-            inner: Arc::new(inner),
+            inner,
             acceptor: self.acceptor,
         }
     }
 }
 
 pub struct TlsService<S> {
-    inner: Arc<S>,
+    inner: S,
     acceptor: TlsAcceptor,
 }
 
 impl<S, R, L> Service<NewConnection<R, L>> for TlsService<S>
 where
-    S: Service<NewConnection<TlsStream<R>, L>, Response = Result<(), Error>>,
-    R: AsyncRead + AsyncWrite + Unpin,
+    S: Service<NewConnection<TlsStream<R>, L>, Response = Result<(), Error>> + Sync,
+    R: AsyncRead + AsyncWrite + Unpin + Send,
+    L: Send,
 {
     type Response = S::Response;
 
-    type Future = TlsFuture<S, R, L>;
-
-    fn call(&self, req: NewConnection<R, L>) -> Self::Future {
-        TlsFuture::Handshaking {
-            accept: self.acceptor.accept(req.stream),
-            service_builder: Some(req.service_builder),
-            inner: self.inner.clone(),
-        }
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-#[pin_project(project = TlsFutureProj)]
-pub enum TlsFuture<S, R, L>
-where
-    S: Service<NewConnection<TlsStream<R>, L>>,
-{
-    Handshaking {
-        accept: Accept<R>,
-        service_builder: Option<ServiceBuilder<L>>,
-        inner: Arc<S>,
-    },
-    Inner {
-        #[pin]
-        future: S::Future,
-    },
-}
-
-impl<S, R, L> Future for TlsFuture<S, R, L>
-where
-    S: Service<NewConnection<TlsStream<R>, L>, Response = Result<(), Error>>,
-    R: AsyncRead + AsyncWrite + Unpin,
-{
-    type Output = Result<(), Error>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        loop {
-            match self.as_mut().project() {
-                TlsFutureProj::Handshaking {
-                    inner,
-                    accept,
-                    service_builder,
-                } => match ready!(Pin::new(accept).poll(cx)) {
-                    Ok(stream) => {
-                        let new = TlsFuture::Inner {
-                            future: inner.call(NewConnection {
-                                stream,
-                                service_builder: service_builder.take().unwrap(),
-                            }),
-                        };
-                        self.set(new);
-                    }
-                    Err(e) => return Poll::Ready(Err(Error::internal_safe(e))),
-                },
-                TlsFutureProj::Inner { future } => return future.poll(cx),
-            }
-        }
+    async fn call(&self, req: NewConnection<R, L>) -> Self::Response {
+        let stream = self
+            .acceptor
+            .accept(req.stream)
+            .await
+            .map_err(Error::internal_safe)?;
+        self.inner
+            .call(NewConnection {
+                stream,
+                service_builder: req.service_builder,
+            })
+            .await
     }
 }

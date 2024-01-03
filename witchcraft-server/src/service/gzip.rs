@@ -22,7 +22,6 @@ use http::{HeaderMap, HeaderValue, Request, Response};
 use http_body::{Body, SizeHint};
 use pin_project::pin_project;
 use std::error;
-use std::future::Future;
 use std::io::Write;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -77,42 +76,18 @@ pub struct GzipService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for GzipService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
     B2: Body<Data = Bytes>,
     B2::Error: Into<Box<dyn error::Error + Sync + Send>>,
 {
     type Response = Response<GzipBody<B2>>;
 
-    type Future = GzipFuture<S::Future>;
+    async fn call(&self, req: Request<B1>) -> Self::Response {
+        let can_gzip = self.enabled && can_gzip(&req);
 
-    fn call(&self, req: Request<B1>) -> Self::Future {
-        GzipFuture {
-            can_gzip: self.enabled && can_gzip(&req),
-            inner: self.inner.call(req),
-        }
-    }
-}
-
-#[pin_project]
-pub struct GzipFuture<F> {
-    #[pin]
-    inner: F,
-    can_gzip: bool,
-}
-
-impl<F, B> Future for GzipFuture<F>
-where
-    F: Future<Output = Response<B>>,
-    B: Body<Data = Bytes>,
-    B::Error: Into<Box<dyn error::Error + Sync + Send>>,
-{
-    type Output = Response<GzipBody<B>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let mut response = ready!(this.inner.poll(cx));
-        let encoder = if *this.can_gzip && should_gzip(&response) {
+        let mut response = self.inner.call(req).await;
+        let encoder = if can_gzip && should_gzip(&response) {
             response.headers_mut().remove(CONTENT_LENGTH);
             response.headers_mut().insert(CONTENT_ENCODING, GZIP);
 
@@ -124,11 +99,11 @@ where
             None
         };
 
-        Poll::Ready(response.map(|body| GzipBody {
+        response.map(|body| GzipBody {
             body,
             encoder,
             done: false,
-        }))
+        })
     }
 }
 

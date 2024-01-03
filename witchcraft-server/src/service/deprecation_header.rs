@@ -16,13 +16,13 @@ use crate::service::{Layer, Service};
 use futures_util::ready;
 use http::header::HeaderName;
 use http::{HeaderValue, Request, Response};
-use once_cell::sync::Lazy;
 use pin_project::pin_project;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-static DEPRECATION: Lazy<HeaderName> = Lazy::new(|| HeaderName::from_static("deprecation"));
+#[allow(clippy::declare_interior_mutable_const)]
+const DEPRECATION: HeaderName = HeaderName::from_static("deprecation");
 #[allow(clippy::declare_interior_mutable_const)]
 const IS_DEPRECATED: HeaderValue = HeaderValue::from_static("true");
 
@@ -45,13 +45,12 @@ pub struct DeprecationHeaderService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for DeprecationHeaderService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = S::Response;
 
-    type Future = DeprecationHeaderFuture<S::Future>;
-
-    fn call(&self, req: Request<B1>) -> Self::Future {
+    async fn call(&self, req: Request<B1>) -> Self::Response {
         let route = req
             .extensions()
             .get::<Route>()
@@ -62,10 +61,12 @@ where
             _ => false,
         };
 
-        DeprecationHeaderFuture {
-            inner: self.inner.call(req),
-            deprecated,
+        let mut response = self.inner.call(req).await;
+        if deprecated {
+            response.headers_mut().insert(DEPRECATION, IS_DEPRECATED);
         }
+
+        response
     }
 }
 
@@ -87,9 +88,7 @@ where
 
         let mut response = ready!(this.inner.poll(cx));
         if *this.deprecated {
-            response
-                .headers_mut()
-                .insert(DEPRECATION.clone(), IS_DEPRECATED);
+            response.headers_mut().insert(DEPRECATION, IS_DEPRECATED);
         }
         Poll::Ready(response)
     }

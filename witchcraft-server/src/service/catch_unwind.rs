@@ -14,13 +14,10 @@
 #![allow(clippy::type_complexity)]
 use crate::service::handler::BodyWriteAborted;
 use crate::service::{Layer, Service};
-use futures_util::future::{self, Either};
-use futures_util::{ready, FutureExt};
+use futures_util::FutureExt;
 use http::{HeaderMap, Response, StatusCode};
 use http_body::{Body, SizeHint};
 use pin_project::pin_project;
-use std::any::Any;
-use std::future::Future;
 use std::panic::{self, AssertUnwindSafe};
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -42,45 +39,20 @@ pub struct CatchUnwindService<S> {
 
 impl<S, R, B> Service<R> for CatchUnwindService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = Response<CatchUnwindBody<B>>;
 
-    type Future = CatchUnwindFuture<S::Future, B>;
-
-    fn call(&self, req: R) -> Self::Future {
-        let inner = match panic::catch_unwind(AssertUnwindSafe(|| self.inner.call(req))) {
-            Ok(future) => Either::Left(AssertUnwindSafe(future).catch_unwind()),
-            Err(e) => Either::Right(future::ready(Err(e))),
+    async fn call(&self, req: R) -> Self::Response {
+        let r = match panic::catch_unwind(AssertUnwindSafe(|| self.inner.call(req))) {
+            Ok(future) => AssertUnwindSafe(future).catch_unwind().await,
+            Err(e) => Err(e),
         };
 
-        CatchUnwindFuture { inner }
-    }
-}
-
-#[pin_project]
-pub struct CatchUnwindFuture<F, B> {
-    #[pin]
-    inner: Either<
-        future::CatchUnwind<AssertUnwindSafe<F>>,
-        future::Ready<Result<Response<B>, Box<dyn Any + Send>>>,
-    >,
-}
-
-impl<F, B> Future for CatchUnwindFuture<F, B>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = Response<CatchUnwindBody<B>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        match ready!(this.inner.poll(cx)) {
-            Ok(response) => {
-                Poll::Ready(response.map(|inner| CatchUnwindBody { inner: Some(inner) }))
-            }
-            Err(_) => Poll::Ready(panic_response()),
+        match r {
+            Ok(response) => response.map(|inner| CatchUnwindBody { inner: Some(inner) }),
+            Err(_) => panic_response(),
         }
     }
 }
@@ -159,6 +131,7 @@ mod test {
     use super::*;
     use crate::service::test_util::service_fn;
     use bytes::Bytes;
+    use futures::future;
 
     #[tokio::test]
     async fn service_panic() {

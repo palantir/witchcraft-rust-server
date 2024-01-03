@@ -26,6 +26,8 @@ use std::time::Duration;
 use tokio::time::{self, Instant, Sleep};
 use witchcraft_server_config::install::InstallConfig;
 
+use super::hyper::ShutdownService;
+
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// A layer which triggers a graceful shutdown of connections that have been idle for a certain period of time.
@@ -62,16 +64,16 @@ pub struct IdleConnectionService<S> {
     idle_timeout: Duration,
 }
 
-impl<S, R, L> Service<NewConnection<R, L>> for IdleConnectionService<S>
+impl<S, R, L> ShutdownService<NewConnection<R, L>> for IdleConnectionService<S>
 where
-    S: Service<NewConnection<R, Stack<L, RequestTrackerLayer>>>,
-    S::Future: GracefulShutdown,
+    S: ShutdownService<NewConnection<R, Stack<L, RequestTrackerLayer>>>,
 {
     type Response = S::Response;
 
-    type Future = IdleConnectionFuture<S::Future>;
-
-    fn call(&self, req: NewConnection<R, L>) -> Self::Future {
+    fn call(
+        &self,
+        req: NewConnection<R, L>,
+    ) -> impl Future<Output = Self::Response> + GracefulShutdown + Send {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 mode: Mode::Idle,
@@ -149,21 +151,23 @@ pub struct RequestTrackerService<S> {
 
 impl<S, R, B> Service<R> for RequestTrackerService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = Response<RequestTrackerBody<B>>;
 
-    type Future = RequestTrackerFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
+    async fn call(&self, req: R) -> Self::Response {
         self.shared.inc_active();
+        let guard = ActiveGuard {
+            shared: self.shared.clone(),
+        };
 
-        RequestTrackerFuture {
-            guard: Some(ActiveGuard {
-                shared: self.shared.clone(),
-            }),
-            inner: self.inner.call(req),
-        }
+        let response = self.inner.call(req).await;
+
+        response.map(|inner| RequestTrackerBody {
+            inner,
+            _guard: guard,
+        })
     }
 }
 

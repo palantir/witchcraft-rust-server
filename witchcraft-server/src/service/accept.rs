@@ -14,17 +14,12 @@
 use crate::service::peer_addr::GetPeerAddr;
 use crate::service::Service;
 use conjure_error::Error;
-use futures_util::ready;
-use pin_project::pin_project;
 use socket2::{Domain, SockAddr, SockRef, Socket, TcpKeepalive, Type};
-use std::future::Future;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Arc;
-use std::task::{Context, Poll};
 use std::time::Duration;
 use std::{fs, io};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::time::{self, Sleep};
+use tokio::time;
 use witchcraft_log::warn;
 
 // This is pretty arbitrary - I just copied it from some Cloudflare blog post.
@@ -32,7 +27,7 @@ const TCP_KEEPALIVE: Duration = Duration::from_secs(3 * 60);
 
 /// The root service of the socket service stack which accept raw TCP connections.
 pub struct AcceptService {
-    listener: Arc<TcpListener>,
+    listener: TcpListener,
 }
 
 impl AcceptService {
@@ -54,47 +49,18 @@ impl AcceptService {
 
         let listener = TcpListener::from_std(listener.into()).map_err(Error::internal_safe)?;
 
-        Ok(AcceptService {
-            listener: Arc::new(listener),
-        })
+        Ok(AcceptService { listener })
     }
 }
 
 impl Service<()> for AcceptService {
     type Response = TcpStream;
 
-    type Future = AcceptFuture;
-
-    fn call(&self, _: ()) -> Self::Future {
-        AcceptFuture {
-            listener: self.listener.clone(),
-            sleep: None,
-        }
-    }
-}
-
-#[pin_project]
-pub struct AcceptFuture {
-    listener: Arc<TcpListener>,
-    #[pin]
-    sleep: Option<Sleep>,
-}
-
-impl Future for AcceptFuture {
-    type Output = TcpStream;
-
-    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut this = self.project();
-
+    async fn call(&self, _: ()) -> Self::Response {
         loop {
-            if let Some(sleep) = this.sleep.as_mut().as_pin_mut() {
-                ready!(sleep.poll(cx));
-                this.sleep.set(None);
-            }
-
-            match ready!(this.listener.poll_accept(cx)) {
+            match self.listener.accept().await {
                 Ok((socket, _)) => match setup_socket(&socket) {
-                    Ok(()) => return Poll::Ready(socket),
+                    Ok(()) => return socket,
                     Err(e) => warn!("error configuring socket", error: Error::internal_safe(e)),
                 },
                 // There are 3 broad categories of error we can encounter from accept:
@@ -111,7 +77,7 @@ impl Future for AcceptFuture {
                             "hit resource limit accepting socket",
                             error: Error::internal_safe(e),
                         );
-                        this.sleep.set(Some(time::sleep(Duration::from_secs(1))));
+                        time::sleep(Duration::from_secs(1)).await;
                     }
                     _ => warn!("error accepting socket", error: Error::internal_safe(e)),
                 },

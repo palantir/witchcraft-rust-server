@@ -13,11 +13,9 @@
 // limitations under the License.
 use crate::server::Listener;
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use http::{HeaderMap, Response, StatusCode};
 use http_body::Body;
 use pin_project::pin_project;
-use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -33,13 +31,13 @@ struct Metrics {
 
 /// A layer that records global metrics about requests.
 pub struct ServerMetricsLayer {
-    metrics: Arc<Metrics>,
+    metrics: Metrics,
 }
 
 impl ServerMetricsLayer {
     pub fn new(metrics: &MetricRegistry, listener: Listener) -> Self {
         ServerMetricsLayer {
-            metrics: Arc::new(Metrics {
+            metrics: Metrics {
                 request_active: metrics.counter(
                     MetricId::new("server.request.active").with_tag("listener", listener.tag()),
                 ),
@@ -53,7 +51,7 @@ impl ServerMetricsLayer {
                     metrics.meter("server.response.5xx"),
                 ],
                 response_500: metrics.meter("server.response.500"),
-            }),
+            },
         }
     }
 }
@@ -71,51 +69,28 @@ impl<S> Layer<S> for ServerMetricsLayer {
 
 pub struct ServerMetricsService<S> {
     inner: S,
-    metrics: Arc<Metrics>,
+    metrics: Metrics,
 }
 
 impl<S, R, B> Service<R> for ServerMetricsService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = Response<ServerMetricsBody<B>>;
 
-    type Future = ServerMetricsFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
+    async fn call(&self, req: R) -> Self::Response {
         self.metrics.request_active.inc();
-        ServerMetricsFuture {
-            guard: Some(ActiveGuard {
-                metrics: self.metrics.clone(),
-            }),
-            inner: self.inner.call(req),
-        }
-    }
-}
+        let guard = ActiveGuard {
+            request_active: self.metrics.request_active.clone(),
+        };
 
-#[pin_project]
-pub struct ServerMetricsFuture<F> {
-    #[pin]
-    inner: F,
-    guard: Option<ActiveGuard>,
-}
-
-impl<F, B> Future for ServerMetricsFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = Response<ServerMetricsBody<B>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let response = ready!(this.inner.poll(cx));
-        let guard = this.guard.take().unwrap();
+        let response = self.inner.call(req).await;
         if response.status() == StatusCode::NOT_FOUND {
-            guard.metrics.request_unmatched.mark(1);
+            self.metrics.request_unmatched.mark(1);
         }
-        guard.metrics.response_all.mark(1);
-        if let Some(gauge) = guard
+        self.metrics.response_all.mark(1);
+        if let Some(gauge) = self
             .metrics
             .response_xxx
             .get(response.status().as_u16() as usize / 100 - 1)
@@ -123,13 +98,13 @@ where
             gauge.mark(1);
         }
         if response.status() == StatusCode::INTERNAL_SERVER_ERROR {
-            guard.metrics.response_500.mark(1);
+            self.metrics.response_500.mark(1);
         }
 
-        Poll::Ready(response.map(|inner| ServerMetricsBody {
+        response.map(|inner| ServerMetricsBody {
             inner,
             _guard: guard,
-        }))
+        })
     }
 }
 
@@ -172,11 +147,11 @@ where
 }
 
 struct ActiveGuard {
-    metrics: Arc<Metrics>,
+    request_active: Arc<Counter>,
 }
 
 impl Drop for ActiveGuard {
     fn drop(&mut self) {
-        self.metrics.request_active.dec();
+        self.request_active.dec();
     }
 }

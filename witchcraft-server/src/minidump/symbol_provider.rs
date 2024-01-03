@@ -78,7 +78,7 @@ impl SymbolProvider for WitchcraftSymbolProvider<'_> {
         frame: &mut (dyn FrameSymbolizer + Send),
     ) -> Result<(), FillSymbolError> {
         let Some(object) = self.load_object(module) else {
-            return Err(FillSymbolError {})
+            return Err(FillSymbolError {});
         };
 
         object.fill_symbol(module, frame)

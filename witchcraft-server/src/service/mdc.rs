@@ -37,13 +37,12 @@ pub struct MdcService<S> {
 
 impl<S, R, B> Service<R> for MdcService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = Response<MdcBody<B>>;
 
-    type Future = MdcFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
+    async fn call(&self, req: R) -> Self::Response {
         let mut snapshot = Snapshot::new();
         let guard = with(&mut snapshot);
         let inner = self.inner.call(req);
@@ -53,6 +52,7 @@ where
             inner: Some(inner),
             snapshot,
         }
+        .await
     }
 }
 

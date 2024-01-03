@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use http::{HeaderMap, Request, Response};
 use http_body::Body;
 use pin_project::pin_project;
-use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use zipkin::{Detached, OpenSpan, TraceContext};
@@ -40,51 +38,24 @@ pub struct SpansService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for SpansService<S>
 where
-    S: Service<Request<SpannedBody<B1>>, Response = Response<B2>>,
+    S: Service<Request<SpannedBody<B1>>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = Response<SpannedBody<B2>>;
 
-    type Future = SpansFuture<S::Future>;
-
-    fn call(&self, req: Request<B1>) -> Self::Future {
+    async fn call(&self, req: Request<B1>) -> Self::Response {
         let body_context = zipkin::current();
         let req =
             req.map(|inner| SpannedBody::new(inner, "witchcraft: read-request-body", body_context));
 
-        let span = zipkin::next_span().with_name("witchcraft: handle");
+        let response = zipkin::next_span()
+            .with_name("witchcraft: handle")
+            .detach()
+            .bind(self.inner.call(req))
+            .await;
 
-        SpansFuture {
-            inner: self.inner.call(req),
-            body_context,
-            span: Some(span.detach()),
-        }
-    }
-}
-
-#[pin_project]
-pub struct SpansFuture<F> {
-    #[pin]
-    inner: F,
-    body_context: Option<TraceContext>,
-    span: Option<OpenSpan<Detached>>,
-}
-
-impl<F, B> Future for SpansFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = Response<SpannedBody<B>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let _guard = zipkin::set_current(this.span.as_ref().unwrap().context());
-        let response = ready!(this.inner.poll(cx));
-        *this.span = None;
-
-        Poll::Ready(response.map(|inner| {
-            SpannedBody::new(inner, "witchcraft: write-response-body", *this.body_context)
-        }))
+        response
+            .map(|inner| SpannedBody::new(inner, "witchcraft: write-response-body", body_context))
     }
 }
 

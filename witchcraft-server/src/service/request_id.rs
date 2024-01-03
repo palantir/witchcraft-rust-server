@@ -52,14 +52,13 @@ pub struct RequestIdService<S> {
 
 impl<S, B> Service<Request<B>> for RequestIdService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Sync,
+    B: Send,
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, mut req: Request<B>) -> Self::Future {
+    async fn call(&self, mut req: Request<B>) -> Self::Response {
         req.extensions_mut().insert(RequestId::random());
-        self.inner.call(req)
+        self.inner.call(req).await
     }
 }

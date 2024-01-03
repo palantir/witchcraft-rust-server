@@ -39,13 +39,12 @@ pub struct UnverifiedJwtService<S> {
 
 impl<S, B> Service<Request<B>> for UnverifiedJwtService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Sync,
+    B: Send,
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, mut req: Request<B>) -> Self::Future {
+    async fn call(&self, mut req: Request<B>) -> Self::Response {
         if let Some(jwt) = req
             .headers()
             .get(AUTHORIZATION)
@@ -55,7 +54,7 @@ where
             req.extensions_mut().insert(jwt);
         }
 
-        self.inner.call(req)
+        self.inner.call(req).await
     }
 }
 

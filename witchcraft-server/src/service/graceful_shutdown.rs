@@ -14,15 +14,17 @@
 use crate::service::hyper::GracefulShutdown;
 use crate::service::{Layer, Service};
 use crate::shutdown_hooks::ShutdownHooks;
-use futures_util::future::{self, BoxFuture, Fuse, FusedFuture};
+use futures_util::future::{self, FusedFuture};
 use futures_util::FutureExt;
 use parking_lot::Mutex;
-use pin_project::{pin_project, pinned_drop};
+use pin_project::pin_project;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 use tokio_util::sync::CancellationToken;
+
+use super::hyper::ShutdownService;
 
 /// A layer which registers a shutdown hook to initiate a graceful shutdown of all futures returned by the delegate
 /// service, and waits for them to complete.
@@ -87,44 +89,31 @@ pub struct GracefulShutdownService<S> {
 
 impl<S, R> Service<R> for GracefulShutdownService<S>
 where
-    S: Service<R>,
-    S::Future: GracefulShutdown,
+    S: ShutdownService<R> + Sync,
+    R: Send,
 {
     type Response = S::Response;
 
-    type Future = GracefulShutdownFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
-        // Do this first so we don't leak a connection if it panics
-        let inner = self.inner.call(req);
-
-        let shutdown: BoxFuture<()> = Box::pin({
-            let shared = self.shared.clone();
-            async move { shared.cancellation_token.cancelled().await }
-        }) as _;
-
+    async fn call(&self, req: R) -> Self::Response {
         self.shared.state.lock().connections += 1;
         GracefulShutdownFuture {
-            inner,
-            shutdown: shutdown.fuse(),
-            shared: self.shared.clone(),
+            _guard: Guard {
+                state: &self.shared.state,
+            },
+            shutdown: self.shared.cancellation_token.cancelled().fuse(),
+            inner: self.inner.call(req),
         }
+        .await
     }
 }
 
-#[pin_project(PinnedDrop)]
-pub struct GracefulShutdownFuture<F> {
-    #[pin]
-    inner: F,
-    #[pin]
-    shutdown: Fuse<BoxFuture<'static, ()>>,
-    shared: Arc<Shared>,
+struct Guard<'a> {
+    state: &'a Mutex<State>,
 }
 
-#[pinned_drop]
-impl<F> PinnedDrop for GracefulShutdownFuture<F> {
-    fn drop(self: Pin<&mut Self>) {
-        let mut state = self.shared.state.lock();
+impl Drop for Guard<'_> {
+    fn drop(&mut self) {
+        let mut state = self.state.lock();
         state.connections -= 1;
         if state.connections == 0 {
             if let Some(waker) = state.waker.take() {
@@ -134,9 +123,19 @@ impl<F> PinnedDrop for GracefulShutdownFuture<F> {
     }
 }
 
-impl<F> Future for GracefulShutdownFuture<F>
+#[pin_project]
+struct GracefulShutdownFuture<'a, F, G> {
+    #[pin]
+    inner: F,
+    #[pin]
+    shutdown: G,
+    _guard: Guard<'a>,
+}
+
+impl<F, G> Future for GracefulShutdownFuture<'_, F, G>
 where
     F: Future + GracefulShutdown,
+    G: FusedFuture,
 {
     type Output = F::Output;
 
@@ -164,7 +163,6 @@ struct Shared {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::service::test_util::service_fn;
     use std::time::Duration;
     use tokio::task;
     use tokio::time::{self, Instant, Sleep};
@@ -200,24 +198,58 @@ mod test {
         }
     }
 
+    struct TestService;
+
+    impl<F> ShutdownService<F> for TestService
+    where
+        F: Future + GracefulShutdown + Send,
+    {
+        type Response = F::Output;
+
+        fn call(&self, req: F) -> impl Future<Output = Self::Response> + GracefulShutdown + Send {
+            req
+        }
+    }
+
     #[tokio::test(start_paused = true)]
     async fn basic() {
         let mut hooks = ShutdownHooks::new();
 
-        let service = GracefulShutdownLayer::new(&mut hooks).layer(service_fn(|f| f));
+        let service = Arc::new(GracefulShutdownLayer::new(&mut hooks).layer(TestService));
 
-        let a = task::spawn(service.call(TestFuture::new(
-            Duration::from_secs(1),
-            Duration::from_secs(1000),
-        )));
-        let b = task::spawn(service.call(TestFuture::new(
-            Duration::from_secs(1000),
-            Duration::from_secs(1),
-        )));
-        let c = task::spawn(service.call(TestFuture::new(
-            Duration::from_secs(1000),
-            Duration::from_secs(2),
-        )));
+        let a = task::spawn({
+            let service = service.clone();
+            async move {
+                service
+                    .call(TestFuture::new(
+                        Duration::from_secs(1),
+                        Duration::from_secs(1000),
+                    ))
+                    .await
+            }
+        });
+        let b = task::spawn({
+            let service = service.clone();
+            async move {
+                service
+                    .call(TestFuture::new(
+                        Duration::from_secs(1000),
+                        Duration::from_secs(1),
+                    ))
+                    .await
+            }
+        });
+        let c = task::spawn({
+            let service = service.clone();
+            async move {
+                service
+                    .call(TestFuture::new(
+                        Duration::from_secs(1000),
+                        Duration::from_secs(2),
+                    ))
+                    .await
+            }
+        });
 
         let start = Instant::now();
         a.await.unwrap();
