@@ -16,11 +16,11 @@ use bytes::Bytes;
 use conjure_error::Error;
 use http::HeaderValue;
 use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 use regex::Regex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::sync::{Arc};
-use parking_lot::{RwLock};
+use std::sync::Arc;
 
 pub(crate) mod diagnostic_types;
 pub mod endpoint;
@@ -73,7 +73,6 @@ impl DiagnosticRegistry {
             TYPE_PATTERN.is_match(type_),
             "{type_} must be `lower.case.dot.delimited.v1`",
         );
-
 
         match self.diagnostics.write().entry(type_.to_string()) {
             Entry::Occupied(_) => {

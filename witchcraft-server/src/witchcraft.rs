@@ -13,6 +13,7 @@
 // limitations under the License.
 use crate::blocking::conjure::ConjureBlockingEndpoint;
 use crate::blocking::pool::ThreadPool;
+use crate::debug::DiagnosticRegistry;
 use crate::endpoint::conjure::ConjureEndpoint;
 use crate::endpoint::extended_path::ExtendedPathEndpoint;
 use crate::endpoint::WitchcraftEndpoint;
@@ -27,7 +28,6 @@ use std::sync::Arc;
 use tokio::runtime::Handle;
 use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
-use crate::debug::DiagnosticRegistry;
 
 /// The Witchcraft server context.
 pub struct Witchcraft {
@@ -70,7 +70,9 @@ impl Witchcraft {
 
     /// Returns a reference to the server's diagnostics registry.
     #[inline]
-    pub fn diagnostics(&self) -> &Arc<DiagnosticRegistry> { &self.diagnostics}
+    pub fn diagnostics(&self) -> &Arc<DiagnosticRegistry> {
+        &self.diagnostics
+    }
 
     /// Returns a reference to a handle to the server's Tokio runtime.
     #[inline]

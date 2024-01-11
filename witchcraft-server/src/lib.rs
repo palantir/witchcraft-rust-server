@@ -278,6 +278,7 @@
 //! See the documentation of the [`conjure_runtime`] crate for the metrics reported by HTTP clients.
 #![warn(missing_docs)]
 
+use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
 use crate::debug::endpoint::DebugEndpoints;
 #[cfg(feature = "jemalloc")]
 use crate::debug::heap_stats::HeapStatsDiagnostic;
@@ -321,7 +322,6 @@ use witchcraft_metrics::MetricRegistry;
 pub use witchcraft_server_config as config;
 #[doc(inline)]
 pub use witchcraft_server_macros::main;
-use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
 
 // FIXME remove in next breaking release
 #[doc(hidden)]

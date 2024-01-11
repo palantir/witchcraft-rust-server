@@ -45,7 +45,10 @@ pub struct DebugEndpoints {
 }
 
 impl DebugEndpoints {
-    pub fn new<R>(runtime_config: &Refreshable<R, Error>, diagnostics: Arc<DiagnosticRegistry>) -> Self
+    pub fn new<R>(
+        runtime_config: &Refreshable<R, Error>,
+        diagnostics: Arc<DiagnosticRegistry>,
+    ) -> Self
     where
         R: AsRef<RuntimeConfig> + PartialEq + 'static + Sync + Send,
     {

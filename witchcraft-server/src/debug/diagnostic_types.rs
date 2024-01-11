@@ -22,7 +22,7 @@ const DIAGNOSTIC_TYPES_V1: &str = "diagnostic.types.v1";
 
 /// A diagnostic which returns a list of all registered diagnostics.
 pub struct DiagnosticTypesDiagnostic {
-    registry: Weak<DiagnosticRegistry>
+    registry: Weak<DiagnosticRegistry>,
 }
 
 impl DiagnosticTypesDiagnostic {
