@@ -290,7 +290,7 @@ use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
-use tokio::runtime::Runtime;
+use tokio::runtime::{Handle, Runtime};
 use tokio::signal::unix::{self, SignalKind};
 use tokio::{pin, runtime, select, time};
 use witchcraft_log::{fatal, info};
@@ -359,9 +359,25 @@ where
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
 {
+    init_with_configs(init, configs::load_install::<I>, configs::load_runtime::<R>)
+}
+
+/// Initializes a Witchcraft server with custom config loaders.
+///
+/// `init` is invoked with the install and runtime configs from the provided loaders as well as the [`Witchcraft`]
+/// context object. It is expected to return quickly; any long running initialization should be spawned off into
+/// the background to run asynchronously.
+pub fn init_with_configs<I, R, F, LI, LR>(init: F, load_install: LI, load_runtime: LR)
+where
+    I: AsRef<InstallConfig> + DeserializeOwned,
+    R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+    F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+    LI: FnOnce() -> Result<I, Error>,
+    LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
+{
     let mut runtime_guard = None;
 
-    let ret = match init_inner(init, &mut runtime_guard) {
+    let ret = match init_inner(init, load_install, load_runtime, &mut runtime_guard) {
         Ok(()) => 0,
         Err(e) => {
             fatal!("error starting server", error: e);
@@ -373,11 +389,18 @@ where
     process::exit(ret);
 }
 
-fn init_inner<I, R, F>(init: F, runtime_guard: &mut Option<RuntimeGuard>) -> Result<(), Error>
+fn init_inner<I, R, F, LI, LR>(
+    init: F,
+    load_install: LI,
+    load_runtime: LR,
+    runtime_guard: &mut Option<RuntimeGuard>,
+) -> Result<(), Error>
 where
     I: AsRef<InstallConfig> + DeserializeOwned,
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+    LI: FnOnce() -> Result<I, Error>,
+    LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
     if env::args_os().nth(1).map_or(false, |a| a == "minidump") {
         return minidump::server();
@@ -385,7 +408,7 @@ where
 
     logging::early_init();
 
-    let install_config = configs::load_install::<I>()?;
+    let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
     let runtime = runtime::Builder::new_multi_thread()
@@ -403,7 +426,7 @@ where
     });
 
     let runtime_config_ok = Arc::new(AtomicBool::new(true));
-    let runtime_config = configs::load_runtime::<R>(&handle, &runtime_config_ok)?;
+    let runtime_config = load_runtime(&handle, &runtime_config_ok)?;
 
     let metrics = Arc::new(MetricRegistry::new());
 

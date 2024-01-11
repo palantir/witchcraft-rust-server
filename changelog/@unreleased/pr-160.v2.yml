@@ -1,0 +1,5 @@
+type: improvement
+improvement:
+  description: allow custom config loaders
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/160
