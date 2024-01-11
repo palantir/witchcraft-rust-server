@@ -80,8 +80,8 @@ impl DiagnosticRegistry {
     ///
     /// Panics if another diagnostic of the same type is already registered.
     pub fn register<T>(&self, diagnostic: T)
-    where
-        T: Diagnostic + 'static + Sync + Send,
+        where
+            T: Diagnostic + 'static + Sync + Send,
     {
         self.register_inner(Arc::new(diagnostic));
     }
@@ -104,7 +104,8 @@ impl DiagnosticRegistry {
         }
     }
 
-    fn get(&self, type_: &str) -> Option<Arc<dyn Diagnostic + Sync + Send>> {
+    /// Get the diagnostic with the specified type.
+    pub fn get(&self, type_: &str) -> Option<Arc<dyn Diagnostic + Sync + Send>> {
         self.diagnostics.lock().get(type_).cloned()
     }
 }
