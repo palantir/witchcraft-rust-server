@@ -16,7 +16,7 @@ use bytes::Bytes;
 use conjure_error::Error;
 use http::HeaderValue;
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
+use parking_lot::{Mutex};
 use regex::Regex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -43,7 +43,7 @@ pub trait Diagnostic {
 }
 
 pub struct DiagnosticRegistry {
-    diagnostics: RwLock<HashMap<String, Arc<dyn Diagnostic + Sync + Send>>>,
+    diagnostics: Mutex<HashMap<String, Arc<dyn Diagnostic + Sync + Send>>>,
 }
 
 impl Default for DiagnosticRegistry {
@@ -55,7 +55,7 @@ impl Default for DiagnosticRegistry {
 impl DiagnosticRegistry {
     pub fn new() -> Self {
         DiagnosticRegistry {
-            diagnostics: RwLock::new(HashMap::new()),
+            diagnostics: Mutex::new(HashMap::new()),
         }
     }
 
@@ -74,7 +74,7 @@ impl DiagnosticRegistry {
             "{type_} must be `lower.case.dot.delimited.v1`",
         );
 
-        match self.diagnostics.write().entry(type_.to_string()) {
+        match self.diagnostics.lock().entry(type_.to_string()) {
             Entry::Occupied(_) => {
                 panic!("a diagnostic has already been registered for type {type_}")
             }
@@ -85,6 +85,6 @@ impl DiagnosticRegistry {
     }
 
     fn get(&self, type_: &str) -> Option<Arc<dyn Diagnostic + Sync + Send>> {
-        self.diagnostics.read().get(type_).cloned()
+        self.diagnostics.lock().get(type_).cloned()
     }
 }

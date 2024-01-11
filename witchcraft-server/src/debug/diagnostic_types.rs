@@ -48,7 +48,7 @@ impl Diagnostic for DiagnosticTypesDiagnostic {
         let mut types: Vec<String> = Vec::new();
         types.push(DIAGNOSTIC_TYPES_V1.to_string());
         if let Some(registry) = self.registry.upgrade() {
-            types.push(registry.diagnostics.read().keys().cloned().collect());
+            types.extend(registry.diagnostics.lock().keys().cloned());
         }
         types.sort_unstable();
         Ok(Bytes::from(json::to_vec(&types).unwrap()).clone())
