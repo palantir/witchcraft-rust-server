@@ -64,7 +64,7 @@ impl Default for DiagnosticRegistry {
 }
 
 impl DiagnosticRegistry {
-    /// Create a new diagostnic registry
+    /// Create a new diagnostic registry
     pub fn new() -> Self {
         DiagnosticRegistry {
             diagnostics: Mutex::new(HashMap::new()),
