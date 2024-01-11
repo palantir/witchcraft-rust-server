@@ -278,6 +278,33 @@
 //! See the documentation of the [`conjure_runtime`] crate for the metrics reported by HTTP clients.
 #![warn(missing_docs)]
 
+use std::env;
+use std::process;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+
+use conjure_error::Error;
+use conjure_http::server::AsyncService;
+use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
+use futures_util::{stream, Stream, StreamExt};
+use refreshable::Refreshable;
+use serde::de::DeserializeOwned;
+use tokio::runtime::Runtime;
+use tokio::signal::unix::{self, SignalKind};
+use tokio::{pin, runtime, select, time};
+use witchcraft_log::{fatal, info};
+use witchcraft_metrics::MetricRegistry;
+
+pub use body::{RequestBody, ResponseWriter};
+use config::install::InstallConfig;
+use config::runtime::RuntimeConfig;
+pub use witchcraft::Witchcraft;
+#[doc(inline)]
+pub use witchcraft_server_config as config;
+#[doc(inline)]
+pub use witchcraft_server_macros::main;
+
 use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
 use crate::debug::endpoint::DebugEndpoints;
 #[cfg(feature = "jemalloc")]
@@ -298,30 +325,6 @@ use crate::readiness::ReadinessCheckRegistry;
 use crate::server::Listener;
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::status::StatusEndpoints;
-pub use body::{RequestBody, ResponseWriter};
-use config::install::InstallConfig;
-use config::runtime::RuntimeConfig;
-use conjure_error::Error;
-use conjure_http::server::AsyncService;
-use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
-use futures_util::{stream, Stream, StreamExt};
-use refreshable::Refreshable;
-use serde::de::DeserializeOwned;
-use std::env;
-use std::process;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::runtime::Runtime;
-use tokio::signal::unix::{self, SignalKind};
-use tokio::{pin, runtime, select, time};
-pub use witchcraft::Witchcraft;
-use witchcraft_log::{fatal, info};
-use witchcraft_metrics::MetricRegistry;
-#[doc(inline)]
-pub use witchcraft_server_config as config;
-#[doc(inline)]
-pub use witchcraft_server_macros::main;
 
 // FIXME remove in next breaking release
 #[doc(hidden)]
@@ -330,7 +333,7 @@ pub mod audit;
 pub mod blocking;
 mod body;
 mod configs;
-mod debug;
+pub mod debug;
 mod endpoint;
 pub mod extensions;
 pub mod health;

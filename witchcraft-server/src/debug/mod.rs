@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+//! Debug endpoints.
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -24,12 +24,12 @@ use parking_lot::Mutex;
 use regex::Regex;
 
 pub(crate) mod diagnostic_types;
-pub mod endpoint;
+pub(crate) mod endpoint;
 #[cfg(feature = "jemalloc")]
-pub mod heap_stats;
-pub mod metric_names;
+pub(crate) mod heap_stats;
+pub(crate) mod metric_names;
 #[cfg(target_os = "linux")]
-pub mod thread_dump;
+pub(crate) mod thread_dump;
 
 static TYPE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z0-9]+\.)+v[0-9]+").unwrap());
 
