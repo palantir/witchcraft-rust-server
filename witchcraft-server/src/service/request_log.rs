@@ -23,7 +23,6 @@ use http::{HeaderMap, Request, Response};
 use http_body::Body;
 use pin_project::pin_project;
 use serde::Deserialize;
-use std::future::Future;
 use std::mem;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -75,10 +74,8 @@ pub struct RequestLogLayer {
 }
 
 impl RequestLogLayer {
-    pub fn new(appender: Appender<RequestLogV2>) -> Self {
-        RequestLogLayer {
-            appender: Arc::new(appender),
-        }
+    pub fn new(appender: Arc<Appender<RequestLogV2>>) -> Self {
+        RequestLogLayer { appender }
     }
 }
 
@@ -100,13 +97,12 @@ pub struct RequestLogService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for RequestLogService<S>
 where
-    S: Service<Request<RequestLogRequestBody<B1>>, Response = Response<B2>>,
+    S: Service<Request<RequestLogRequestBody<B1>>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = Response<RequestLogResponseBody<B2>>;
 
-    type Future = RequestLogFuture<S::Future>;
-
-    fn call(&self, req: Request<B1>) -> Self::Future {
+    async fn call(&self, req: Request<B1>) -> Self::Response {
         let protocol = format!("{:?}", req.version());
         let method = req.method().as_str().to_string();
         let path = match req
@@ -188,31 +184,40 @@ where
             ));
         }
 
-        let request_size = Arc::new(AtomicI64::new(0));
+        let mut state = State {
+            protocol,
+            method,
+            path,
+            status: 0,
+            uid,
+            sid,
+            token_id,
+            org_id,
+            trace_id,
+            params,
+            unsafe_params,
+            start_time: Instant::now(),
+            request_size: Arc::new(AtomicI64::new(0)),
+            response_size: 0,
+            appender: self.appender.clone(),
+        };
 
-        RequestLogFuture {
-            state: Some(State {
-                protocol,
-                method,
-                path,
-                status: 0,
-                sid,
-                uid,
-                token_id,
-                org_id,
-                trace_id,
-                params,
-                unsafe_params,
-                start_time: Instant::now(),
-                request_size: request_size.clone(),
-                response_size: 0,
-                appender: self.appender.clone(),
-            }),
-            inner: self.inner.call(req.map(|inner| RequestLogRequestBody {
+        let response = self
+            .inner
+            .call(req.map(|inner| RequestLogRequestBody {
                 inner,
-                request_size,
-            })),
+                request_size: state.request_size.clone(),
+            }))
+            .await;
+
+        state.status = i32::from(response.status().as_u16());
+        if let Some(safe_params) = response.extensions().get::<SafeParams>() {
+            state
+                .params
+                .extend(safe_params.iter().map(|(k, v)| (k.to_string(), v.clone())));
         }
+
+        response.map(|inner| RequestLogResponseBody { inner, state })
     }
 }
 
@@ -258,35 +263,6 @@ where
 
     fn size_hint(&self) -> http_body::SizeHint {
         self.inner.size_hint()
-    }
-}
-
-#[pin_project]
-pub struct RequestLogFuture<F> {
-    #[pin]
-    inner: F,
-    state: Option<State>,
-}
-
-impl<F, B> Future for RequestLogFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = Response<RequestLogResponseBody<B>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let response = ready!(this.inner.poll(cx));
-        let mut state = this.state.take().unwrap();
-        state.status = i32::from(response.status().as_u16());
-        if let Some(safe_params) = response.extensions().get::<SafeParams>() {
-            state
-                .params
-                .extend(safe_params.iter().map(|(k, v)| (k.to_string(), v.clone())));
-        }
-
-        Poll::Ready(response.map(|inner| RequestLogResponseBody { inner, state }))
     }
 }
 

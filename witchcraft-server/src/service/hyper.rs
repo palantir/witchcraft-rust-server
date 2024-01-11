@@ -13,10 +13,12 @@
 // limitations under the License.
 use crate::service::{Layer, Service, ServiceBuilder};
 use conjure_error::Error;
+use futures_util::future::BoxFuture;
 use http::{Request, Response};
 use http_body::Body;
 use hyper::server::conn::{Connection, Http};
 use pin_project::pin_project;
+use std::convert::Infallible;
 use std::error;
 use std::future::Future;
 use std::pin::Pin;
@@ -28,6 +30,12 @@ use tokio_rustls::server::TlsStream;
 pub struct NewConnection<S, L> {
     pub stream: S,
     pub service_builder: ServiceBuilder<L>,
+}
+
+pub trait ShutdownService<R> {
+    type Response;
+
+    fn call(&self, req: R) -> impl Future<Output = Self::Response> + GracefulShutdown + Send;
 }
 
 pub trait GracefulShutdown {
@@ -47,21 +55,21 @@ impl<S> HyperService<S> {
     }
 }
 
-impl<S, R, L, B> Service<NewConnection<TlsStream<R>, L>> for HyperService<S>
+impl<S, R, L, B> ShutdownService<NewConnection<TlsStream<R>, L>> for HyperService<S>
 where
     L: Layer<Arc<S>>,
-    L::Service: Service<Request<hyper::Body>, Response = Response<B>>,
-    <L::Service as Service<Request<hyper::Body>>>::Future: 'static + Send,
-    R: AsyncRead + AsyncWrite + Unpin + 'static,
+    L::Service: Service<Request<hyper::Body>, Response = Response<B>> + 'static + Sync + Send,
+    R: AsyncRead + AsyncWrite + Unpin + 'static + Send,
     B: Body + 'static + Send,
     B::Data: Send,
     B::Error: Into<Box<dyn error::Error + Sync + Send>>,
 {
     type Response = Result<(), Error>;
 
-    type Future = HyperFuture<L::Service, TlsStream<R>, B>;
-
-    fn call(&self, req: NewConnection<TlsStream<R>, L>) -> Self::Future {
+    fn call(
+        &self,
+        req: NewConnection<TlsStream<R>, L>,
+    ) -> impl Future<Output = Self::Response> + GracefulShutdown + Send {
         let mut http = Http::new();
 
         if req.stream.get_ref().1.alpn_protocol() == Some(b"h2") {
@@ -74,7 +82,7 @@ where
             inner: http.serve_connection(
                 req.stream,
                 AdaptorService {
-                    inner: req.service_builder.service(self.request_service.clone()),
+                    inner: Arc::new(req.service_builder.service(self.request_service.clone())),
                 },
             ),
         }
@@ -84,7 +92,7 @@ where
 #[pin_project]
 pub struct HyperFuture<S, R, B>
 where
-    S: Service<Request<hyper::Body>, Response = Response<B>>,
+    S: Service<Request<hyper::Body>, Response = Response<B>> + 'static + Sync + Send,
     B: Body,
 {
     #[pin]
@@ -93,8 +101,7 @@ where
 
 impl<S, R, B> Future for HyperFuture<S, R, B>
 where
-    S: Service<Request<hyper::Body>, Response = Response<B>>,
-    S::Future: 'static + Send,
+    S: Service<Request<hyper::Body>, Response = Response<B>> + Sync + Send,
     R: AsyncRead + AsyncWrite + Unpin + 'static,
     B: Body + 'static + Send,
     B::Data: Send,
@@ -109,8 +116,7 @@ where
 
 impl<S, R, B> GracefulShutdown for HyperFuture<S, R, B>
 where
-    S: Service<Request<hyper::Body>, Response = Response<B>>,
-    S::Future: 'static + Send,
+    S: Service<Request<hyper::Body>, Response = Response<B>> + Sync + Send,
     R: AsyncRead + AsyncWrite + Unpin + 'static,
     B: Body + 'static + Send,
     B::Data: Send,
@@ -122,51 +128,28 @@ where
 }
 
 struct AdaptorService<S> {
-    inner: S,
+    inner: Arc<S>,
 }
 
 impl<S, R> hyper::service::Service<R> for AdaptorService<S>
 where
-    S: Service<R>,
+    S: Service<R> + 'static + Sync + Send,
+    R: 'static + Send,
 {
     type Response = S::Response;
 
-    type Error = Void;
+    type Error = Infallible;
 
-    type Future = AdaptorFuture<S::Future>;
+    type Future = BoxFuture<'static, Result<S::Response, Infallible>>;
 
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: R) -> Self::Future {
-        AdaptorFuture {
-            inner: self.inner.call(req),
-        }
-    }
-}
-
-pub enum Void {}
-
-impl From<Void> for Box<dyn error::Error + Sync + Send> {
-    fn from(void: Void) -> Self {
-        match void {}
-    }
-}
-
-#[pin_project]
-pub struct AdaptorFuture<F> {
-    #[pin]
-    inner: F,
-}
-
-impl<F, T> Future for AdaptorFuture<F>
-where
-    F: Future<Output = T>,
-{
-    type Output = Result<T, Void>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().inner.poll(cx).map(Ok)
+        Box::pin({
+            let inner = self.inner.clone();
+            async move { Ok(inner.call(req).await) }
+        })
     }
 }

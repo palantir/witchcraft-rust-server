@@ -16,6 +16,7 @@ use crate::service::{Layer, Service, Stack};
 use crate::tls::ClientCertificate;
 use http::Request;
 use tokio_rustls::server::TlsStream;
+use webpki::types::CertificateDer;
 
 /// A layer which injects a [`ClientCertificate`] extension into all requests made over the connection.
 pub struct ClientCertificateLayer;
@@ -34,13 +35,13 @@ pub struct ClientCertificateService<S> {
 
 impl<S, T, L> Service<NewConnection<TlsStream<T>, L>> for ClientCertificateService<S>
 where
-    S: Service<NewConnection<TlsStream<T>, Stack<L, ClientCertificateRequestLayer>>>,
+    S: Service<NewConnection<TlsStream<T>, Stack<L, ClientCertificateRequestLayer>>> + Sync,
+    T: Send,
+    L: Send,
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, req: NewConnection<TlsStream<T>, L>) -> Self::Future {
+    async fn call(&self, req: NewConnection<TlsStream<T>, L>) -> Self::Response {
         let cert = req
             .stream
             .get_ref()
@@ -48,14 +49,17 @@ where
             .peer_certificates()
             .and_then(|c| c.first())
             .cloned()
+            .map(CertificateDer::into_owned)
             .map(ClientCertificate::new);
 
-        self.inner.call(NewConnection {
-            stream: req.stream,
-            service_builder: req
-                .service_builder
-                .layer(ClientCertificateRequestLayer { cert }),
-        })
+        self.inner
+            .call(NewConnection {
+                stream: req.stream,
+                service_builder: req
+                    .service_builder
+                    .layer(ClientCertificateRequestLayer { cert }),
+            })
+            .await
     }
 }
 
@@ -81,17 +85,16 @@ pub struct ClientCertificateRequestService<S> {
 
 impl<S, B> Service<Request<B>> for ClientCertificateRequestService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Sync,
+    B: Send,
 {
     type Response = S::Response;
 
-    type Future = S::Future;
-
-    fn call(&self, mut req: Request<B>) -> Self::Future {
+    async fn call(&self, mut req: Request<B>) -> Self::Response {
         if let Some(cert) = &self.cert {
             req.extensions_mut().insert(cert.clone());
         }
 
-        self.inner.call(req)
+        self.inner.call(req).await
     }
 }

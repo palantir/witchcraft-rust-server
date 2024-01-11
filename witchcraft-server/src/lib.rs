@@ -172,7 +172,7 @@
 //! * `metric.names.v1` - Returns a JSON-encoded list of the names of all metrics registered with the server.
 //! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process. Only supported when running on
 //!     Linux.
-//!     
+//!
 //! # Logging
 //!
 //! `witchcraft-server` emits JSON-encoded logs following the [witchcraft-api spec]. By default, logs will be written to
@@ -294,6 +294,7 @@ use crate::health::panics::PanicsHealthCheck;
 use crate::health::service_dependency::ServiceDependencyHealthCheck;
 use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
+use crate::server::Listener;
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::status::StatusEndpoints;
 pub use body::{RequestBody, ResponseWriter};
@@ -466,13 +467,32 @@ where
     let debug_endpoints = DebugEndpoints::new(&runtime_config, diagnostics);
     witchcraft.app(debug_endpoints);
 
+    // server::start clears out the previously-registered endpoints so the existing Witchcraft
+    // is ready to reuse for the main port afterwards.
+    if let Some(management_port) = install_config.as_ref().management_port() {
+        if management_port != install_config.as_ref().port() {
+            handle.block_on(server::start(
+                &mut witchcraft,
+                &loggers,
+                Listener::Management,
+                management_port,
+            ))?;
+        }
+    }
+
     init(install_config, runtime_config, &mut witchcraft)?;
 
     witchcraft
         .health_checks
         .register(Endpoint500sHealthCheck::new(&witchcraft.endpoints));
 
-    handle.block_on(server::start(&mut witchcraft, loggers))?;
+    let port = witchcraft.install_config.port();
+    handle.block_on(server::start(
+        &mut witchcraft,
+        &loggers,
+        Listener::Service,
+        port,
+    ))?;
 
     handle.block_on(shutdown(
         witchcraft.shutdown_hooks,

@@ -14,9 +14,7 @@
 use crate::service::peer_addr::GetPeerAddr;
 use crate::service::{Layer, Service};
 use conjure_error::Error;
-use futures_util::ready;
 use pin_project::pin_project;
-use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -24,7 +22,6 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
-use tokio_util::sync::PollSemaphore;
 use witchcraft_server_config::install::InstallConfig;
 
 /// A layer which limits the number of active connections by throttling calls to downstream services.
@@ -58,66 +55,17 @@ pub struct ConnectionLimitService<S> {
 
 impl<S, R> Service<R> for ConnectionLimitService<S>
 where
-    S: Service<R>,
+    S: Service<R> + Sync + Send,
+    R: Send,
 {
     type Response = ConnectionLimitStream<S::Response>;
 
-    type Future = ConnectionLimitFuture<S, R>;
-
-    fn call(&self, req: R) -> Self::Future {
-        ConnectionLimitFuture::Acquiring {
-            inner: self.inner.clone(),
-            req: Some(req),
-            semaphore: PollSemaphore::new(self.semaphore.clone()),
-        }
-    }
-}
-
-#[pin_project(project = ConnectionLimitFutureProj)]
-pub enum ConnectionLimitFuture<S, R>
-where
-    S: Service<R>,
-{
-    Acquiring {
-        inner: Arc<S>,
-        req: Option<R>,
-        semaphore: PollSemaphore,
-    },
-    Inner {
-        #[pin]
-        inner: S::Future,
-        permit: Option<OwnedSemaphorePermit>,
-    },
-}
-
-impl<S, R> Future for ConnectionLimitFuture<S, R>
-where
-    S: Service<R>,
-{
-    type Output = ConnectionLimitStream<S::Response>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        loop {
-            match self.as_mut().project() {
-                ConnectionLimitFutureProj::Acquiring {
-                    inner,
-                    req,
-                    semaphore,
-                } => {
-                    let permit = ready!(semaphore.poll_acquire(cx));
-                    let new_self = ConnectionLimitFuture::Inner {
-                        inner: inner.call(req.take().unwrap()),
-                        permit,
-                    };
-                    self.set(new_self);
-                }
-                ConnectionLimitFutureProj::Inner { inner, permit } => {
-                    return inner.poll(cx).map(|inner| ConnectionLimitStream {
-                        inner,
-                        permit: permit.take().unwrap(),
-                    });
-                }
-            }
+    async fn call(&self, req: R) -> Self::Response {
+        let permit = self.semaphore.clone().acquire_owned().await;
+        let inner = self.inner.call(req).await;
+        ConnectionLimitStream {
+            inner,
+            permit: permit.unwrap(),
         }
     }
 }

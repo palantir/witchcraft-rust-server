@@ -13,13 +13,8 @@
 // limitations under the License.
 use crate::service::{Layer, Service};
 use conjure_error::Error;
-use futures_util::ready;
 use http::header::SERVER;
 use http::{HeaderValue, Response};
-use pin_project::pin_project;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use witchcraft_server_config::install::InstallConfig;
 
 /// A layer which adds a `Server` header to responses.
@@ -58,40 +53,14 @@ pub struct ServerHeaderService<S> {
 
 impl<S, R, B> Service<R> for ServerHeaderService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = S::Response;
 
-    type Future = ServerHeaderFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
-        ServerHeaderFuture {
-            inner: self.inner.call(req),
-            value: Some(self.value.clone()),
-        }
-    }
-}
-
-#[pin_project]
-pub struct ServerHeaderFuture<F> {
-    #[pin]
-    inner: F,
-    value: Option<HeaderValue>,
-}
-
-impl<F, B> Future for ServerHeaderFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let mut response = ready!(this.inner.poll(cx));
+    async fn call(&self, req: R) -> Self::Response {
+        let mut response = self.inner.call(req).await;
+        response.headers_mut().insert(SERVER, self.value.clone());
         response
-            .headers_mut()
-            .insert(SERVER, this.value.take().unwrap());
-        Poll::Ready(response)
     }
 }

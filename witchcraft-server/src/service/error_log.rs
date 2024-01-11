@@ -13,12 +13,7 @@
 // limitations under the License.
 use crate::service::{Layer, Service};
 use conjure_error::Error;
-use futures_util::ready;
 use http::{Response, StatusCode};
-use pin_project::pin_project;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use witchcraft_log::{log, Level};
 
 /// A layer which logs errors attached to responses.
@@ -38,33 +33,13 @@ pub struct ErrorLogService<S> {
 
 impl<S, R, B> Service<R> for ErrorLogService<S>
 where
-    S: Service<R, Response = Response<B>>,
+    S: Service<R, Response = Response<B>> + Sync,
+    R: Send,
 {
     type Response = S::Response;
 
-    type Future = ErrorLogFuture<S::Future>;
-
-    fn call(&self, req: R) -> Self::Future {
-        ErrorLogFuture {
-            inner: self.inner.call(req),
-        }
-    }
-}
-
-#[pin_project]
-pub struct ErrorLogFuture<F> {
-    #[pin]
-    inner: F,
-}
-
-impl<F, B> Future for ErrorLogFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let response = ready!(self.project().inner.poll(cx));
+    async fn call(&self, req: R) -> Self::Response {
+        let response = self.inner.call(req).await;
 
         if let Some(error) = response.extensions().get::<Error>() {
             let level = match response.status() {
@@ -75,6 +50,6 @@ where
             log!(level, "handler returned non-success", error: error);
         }
 
-        Poll::Ready(response)
+        response
     }
 }

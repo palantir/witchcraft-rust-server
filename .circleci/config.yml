@@ -22,11 +22,9 @@ version: 2
 jobs:
   build:
     docker:
-      - image: rust:1.68.2
+      - image: rust:1.75.0
     environment:
       RUSTFLAGS: -D warnings
-      # Work around a Clippy ICE :(
-      CARGO_INCREMENTAL: 0
     steps:
       - checkout
       - run: rustup component add rustfmt clippy

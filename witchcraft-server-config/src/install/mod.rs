@@ -32,6 +32,8 @@ pub struct InstallConfig {
     #[builder(into)]
     product_version: String,
     port: u16,
+    #[builder(default, into)]
+    management_port: Option<u16>,
     #[builder(default)]
     keystore: KeystoreConfig,
     #[builder(default, into)]
@@ -70,6 +72,9 @@ impl<'de> Deserialize<'de> for InstallConfig {
             .product_name(raw.product_name)
             .product_version(raw.product_version)
             .port(raw.port);
+        if let Some(management_port) = raw.management_port {
+            builder = builder.management_port(management_port);
+        }
         if let Some(keystore) = raw.keystore {
             builder = builder.keystore(keystore);
         }
@@ -120,6 +125,13 @@ impl InstallConfig {
     #[inline]
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Returns the port that the server's management APIs will listen on.
+    ///
+    /// Defaults to `port()`.
+    pub fn management_port(&self) -> Option<u16> {
+        self.management_port
     }
 
     /// Returns the server's TLS key configuration.

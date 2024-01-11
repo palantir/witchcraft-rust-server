@@ -44,23 +44,22 @@ pub struct TracePropagationService<S> {
 
 impl<S, B1, B2> Service<Request<B1>> for TracePropagationService<S>
 where
-    S: Service<Request<B1>, Response = Response<B2>>,
+    S: Service<Request<B1>, Response = Response<B2>> + Sync,
+    B1: Send,
 {
     type Response = Response<TracePropagationBody<B2>>;
 
-    type Future = TracePropagationFuture<S::Future>;
-
-    fn call(&self, req: Request<B1>) -> Self::Future {
+    async fn call(&self, req: Request<B1>) -> Self::Response {
         let route = req
             .extensions()
             .get::<Route>()
             .expect("Route missing from request extensions");
 
         let mut span = match http_zipkin::get_trace_context(req.headers()) {
-            Some(context) => zipkin::new_child(context),
+            Some(context) => zipkin::new_child(context).detach(),
             None => {
                 let flags = http_zipkin::get_sampling_flags(req.headers());
-                zipkin::new_trace_from(flags)
+                zipkin::new_trace_from(flags).detach()
             }
         };
 
@@ -93,8 +92,9 @@ where
 
         TracePropagationFuture {
             inner: self.inner.call(req),
-            span: Some(span.detach()),
+            span: Some(span),
         }
+        .await
     }
 }
 

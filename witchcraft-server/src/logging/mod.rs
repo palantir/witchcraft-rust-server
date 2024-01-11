@@ -47,7 +47,7 @@ pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
 
 pub(crate) struct Loggers {
-    pub request_logger: Appender<RequestLogV2>,
+    pub request_logger: Arc<Appender<RequestLogV2>>,
     pub audit_logger: Arc<Mutex<Appender<AuditLogV3>>>,
 }
 
@@ -65,8 +65,8 @@ pub(crate) async fn init(
     service::init(metrics, install, runtime, hooks).await?;
     trace::init(metrics, install, runtime, hooks).await?;
     let request_logger = logger::appender(install, metrics, hooks).await?;
+    let request_logger = Arc::new(request_logger);
     let audit_logger = logger::appender(install, metrics, hooks).await?;
-
     let audit_logger = Arc::new(Mutex::new(audit_logger));
 
     AUDIT_LOGGER

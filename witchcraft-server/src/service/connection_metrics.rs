@@ -11,17 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::server::Listener;
 use crate::service::peer_addr::GetPeerAddr;
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use pin_project::{pin_project, pinned_drop};
-use std::future::Future;
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use witchcraft_metrics::{Counter, MetricRegistry};
+use witchcraft_metrics::{Counter, MetricId, MetricRegistry};
 use witchcraft_server_config::install::InstallConfig;
 
 /// A layer which tracks active connection metrics.
@@ -30,14 +29,19 @@ pub struct ConnectionMetricsLayer {
 }
 
 impl ConnectionMetricsLayer {
-    pub fn new(config: &InstallConfig, metrics: &MetricRegistry) -> Self {
-        let active_connections = metrics.counter("server.connection.active");
+    pub fn new(config: &InstallConfig, metrics: &MetricRegistry, listener: Listener) -> Self {
+        let active_connections = metrics.counter(
+            MetricId::new("server.connection.active").with_tag("listener", listener.tag()),
+        );
 
-        metrics.gauge("server.connection.utilization", {
-            let active_connections = active_connections.clone();
-            let max_connections = config.server().max_connections();
-            move || active_connections.count() as f64 / max_connections as f64
-        });
+        metrics.gauge(
+            MetricId::new("server.connection.utilization").with_tag("listener", listener.tag()),
+            {
+                let active_connections = active_connections.clone();
+                let max_connections = config.server().max_connections();
+                move || active_connections.count() as f64 / max_connections as f64
+            },
+        );
 
         ConnectionMetricsLayer { active_connections }
     }
@@ -61,43 +65,19 @@ pub struct ConnectionMetricsService<S> {
 
 impl<S, R> Service<R> for ConnectionMetricsService<S>
 where
-    S: Service<R>,
+    S: Service<R> + Sync,
+    R: Send,
 {
     type Response = ConnectionMetricsStream<S::Response>;
 
-    type Future = ConnectionMetricsFuture<S::Future>;
+    async fn call(&self, req: R) -> Self::Response {
+        let inner = self.inner.call(req).await;
+        self.active_connections.inc();
 
-    fn call(&self, req: R) -> Self::Future {
-        ConnectionMetricsFuture {
-            inner: self.inner.call(req),
+        ConnectionMetricsStream {
+            inner,
             active_connections: self.active_connections.clone(),
         }
-    }
-}
-
-#[pin_project]
-pub struct ConnectionMetricsFuture<F> {
-    #[pin]
-    inner: F,
-    active_connections: Arc<Counter>,
-}
-
-impl<F> Future for ConnectionMetricsFuture<F>
-where
-    F: Future,
-{
-    type Output = ConnectionMetricsStream<F::Output>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let inner = ready!(this.inner.poll(cx));
-        this.active_connections.inc();
-
-        Poll::Ready(ConnectionMetricsStream {
-            inner,
-            active_connections: this.active_connections.clone(),
-        })
     }
 }
 
