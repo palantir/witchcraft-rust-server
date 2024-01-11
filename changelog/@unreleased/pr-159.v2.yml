@@ -1,0 +1,6 @@
+type: improvement
+improvement:
+  description: Expose `diagnostics` in Witchcraft so services can register their own
+    diagnostics.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/159
