@@ -1,3 +1,4 @@
+use std::sync::Weak;
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::debug::Diagnostic;
+use crate::debug::{Diagnostic, DiagnosticRegistry};
 use bytes::Bytes;
 use conjure_error::Error;
 use conjure_serde::json;
@@ -21,16 +22,12 @@ const DIAGNOSTIC_TYPES_V1: &str = "diagnostic.types.v1";
 
 /// A diagnostic which returns a list of all registered diagnostics.
 pub struct DiagnosticTypesDiagnostic {
-    types: Bytes,
+    registry: Weak<DiagnosticRegistry>,
 }
 
 impl DiagnosticTypesDiagnostic {
-    pub fn new(mut types: Vec<String>) -> Self {
-        types.push(DIAGNOSTIC_TYPES_V1.to_string());
-        types.sort_unstable();
-        let types = Bytes::from(json::to_vec(&types).unwrap());
-
-        DiagnosticTypesDiagnostic { types }
+    pub fn new(registry: Weak<DiagnosticRegistry>) -> Self {
+        DiagnosticTypesDiagnostic { registry }
     }
 }
 
@@ -48,6 +45,12 @@ impl Diagnostic for DiagnosticTypesDiagnostic {
     }
 
     fn result(&self) -> Result<Bytes, Error> {
-        Ok(self.types.clone())
+        let mut types: Vec<String> = Vec::new();
+        types.push(DIAGNOSTIC_TYPES_V1.to_string());
+        if let Some(registry) = self.registry.upgrade() {
+            types.extend(registry.diagnostics.lock().keys().cloned());
+        }
+        types.sort_unstable();
+        Ok(Bytes::from(json::to_vec(&types).unwrap()).clone())
     }
 }

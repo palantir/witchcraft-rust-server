@@ -37,7 +37,7 @@ const FALSE_VALUE: HeaderValue = HeaderValue::from_static("false");
 
 struct State {
     auth: Refreshable<String, Error>,
-    diagnostics: DiagnosticRegistry,
+    diagnostics: Arc<DiagnosticRegistry>,
 }
 
 pub struct DebugEndpoints {
@@ -45,7 +45,10 @@ pub struct DebugEndpoints {
 }
 
 impl DebugEndpoints {
-    pub fn new<R>(runtime_config: &Refreshable<R, Error>, diagnostics: DiagnosticRegistry) -> Self
+    pub fn new<R>(
+        runtime_config: &Refreshable<R, Error>,
+        diagnostics: Arc<DiagnosticRegistry>,
+    ) -> Self
     where
         R: AsRef<RuntimeConfig> + PartialEq + 'static + Sync + Send,
     {
