@@ -19,9 +19,10 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc};
+use parking_lot::{RwLock};
 
-mod diagnostic_types;
+pub(crate) mod diagnostic_types;
 pub mod endpoint;
 #[cfg(feature = "jemalloc")]
 pub mod heap_stats;
@@ -42,24 +43,24 @@ pub trait Diagnostic {
 }
 
 pub struct DiagnosticRegistry {
-    diagnostics: HashMap<String, Arc<dyn Diagnostic + Sync + Send>>,
+    diagnostics: RwLock<HashMap<String, Arc<dyn Diagnostic + Sync + Send>>>,
 }
 
 impl DiagnosticRegistry {
     pub fn new() -> Self {
         DiagnosticRegistry {
-            diagnostics: HashMap::new(),
+            diagnostics: RwLock::new(HashMap::new()),
         }
     }
 
-    pub fn register<T>(&mut self, diagnostic: T)
+    pub fn register<T>(&self, diagnostic: T)
     where
         T: Diagnostic + 'static + Sync + Send,
     {
         self.register_inner(Arc::new(diagnostic));
     }
 
-    fn register_inner(&mut self, diagnostic: Arc<dyn Diagnostic + Sync + Send>) {
+    fn register_inner(&self, diagnostic: Arc<dyn Diagnostic + Sync + Send>) {
         let type_ = diagnostic.type_();
 
         assert!(
@@ -67,7 +68,8 @@ impl DiagnosticRegistry {
             "{type_} must be `lower.case.dot.delimited.v1`",
         );
 
-        match self.diagnostics.entry(type_.to_string()) {
+
+        match self.diagnostics.write().entry(type_.to_string()) {
             Entry::Occupied(_) => {
                 panic!("a diagnostic has already been registered for type {type_}")
             }
@@ -77,13 +79,7 @@ impl DiagnosticRegistry {
         }
     }
 
-    pub fn finalize(&mut self) {
-        let diagnostic_types =
-            DiagnosticTypesDiagnostic::new(self.diagnostics.keys().cloned().collect());
-        self.register(diagnostic_types);
-    }
-
-    fn get(&self, type_: &str) -> Option<&Arc<dyn Diagnostic + Sync + Send>> {
-        self.diagnostics.get(type_)
+    fn get(&self, type_: &str) -> Option<Arc<dyn Diagnostic + Sync + Send>> {
+        self.diagnostics.read().get(type_).cloned()
     }
 }

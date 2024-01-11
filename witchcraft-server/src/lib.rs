@@ -320,6 +320,7 @@ use witchcraft_metrics::MetricRegistry;
 pub use witchcraft_server_config as config;
 #[doc(inline)]
 pub use witchcraft_server_macros::main;
+use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
 
 // FIXME remove in next breaking release
 #[doc(hidden)]
@@ -424,14 +425,13 @@ where
 
     let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
 
-    let mut diagnostics = DiagnosticRegistry::new();
+    let diagnostics = Arc::new(DiagnosticRegistry::new());
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
     diagnostics.register(HeapStatsDiagnostic);
     #[cfg(target_os = "linux")]
     diagnostics.register(ThreadDumpDiagnostic);
-    diagnostics.finalize();
-
+    diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
     let mut client_factory =
         ClientFactory::new(runtime_config.map(|c| c.as_ref().service_discovery().clone()));
     client_factory
@@ -448,6 +448,7 @@ where
         health_checks,
         readiness_checks,
         client_factory,
+        diagnostics: diagnostics.clone(),
         handle: handle.clone(),
         install_config: install_config.as_ref().clone(),
         thread_pool: None,
