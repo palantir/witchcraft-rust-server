@@ -80,8 +80,8 @@ impl DiagnosticRegistry {
     ///
     /// Panics if another diagnostic of the same type is already registered.
     pub fn register<T>(&self, diagnostic: T)
-        where
-            T: Diagnostic + 'static + Sync + Send,
+    where
+        T: Diagnostic + 'static + Sync + Send,
     {
         self.register_inner(Arc::new(diagnostic));
     }
