@@ -68,8 +68,9 @@ impl Witchcraft {
         &self.client_factory
     }
 
+    /// Returns a reference to the server's diagnostics registry.
     #[inline]
-    pub fn diagnostics(&self) -> &Arc<DiagnosticRegistry> { &&self.diagnostics}
+    pub fn diagnostics(&self) -> &Arc<DiagnosticRegistry> { &self.diagnostics}
 
     /// Returns a reference to a handle to the server's Tokio runtime.
     #[inline]

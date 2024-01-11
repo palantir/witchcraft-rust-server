@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
+
 use bytes::Bytes;
 use conjure_error::Error;
 use http::HeaderValue;
@@ -44,6 +44,12 @@ pub trait Diagnostic {
 
 pub struct DiagnosticRegistry {
     diagnostics: RwLock<HashMap<String, Arc<dyn Diagnostic + Sync + Send>>>,
+}
+
+impl Default for DiagnosticRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DiagnosticRegistry {
