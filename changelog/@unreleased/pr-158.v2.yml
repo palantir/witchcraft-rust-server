@@ -1,0 +1,5 @@
+type: break
+break:
+  description: Upgrade to hyper 1
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/158

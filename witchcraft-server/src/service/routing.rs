@@ -91,6 +91,7 @@ impl Endpoint {
     }
 }
 
+#[derive(Clone)]
 pub enum Route {
     Resolved(Arc<dyn WitchcraftEndpoint + Sync + Send>),
     MethodNotAllowed(Vec<Method>),
@@ -241,7 +242,8 @@ mod test {
     use bytes::Bytes;
     use conjure_http::server::EndpointMetadata;
     use http::Response;
-    use http_body::combinators::BoxBody;
+    use http_body_util::combinators::BoxBody;
+    use http_body_util::Empty;
 
     struct TestEndpoint {
         method: Method,
@@ -457,14 +459,14 @@ mod test {
             ],
             "a",
         )])
-        .layer(service_fn(|req: Request<hyper::Body>| async { req }));
+        .layer(service_fn(|req: Request<Empty<Bytes>>| async { req }));
 
         let req = service
             .call(
                 Request::builder()
                     .method(Method::GET)
                     .uri("/foo/bar/baz?a=b")
-                    .body(hyper::Body::empty())
+                    .body(Empty::new())
                     .unwrap(),
             )
             .await;
@@ -501,14 +503,14 @@ mod test {
                 "b",
             ),
         ])
-        .layer(service_fn(|req: Request<hyper::Body>| async { req }));
+        .layer(service_fn(|req: Request<Empty<Bytes>>| async { req }));
 
         let req = service
             .call(
                 Request::builder()
                     .method(Method::GET)
                     .uri("/foo/bar?a=b")
-                    .body(hyper::Body::empty())
+                    .body(Empty::new())
                     .unwrap(),
             )
             .await;
@@ -525,14 +527,14 @@ mod test {
             vec![PathSegment::Literal(Cow::Borrowed("foo"))],
             "a",
         )])
-        .layer(service_fn(|req: Request<hyper::Body>| async { req }));
+        .layer(service_fn(|req: Request<Empty<Bytes>>| async { req }));
 
         let req = service
             .call(
                 Request::builder()
                     .method(Method::GET)
                     .uri("https://foobar.com/foo?a=b")
-                    .body(hyper::Body::empty())
+                    .body(Empty::new())
                     .unwrap(),
             )
             .await;

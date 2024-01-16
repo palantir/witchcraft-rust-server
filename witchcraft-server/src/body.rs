@@ -19,7 +19,7 @@ use futures_channel::mpsc;
 use futures_sink::Sink;
 use futures_util::{future, ready, SinkExt, Stream};
 use http::HeaderMap;
-use http_body::Body;
+use http_body::{Body, Frame};
 use pin_project::pin_project;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
@@ -35,6 +35,7 @@ pub struct RequestBody {
     #[pin]
     inner: RawBody,
     cur: Bytes,
+    trailers: Option<HeaderMap>,
     #[pin]
     _p: PhantomPinned,
 }
@@ -44,47 +45,56 @@ impl RequestBody {
         RequestBody {
             inner,
             cur: Bytes::new(),
+            trailers: None,
             _p: PhantomPinned,
         }
     }
-
     /// Returns the request's trailers, if any are present.
     ///
     /// The body must have been completely read before this is called.
-    pub fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Error>> {
-        self.project()
-            .inner
-            .poll_trailers(cx)
-            .map_err(|e| Error::service_safe(e, ClientIo))
+    pub fn trailers(self: Pin<&mut Self>) -> Option<HeaderMap> {
+        self.project().trailers.take()
     }
 
-    /// Returns the request's trailers, if any are present.
-    ///
-    /// The body must have been completely read before this is called.
-    pub async fn trailers(self: Pin<&mut Self>) -> Result<Option<HeaderMap>, Error> {
-        self.project()
-            .inner
-            .trailers()
-            .await
-            .map_err(|e| Error::service_safe(e, ClientIo))
+    fn poll_next_raw(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Bytes, hyper::Error>>> {
+        let mut this = self.project();
+
+        loop {
+            let next = ready!(this.inner.as_mut().poll_frame(cx)).transpose()?;
+
+            let Some(next) = next else {
+                return Poll::Ready(None);
+            };
+
+            let next = match next.into_data() {
+                Ok(data) => return Poll::Ready(Some(Ok(data))),
+                Err(next) => next,
+            };
+
+            if let Ok(trailers) = next.into_trailers() {
+                match this.trailers {
+                    Some(base) => base.extend(trailers),
+                    None => *this.trailers = Some(trailers),
+                }
+            }
+        }
     }
 }
 
 impl Stream for RequestBody {
     type Item = Result<Bytes, Error>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.project();
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.as_mut().project();
 
         if this.cur.has_remaining() {
             return Poll::Ready(Some(Ok(mem::take(this.cur))));
         }
 
-        this.inner
-            .poll_data(cx)
+        self.poll_next_raw(cx)
             .map_err(|e| Error::service_safe(e, ClientIo))
     }
 }
@@ -105,20 +115,18 @@ impl AsyncRead for RequestBody {
 }
 
 impl AsyncBufRead for RequestBody {
-    fn poll_fill_buf(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<&[u8]>> {
-        let mut this = self.project();
-
-        while this.cur.is_empty() {
-            match ready!(this.inner.as_mut().poll_data(cx))
+    fn poll_fill_buf(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<&[u8]>> {
+        while self.cur.is_empty() {
+            match ready!(self.as_mut().poll_next_raw(cx))
                 .transpose()
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
             {
-                Some(bytes) => *this.cur = bytes,
+                Some(bytes) => *self.as_mut().project().cur = bytes,
                 None => break,
             }
         }
 
-        Poll::Ready(Ok(this.cur))
+        Poll::Ready(Ok(self.project().cur))
     }
 
     fn consume(self: Pin<&mut Self>, amt: usize) {
@@ -126,23 +134,18 @@ impl AsyncBufRead for RequestBody {
     }
 }
 
-pub(crate) enum BodyPart {
-    Data(Bytes),
-    Trailers(HeaderMap),
-}
-
 /// The writer used for streaming response bodies.
 #[pin_project]
 pub struct ResponseWriter {
     #[pin]
-    sender: mpsc::Sender<BodyPart>,
+    sender: mpsc::Sender<Frame<Bytes>>,
     buf: BytesMut,
     #[pin]
     _p: PhantomPinned,
 }
 
 impl ResponseWriter {
-    pub(crate) fn new(sender: mpsc::Sender<BodyPart>) -> Self {
+    pub(crate) fn new(sender: mpsc::Sender<Frame<Bytes>>) -> Self {
         ResponseWriter {
             sender,
             buf: BytesMut::new(),
@@ -154,7 +157,7 @@ impl ResponseWriter {
     ///
     /// The body must be fully written before calling this method.
     pub fn start_send_trailers(self: Pin<&mut Self>, trailers: HeaderMap) -> Result<(), Error> {
-        self.start_send_inner(BodyPart::Trailers(trailers))
+        self.start_send_inner(Frame::trailers(trailers))
     }
 
     /// Like [`SinkExt::send`] except that it sends the response's trailers.
@@ -167,7 +170,7 @@ impl ResponseWriter {
 
         self.project()
             .sender
-            .send(BodyPart::Trailers(trailers))
+            .send(Frame::trailers(trailers))
             .await
             .map_err(|e| Error::service_safe(e, ClientIo))
     }
@@ -176,7 +179,7 @@ impl ResponseWriter {
         self.flush().await
     }
 
-    fn start_send_inner(self: Pin<&mut Self>, item: BodyPart) -> Result<(), Error> {
+    fn start_send_inner(self: Pin<&mut Self>, item: Frame<Bytes>) -> Result<(), Error> {
         let this = self.project();
 
         assert!(this.buf.is_empty());
@@ -197,7 +200,7 @@ impl ResponseWriter {
 
         ready!(this.sender.as_mut().poll_ready(cx))?;
         this.sender
-            .start_send(BodyPart::Data(this.buf.split().freeze()))?;
+            .start_send(Frame::data(this.buf.split().freeze()))?;
 
         Poll::Ready(Ok(()))
     }
@@ -217,7 +220,7 @@ impl Sink<Bytes> for ResponseWriter {
     }
 
     fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
-        self.start_send_inner(BodyPart::Data(item))
+        self.start_send_inner(Frame::data(item))
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

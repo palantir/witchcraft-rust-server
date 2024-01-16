@@ -15,8 +15,8 @@
 use crate::service::handler::BodyWriteAborted;
 use crate::service::{Layer, Service};
 use futures_util::FutureExt;
-use http::{HeaderMap, Response, StatusCode};
-use http_body::{Body, SizeHint};
+use http::{Response, StatusCode};
+use http_body::{Body, Frame, SizeHint};
 use pin_project::pin_project;
 use std::panic::{self, AssertUnwindSafe};
 use std::pin::Pin;
@@ -77,14 +77,14 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let mut this = self.project();
 
         match this.inner.as_mut().as_pin_mut() {
-            Some(inner) => match panic::catch_unwind(AssertUnwindSafe(|| inner.poll_data(cx))) {
+            Some(inner) => match panic::catch_unwind(AssertUnwindSafe(|| inner.poll_frame(cx))) {
                 Ok(poll) => poll,
                 Err(_) => {
                     this.inner.set(None);
@@ -92,26 +92,6 @@ where
                 }
             },
             None => Poll::Ready(None),
-        }
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        let mut this = self.project();
-
-        match this.inner.as_mut().as_pin_mut() {
-            Some(inner) => {
-                match panic::catch_unwind(AssertUnwindSafe(|| inner.poll_trailers(cx))) {
-                    Ok(poll) => poll,
-                    Err(_) => {
-                        this.inner.set(None);
-                        Poll::Ready(Err(BodyWriteAborted))
-                    }
-                }
-            }
-            None => Poll::Ready(Ok(None)),
         }
     }
 
@@ -132,6 +112,7 @@ mod test {
     use crate::service::test_util::service_fn;
     use bytes::Bytes;
     use futures::future;
+    use http_body_util::BodyExt;
 
     #[tokio::test]
     async fn service_panic() {
@@ -164,18 +145,11 @@ mod test {
 
             type Error = BodyWriteAborted;
 
-            fn poll_data(
+            fn poll_frame(
                 self: Pin<&mut Self>,
                 _: &mut Context<'_>,
-            ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+            ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
                 panic!()
-            }
-
-            fn poll_trailers(
-                self: Pin<&mut Self>,
-                _: &mut Context<'_>,
-            ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-                unimplemented!()
             }
         }
 
@@ -184,7 +158,7 @@ mod test {
         let response = service.call(()).await;
         assert_eq!(response.status(), StatusCode::OK);
         assert!(matches!(
-            response.into_body().data().await,
+            response.into_body().frame().await,
             Some(Err(BodyWriteAborted))
         ));
     }

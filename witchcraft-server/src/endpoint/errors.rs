@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,6 +60,6 @@ where
         }
     };
 
-    response.extensions_mut().insert(error);
+    response.extensions_mut().insert(Arc::new(error));
     response
 }

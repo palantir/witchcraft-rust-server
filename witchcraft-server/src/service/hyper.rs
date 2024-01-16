@@ -16,7 +16,12 @@ use conjure_error::Error;
 use futures_util::future::BoxFuture;
 use http::{Request, Response};
 use http_body::Body;
-use hyper::server::conn::{Connection, Http};
+use hyper::body::Incoming;
+use hyper::rt::bounds::Http2ServerConnExec;
+use hyper::rt::{Read, Write};
+use hyper::server::conn::{http1, http2};
+use hyper::service::HttpService;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use pin_project::pin_project;
 use std::convert::Infallible;
 use std::error;
@@ -58,7 +63,7 @@ impl<S> HyperService<S> {
 impl<S, R, L, B> ShutdownService<NewConnection<TlsStream<R>, L>> for HyperService<S>
 where
     L: Layer<Arc<S>>,
-    L::Service: Service<Request<hyper::Body>, Response = Response<B>> + 'static + Sync + Send,
+    L::Service: Service<Request<Incoming>, Response = Response<B>> + 'static + Sync + Send,
     R: AsyncRead + AsyncWrite + Unpin + 'static + Send,
     B: Body + 'static + Send,
     B::Data: Send,
@@ -70,60 +75,66 @@ where
         &self,
         req: NewConnection<TlsStream<R>, L>,
     ) -> impl Future<Output = Self::Response> + GracefulShutdown + Send {
-        let mut http = Http::new();
-
         if req.stream.get_ref().1.alpn_protocol() == Some(b"h2") {
-            http.http2_only(true);
-        } else {
-            http.http1_only(true).http1_half_close(false);
-        }
-
-        HyperFuture {
-            inner: http.serve_connection(
-                req.stream,
+            HyperFuture::Http2(http2::Builder::new(TokioExecutor::new()).serve_connection(
+                TokioIo::new(req.stream),
                 AdaptorService {
                     inner: Arc::new(req.service_builder.service(self.request_service.clone())),
                 },
-            ),
+            ))
+        } else {
+            HyperFuture::Http1(http1::Builder::new().serve_connection(
+                TokioIo::new(req.stream),
+                AdaptorService {
+                    inner: Arc::new(req.service_builder.service(self.request_service.clone())),
+                },
+            ))
         }
     }
 }
 
-#[pin_project]
-pub struct HyperFuture<S, R, B>
+#[pin_project(project = HyperFutureProj)]
+pub enum HyperFuture<T, S, E>
 where
-    S: Service<Request<hyper::Body>, Response = Response<B>> + 'static + Sync + Send,
-    B: Body,
+    S: HttpService<Incoming>,
 {
-    #[pin]
-    inner: Connection<R, AdaptorService<S>>,
+    Http1(#[pin] http1::Connection<T, S>),
+    Http2(#[pin] http2::Connection<T, S, E>),
 }
 
-impl<S, R, B> Future for HyperFuture<S, R, B>
+impl<T, S, E, B> Future for HyperFuture<T, S, E>
 where
-    S: Service<Request<hyper::Body>, Response = Response<B>> + Sync + Send,
-    R: AsyncRead + AsyncWrite + Unpin + 'static,
-    B: Body + 'static + Send,
-    B::Data: Send,
+    S: HttpService<Incoming, ResBody = B>,
+    S::Error: Into<Box<dyn error::Error + Sync + Send>>,
+    T: Read + Write + Unpin + 'static,
+    B: Body + 'static,
     B::Error: Into<Box<dyn error::Error + Sync + Send>>,
+    E: Http2ServerConnExec<S::Future, B>,
 {
     type Output = Result<(), Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().inner.poll(cx).map_err(Error::internal_safe)
+        match self.project() {
+            HyperFutureProj::Http1(s) => s.poll(cx).map_err(Error::internal_safe),
+            HyperFutureProj::Http2(s) => s.poll(cx).map_err(Error::internal_safe),
+        }
     }
 }
 
-impl<S, R, B> GracefulShutdown for HyperFuture<S, R, B>
+impl<T, S, E, B> GracefulShutdown for HyperFuture<T, S, E>
 where
-    S: Service<Request<hyper::Body>, Response = Response<B>> + Sync + Send,
-    R: AsyncRead + AsyncWrite + Unpin + 'static,
-    B: Body + 'static + Send,
-    B::Data: Send,
+    S: HttpService<Incoming, ResBody = B>,
+    S::Error: Into<Box<dyn error::Error + Sync + Send>>,
+    T: Read + Write + Unpin + 'static,
+    B: Body + 'static,
     B::Error: Into<Box<dyn error::Error + Sync + Send>>,
+    E: Http2ServerConnExec<S::Future, B>,
 {
     fn graceful_shutdown(self: Pin<&mut Self>) {
-        self.project().inner.graceful_shutdown()
+        match self.project() {
+            HyperFutureProj::Http1(s) => s.graceful_shutdown(),
+            HyperFutureProj::Http2(s) => s.graceful_shutdown(),
+        }
     }
 }
 
@@ -142,11 +153,7 @@ where
 
     type Future = BoxFuture<'static, Result<S::Response, Infallible>>;
 
-    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: R) -> Self::Future {
+    fn call(&self, req: R) -> Self::Future {
         Box::pin({
             let inner = self.inner.clone();
             async move { Ok(inner.call(req).await) }

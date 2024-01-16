@@ -7,3 +7,4 @@ logging:
   loggers:
     # we don't want warnings during minidump processing to break the thread dump test
     minidump_processor: error
+    minidump: error

@@ -14,8 +14,8 @@
 use crate::service::hyper::{GracefulShutdown, NewConnection};
 use crate::service::{Layer, Service, Stack};
 use futures_util::ready;
-use http::{HeaderMap, Response};
-use http_body::Body;
+use http::Response;
+use http_body::{Body, Frame};
 use parking_lot::Mutex;
 use pin_project::pin_project;
 use std::future::Future;
@@ -210,18 +210,11 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        self.project().inner.poll_data(cx)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        self.project().inner.poll_trailers(cx)
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        self.project().inner.poll_frame(cx)
     }
 
     fn is_end_stream(&self) -> bool {

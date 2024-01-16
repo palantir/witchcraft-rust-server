@@ -27,9 +27,10 @@ use conjure_error::Error;
 use conjure_http::server::{self, Endpoint, EndpointMetadata, PathSegment, WriteBody};
 use futures_channel::{mpsc, oneshot};
 use futures_util::Stream;
-use http::{Extensions, HeaderMap, Method, Request, Response, StatusCode};
-use http_body::combinators::BoxBody;
-use http_body::{Body, SizeHint};
+use http::{Extensions, Method, Request, Response, StatusCode};
+use http_body::{Body, Frame, SizeHint};
+use http_body_util::combinators::BoxBody;
+use http_body_util::BodyExt;
 use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -166,13 +167,12 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
 
 struct ResponseBody {
     state: State,
-    trailers: Option<HeaderMap>,
     _guard: CancellationGuard,
 }
 
 enum State {
     Empty,
-    Fixed(Bytes),
+    Fixed(Frame<Bytes>),
     Streaming {
         context_sender: Option<oneshot::Sender<Option<TraceContext>>>,
         receiver: mpsc::Receiver<BodyPart>,
@@ -187,7 +187,7 @@ impl ResponseBody {
     ) -> (Self, Option<StreamingWriter>) {
         let (state, writer) = match body {
             server::ResponseBody::Empty => (State::Empty, None),
-            server::ResponseBody::Fixed(bytes) => (State::Fixed(bytes), None),
+            server::ResponseBody::Fixed(bytes) => (State::Fixed(Frame::data(bytes)), None),
             server::ResponseBody::Streaming(writer) => {
                 let (context_sender, context_receiver) = oneshot::channel();
                 let (sender, receiver) = mpsc::channel(1);
@@ -209,7 +209,6 @@ impl ResponseBody {
         (
             ResponseBody {
                 state,
-                trailers: None,
                 _guard: guard,
             },
             writer,
@@ -222,10 +221,10 @@ impl Body for ResponseBody {
 
     type Error = BodyWriteAborted;
 
-    fn poll_data(
+    fn poll_frame(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         match mem::replace(&mut self.state, State::Empty) {
             State::Empty => Poll::Ready(None),
             State::Fixed(bytes) => Poll::Ready(Some(Ok(bytes))),
@@ -237,25 +236,18 @@ impl Body for ResponseBody {
                     let _ = context_sender.send(zipkin::current());
                 }
 
-                let poll = loop {
-                    match Pin::new(&mut receiver).poll_next(cx) {
-                        Poll::Pending => break Poll::Pending,
-                        Poll::Ready(Some(BodyPart::Data(bytes))) => {
-                            break Poll::Ready(Some(Ok(bytes)));
-                        }
-                        Poll::Ready(Some(BodyPart::Trailers(trailers))) => {
-                            self.trailers = Some(trailers);
-                        }
-                        Poll::Ready(Some(BodyPart::Done)) => break Poll::Ready(None),
-                        Poll::Ready(None) => break Poll::Ready(Some(Err(BodyWriteAborted))),
-                    }
+                let poll = match Pin::new(&mut receiver).poll_next(cx) {
+                    Poll::Pending => Poll::Pending,
+                    Poll::Ready(Some(BodyPart::Frame(frame))) => Poll::Ready(Some(Ok(frame))),
+                    Poll::Ready(Some(BodyPart::Done)) => Poll::Ready(None),
+                    Poll::Ready(None) => Poll::Ready(Some(Err(BodyWriteAborted))),
                 };
 
                 if !matches!(poll, Poll::Ready(None)) {
                     self.state = State::Streaming {
                         context_sender,
                         receiver,
-                    };
+                    }
                 }
 
                 poll
@@ -263,21 +255,17 @@ impl Body for ResponseBody {
         }
     }
 
-    fn poll_trailers(
-        mut self: Pin<&mut Self>,
-        _: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(self.trailers.take()))
-    }
-
     fn is_end_stream(&self) -> bool {
-        matches!(self.state, State::Empty) && self.trailers.is_none()
+        matches!(self.state, State::Empty)
     }
 
     fn size_hint(&self) -> SizeHint {
         match &self.state {
             State::Empty => SizeHint::with_exact(0),
-            State::Fixed(bytes) => SizeHint::with_exact(bytes.len() as u64),
+            State::Fixed(frame) => match frame.data_ref() {
+                Some(data) => SizeHint::with_exact(data.len() as u64),
+                None => SizeHint::with_exact(0),
+            },
             State::Streaming { .. } => SizeHint::new(),
         }
     }

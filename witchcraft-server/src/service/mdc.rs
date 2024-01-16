@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::{Layer, Service};
-use http::{HeaderMap, Response};
-use http_body::Body;
+use http::Response;
+use http_body::{Body, Frame};
 use pin_project::{pin_project, pinned_drop};
 use std::future::Future;
 use std::pin::Pin;
@@ -106,22 +106,13 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
         let _guard = with(this.snapshot);
-        this.inner.poll_data(cx)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        let this = self.project();
-        let _guard = with(this.snapshot);
-        this.inner.poll_trailers(cx)
+        this.inner.poll_frame(cx)
     }
 
     fn is_end_stream(&self) -> bool {
@@ -153,6 +144,7 @@ mod test {
     use super::*;
     use crate::service::test_util::service_fn;
     use bytes::Bytes;
+    use http_body_util::BodyExt;
 
     #[tokio::test]
     async fn basic() {
@@ -163,10 +155,10 @@ mod test {
 
             type Error = ();
 
-            fn poll_data(
+            fn poll_frame(
                 mut self: Pin<&mut Self>,
                 cx: &mut Context<'_>,
-            ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+            ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
                 if !self.0 {
                     self.0 = true;
                     mdc::insert_safe("c", "c");
@@ -178,17 +170,11 @@ mod test {
                     expected.insert("b", "b");
                     expected.insert("c", "c");
                     assert_eq!(mdc::snapshot().safe(), &expected);
-                    Poll::Ready(Some(Ok(Bytes::from("hi"))))
+                    Poll::Ready(Some(Ok(Frame::data(Bytes::from("hi")))))
                 }
             }
-
-            fn poll_trailers(
-                self: Pin<&mut Self>,
-                _: &mut Context<'_>,
-            ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-                unimplemented!()
-            }
         }
+
         let service = MdcLayer.layer(service_fn(|()| {
             mdc::insert_safe("a", "a");
             async {
@@ -198,7 +184,15 @@ mod test {
         }));
 
         mdc::insert_safe("external", "external");
-        let msg = service.call(()).await.data().await.unwrap().unwrap();
+        let msg = service
+            .call(())
+            .await
+            .frame()
+            .await
+            .unwrap()
+            .unwrap()
+            .into_data()
+            .unwrap();
         assert_eq!(msg, "hi");
 
         let mut expected = mdc::Map::new();

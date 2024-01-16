@@ -20,8 +20,8 @@ use conjure_error::Error;
 use futures_channel::oneshot;
 use futures_sink::Sink;
 use futures_util::SinkExt;
-use http::{HeaderMap, Response, StatusCode};
-use http_body::{Body, SizeHint};
+use http::{Response, StatusCode};
+use http_body::{Body, Frame, SizeHint};
 use pin_project::pin_project;
 use std::error;
 use std::pin::Pin;
@@ -127,27 +127,15 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
 
         match this.inner.as_pin_mut() {
-            Some(inner) => inner.poll_data(cx),
+            Some(inner) => inner.poll_frame(cx),
             None => Poll::Ready(None),
-        }
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        let this = self.project();
-
-        match this.inner.as_pin_mut() {
-            Some(inner) => inner.poll_trailers(cx),
-            None => Poll::Ready(Ok(None)),
         }
     }
 

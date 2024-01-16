@@ -18,7 +18,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use conjure_error::{Error, PermissionDenied};
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, EndpointMetadata, PathSegment,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, ConjureRuntime, EndpointMetadata, PathSegment,
 };
 use conjure_serde::json;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
@@ -65,7 +65,10 @@ impl StatusEndpoints {
 }
 
 impl AsyncService<RequestBody, ResponseWriter> for StatusEndpoints {
-    fn endpoints(&self) -> Vec<Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>> {
+    fn endpoints(
+        &self,
+        _: &Arc<ConjureRuntime>,
+    ) -> Vec<Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>> {
         vec![
             Box::new(LivenessEndpoint),
             Box::new(HealthEndpoint {

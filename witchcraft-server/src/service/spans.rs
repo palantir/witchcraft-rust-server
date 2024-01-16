@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::{Layer, Service};
-use http::{HeaderMap, Request, Response};
-use http_body::Body;
+use http::{Request, Response};
+use http_body::{Body, Frame};
 use pin_project::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -110,10 +110,10 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
 
         let span = match this.span.as_mut() {
@@ -124,19 +124,12 @@ where
 
         let _guard = zipkin::set_current(span.context());
 
-        let poll = this.inner.poll_data(cx);
+        let poll = this.inner.poll_frame(cx);
         if matches!(poll, Poll::Ready(None | Some(Err(_)))) {
             *this.span = None;
         }
 
         poll
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        self.project().inner.poll_trailers(cx)
     }
 
     fn is_end_stream(&self) -> bool {
@@ -150,6 +143,9 @@ where
 
 #[cfg(test)]
 mod test {
+    use bytes::Bytes;
+    use http_body_util::{BodyExt, Full};
+
     use super::*;
     use crate::service::test_util::{self, service_fn};
 
@@ -158,13 +154,15 @@ mod test {
         test_util::setup_tracer();
 
         let service = SpansLayer.layer(service_fn(|_| async {
-            Response::new(hyper::Body::from("foo"))
+            Response::new(Full::new(Bytes::from("foo")))
         }));
 
         zipkin::new_trace()
             .detach()
             .bind(async {
-                service.call(Request::new(hyper::Body::from("bar"))).await;
+                service
+                    .call(Request::new(Full::new(Bytes::from("bar"))))
+                    .await;
             })
             .await;
 
@@ -180,10 +178,10 @@ mod test {
         test_util::setup_tracer();
 
         let service = SpansLayer.layer(service_fn(
-            |req: Request<SpannedBody<hyper::Body>>| async move {
+            |req: Request<SpannedBody<Full<Bytes>>>| async move {
                 let mut body = req.into_body();
-                while body.data().await.is_some() {}
-                Response::new(hyper::Body::from("response"))
+                while body.frame().await.is_some() {}
+                Response::new(Full::new(Bytes::from("response")))
             },
         ));
 
@@ -191,11 +189,11 @@ mod test {
             .detach()
             .bind(async {
                 let response = service
-                    .call(Request::new(hyper::Body::from("request")))
+                    .call(Request::new(Full::new(Bytes::from("request"))))
                     .await;
 
                 let mut body = response.into_body();
-                while body.data().await.is_some() {}
+                while body.frame().await.is_some() {}
             })
             .await;
 

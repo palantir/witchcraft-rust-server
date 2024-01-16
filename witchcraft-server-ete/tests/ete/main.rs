@@ -14,8 +14,9 @@
 use bytes::Bytes;
 use conjure_object::Any;
 use http::{HeaderMap, HeaderValue};
-use hyper::body::HttpBody;
-use hyper::{body, Body, Request, StatusCode};
+use http_body_util::{BodyExt, Empty, Full};
+use hyper::body::{Body, Frame};
+use hyper::{Request, StatusCode};
 use server::Server;
 use std::pin::Pin;
 use std::str;
@@ -33,7 +34,7 @@ async fn safe_params() {
                   expected%20safe%20query&unsafeQueryId=expected%20unsafe%20query")
             .header("Safe-Header", "expected safe header")
             .header("Unsafe-Header", "expected unsafe header")
-            .body(Body::empty()).unwrap();
+            .body(Empty::<Bytes>::new()).unwrap();
         let response = server.client().await.unwrap().send_request(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
 
@@ -71,7 +72,7 @@ async fn keep_alive_slow_headers() {
         // 1.5 second delay before headers shouldn't count towards idle time.
         let request = Request::builder()
             .uri("/witchcraft-ete/api/test/slowHeaders?delayMillis=1500")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         let response = client.send_request(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
@@ -81,7 +82,7 @@ async fn keep_alive_slow_headers() {
 
         let request = Request::builder()
             .uri("/witchcraft-ete/api/test/slowHeaders?delayMillis=0")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         let response = client.send_request(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
@@ -91,7 +92,7 @@ async fn keep_alive_slow_headers() {
 
         let request = Request::builder()
             .uri("/witchcraft-ete/api/test/slowHeaders?delayMillis=0")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         client.send_request(request).await.err().unwrap();
 
@@ -110,7 +111,7 @@ async fn keep_alive_slow_body() {
         // 1.5 second delay writing body shouldn't count towards idle time
         let request = Request::builder()
             .uri("/witchcraft-ete/api/test/slowBody?delayMillis=1500")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
 
         let start = Instant::now();
@@ -119,15 +120,15 @@ async fn keep_alive_slow_body() {
         assert!(start.elapsed() < Duration::from_millis(250));
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = body::to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(&*body, &[0, 0]);
+        let body = response.into_body().collect().await.unwrap();
+        assert_eq!(&*body.to_bytes(), &[0, 0]);
 
         // should only be at 1 second idle, not 2.5 seconds
         time::sleep(Duration::from_secs(1)).await;
 
         let request = Request::builder()
             .uri("/witchcraft-ete/api/test/slowHeaders?delayMillis=0")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         let response = client.send_request(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
@@ -137,7 +138,7 @@ async fn keep_alive_slow_body() {
 
         let request = Request::builder()
             .uri("/witchcraft-ete/api/test/slowHeaders?delayMillis=0")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         client.send_request(request).await.err().unwrap();
 
@@ -152,7 +153,7 @@ async fn graceful_shutdown() {
     Server::with(|mut server| async move {
         let request = Request::builder()
             .uri("/witchcraft-ete/api/test/slowBody?delayMillis=1500")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
             .client()
@@ -164,12 +165,12 @@ async fn graceful_shutdown() {
         assert_eq!(response.status(), StatusCode::OK);
 
         let mut body = response.into_body();
-        let chunk = body.data().await.unwrap().unwrap();
+        let chunk = body.frame().await.unwrap().unwrap().into_data().unwrap();
         assert_eq!(&chunk[..], &[0]);
 
         server.start_shutdown();
 
-        body.data().await.unwrap().unwrap();
+        body.frame().await.unwrap().unwrap().into_data().unwrap();
         assert_eq!(&chunk[..], &[0]);
 
         let logs = server.finish_shutdown().await;
@@ -184,7 +185,7 @@ async fn diagnostic_types_diagnostic() {
         let request = Request::builder()
             .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
             .header("Authorization", "Bearer debug")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
             .client()
@@ -201,7 +202,7 @@ async fn diagnostic_types_diagnostic() {
             "application/json"
         );
 
-        let body = body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         let body = str::from_utf8(&body).unwrap();
         assert!(body.contains("\"diagnostic.types.v1\""));
 
@@ -222,7 +223,7 @@ async fn thread_dump_diagnostic() {
         let request = Request::builder()
             .uri("/witchcraft-ete/debug/diagnostic/rust.thread.dump.v1")
             .header("Authorization", "Bearer debug")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
             .client()
@@ -239,7 +240,7 @@ async fn thread_dump_diagnostic() {
             "text/plain"
         );
 
-        let body = body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         let body = str::from_utf8(&body).unwrap();
         // We know there should be one thread in the thread dump diagnostic code, so this is an
         // easy way to infer if we were able to symbolicate the stack traces.
@@ -256,7 +257,7 @@ async fn audit_logs() {
         let request = Request::builder()
             .method("GET")
             .uri("/witchcraft-ete/api/audit")
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
             .client()
@@ -283,9 +284,9 @@ async fn trailers() {
                 .method("POST")
                 .uri("/witchcraft-ete/api/test/trailers")
                 .header("Content-Type", "application/octet-stream")
-                .body(TrailersBody { sent_body: false })
+                .body(TrailersBody { state: 0 })
                 .unwrap();
-            let mut response = server
+            let response = server
                 .client()
                 .await
                 .unwrap()
@@ -294,14 +295,15 @@ async fn trailers() {
                 .unwrap();
             assert_eq!(response.status(), StatusCode::OK);
 
-            let bytes = body::to_bytes(&mut response).await.unwrap();
-            assert_eq!(bytes, "expected response body");
+            let body = response.collect().await.unwrap();
 
-            let trailers = response.trailers().await.unwrap().unwrap();
+            let trailers = body.trailers().unwrap();
             assert_eq!(
                 trailers.get("Response-Trailer").unwrap(),
                 "expected response trailer value",
             );
+
+            assert_eq!(body.to_bytes(), "expected response body");
 
             server.shutdown().await;
         })
@@ -309,36 +311,31 @@ async fn trailers() {
 }
 
 struct TrailersBody {
-    sent_body: bool,
+    state: u8,
 }
 
-impl HttpBody for TrailersBody {
+impl Body for TrailersBody {
     type Data = Bytes;
 
     type Error = String;
 
-    fn poll_data(
+    fn poll_frame(
         mut self: Pin<&mut Self>,
         _: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        if self.sent_body {
-            Poll::Ready(None)
-        } else {
-            self.sent_body = true;
-            Poll::Ready(Some(Ok(Bytes::from("expected request body"))))
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        self.state += 1;
+        match self.state {
+            1 => Poll::Ready(Some(Ok(Frame::data(Bytes::from("expected request body"))))),
+            2 => {
+                let mut trailers = HeaderMap::new();
+                trailers.insert(
+                    "Request-Trailer",
+                    HeaderValue::from_static("expected request trailer value"),
+                );
+                Poll::Ready(Some(Ok(Frame::trailers(trailers))))
+            }
+            _ => Poll::Ready(None),
         }
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        _: &mut Context<'_>,
-    ) -> Poll<Result<Option<http::HeaderMap>, Self::Error>> {
-        let mut trailers = HeaderMap::new();
-        trailers.insert(
-            "Request-Trailer",
-            HeaderValue::from_static("expected request trailer value"),
-        );
-        Poll::Ready(Ok(Some(trailers)))
     }
 }
 
@@ -349,7 +346,7 @@ async fn io_after_eof() {
             .method("POST")
             .uri("/witchcraft-ete/api/test/ioAfterEof")
             .header("Content-Type", "application/octet-stream")
-            .body(Body::from("hello world"))
+            .body(Full::new(Bytes::from("hello world")))
             .unwrap();
         let response = server
             .client()
@@ -374,7 +371,7 @@ async fn management_port() {
             let request = Request::builder()
                 .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
                 .header("Authorization", "Bearer debug")
-                .body(Body::empty())
+                .body(Empty::<Bytes>::new())
                 .unwrap();
             let response = server
                 .management_client()
@@ -389,7 +386,7 @@ async fn management_port() {
             let request = Request::builder()
                 .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
                 .header("Authorization", "Bearer debug")
-                .body(Body::empty())
+                .body(Empty::<Bytes>::new())
                 .unwrap();
             let response = server
                 .client()
@@ -403,7 +400,7 @@ async fn management_port() {
 
             let request = Request::builder()
                 .uri("/witchcraft-ete/status/liveness")
-                .body(Body::empty())
+                .body(Empty::<Bytes>::new())
                 .unwrap();
             let response = server
                 .management_client()
@@ -417,7 +414,7 @@ async fn management_port() {
 
             let request = Request::builder()
                 .uri("/witchcraft-ete/status/liveness")
-                .body(Body::empty())
+                .body(Empty::<Bytes>::new())
                 .unwrap();
             let response = server
                 .client()

@@ -16,7 +16,7 @@ async-trait = "0.1"
 conjure-error = "3"
 conjure-http = "3"
 conjure-object = "3"
-http = "0.2"
+http = "1"
 refreshable = "1"
 tokio = "1"
 
@@ -25,7 +25,9 @@ witchcraft-server = { path = "../witchcraft-server" }
 [dev-dependencies]
 bytes = "1"
 conjure-serde = "3"
-hyper = "0.14"
+http-body-util = "0.1"
+hyper = "1"
+hyper-util = { version = "0.1", features = ["tokio"] }
 libc = "0.2"
 openssl = "0.10"
 tempfile = "3"

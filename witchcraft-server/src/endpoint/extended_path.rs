@@ -20,7 +20,7 @@ use bytes::Bytes;
 use conjure_http::server::{EndpointMetadata, PathSegment};
 use futures_util::future::BoxFuture;
 use http::{Method, Request, Response};
-use http_body::combinators::BoxBody;
+use http_body_util::combinators::BoxBody;
 use std::borrow::Cow;
 use std::sync::Arc;
 
