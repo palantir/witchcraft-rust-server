@@ -285,7 +285,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use conjure_error::Error;
-use conjure_http::server::AsyncService;
+use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
@@ -481,6 +481,7 @@ where
         thread_pool: None,
         endpoints: vec![],
         shutdown_hooks: ShutdownHooks::new(),
+        conjure_runtime: Arc::new(ConjureRuntime::new()),
     };
 
     let status_endpoints = StatusEndpoints::new(
@@ -488,7 +489,11 @@ where
         &witchcraft.health_checks,
         &witchcraft.readiness_checks,
     );
-    witchcraft.endpoints(None, status_endpoints.endpoints(), false);
+    witchcraft.endpoints(
+        None,
+        status_endpoints.endpoints(&witchcraft.conjure_runtime),
+        false,
+    );
 
     let debug_endpoints = DebugEndpoints::new(&runtime_config, diagnostics);
     witchcraft.app(debug_endpoints);

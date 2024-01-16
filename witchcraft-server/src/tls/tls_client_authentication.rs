@@ -15,8 +15,8 @@ use crate::tls::ClientCertificate;
 use async_trait::async_trait;
 use conjure_error::{Error, PermissionDenied};
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, Endpoint, EndpointMetadata, PathSegment,
-    ResponseBody, Service,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, ConjureRuntime, Endpoint, EndpointMetadata,
+    PathSegment, ResponseBody, Service,
 };
 use http::{Extensions, Method, Request, Response};
 use refreshable::Refreshable;
@@ -53,9 +53,12 @@ where
     I: 'static,
     O: 'static,
 {
-    fn endpoints(&self) -> Vec<Box<dyn Endpoint<I, O> + Sync + Send>> {
+    fn endpoints(
+        &self,
+        runtime: &Arc<ConjureRuntime>,
+    ) -> Vec<Box<dyn Endpoint<I, O> + Sync + Send>> {
         self.inner
-            .endpoints()
+            .endpoints(runtime)
             .into_iter()
             .map(|inner| {
                 Box::new(TlsClientAuthenticationEndpoint {
@@ -73,9 +76,12 @@ where
     I: 'static + Send,
     O: 'static,
 {
-    fn endpoints(&self) -> Vec<Box<dyn AsyncEndpoint<I, O> + Sync + Send>> {
+    fn endpoints(
+        &self,
+        runtime: &Arc<ConjureRuntime>,
+    ) -> Vec<Box<dyn AsyncEndpoint<I, O> + Sync + Send>> {
         self.inner
-            .endpoints()
+            .endpoints(runtime)
             .into_iter()
             .map(|inner| {
                 Box::new(TlsClientAuthenticationEndpoint {

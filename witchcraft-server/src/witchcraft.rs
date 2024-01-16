@@ -21,7 +21,7 @@ use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::{blocking, RequestBody, ResponseWriter};
-use conjure_http::server::{AsyncEndpoint, AsyncService, Endpoint, Service};
+use conjure_http::server::{AsyncEndpoint, AsyncService, ConjureRuntime, Endpoint, Service};
 use conjure_runtime::ClientFactory;
 use futures_util::Future;
 use std::sync::Arc;
@@ -41,6 +41,7 @@ pub struct Witchcraft {
     pub(crate) thread_pool: Option<Arc<ThreadPool>>,
     pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
     pub(crate) shutdown_hooks: ShutdownHooks,
+    pub(crate) conjure_runtime: Arc<ConjureRuntime>,
 }
 
 impl Witchcraft {
@@ -85,7 +86,7 @@ impl Witchcraft {
     where
         T: AsyncService<RequestBody, ResponseWriter>,
     {
-        self.endpoints(None, service.endpoints(), true)
+        self.endpoints(None, service.endpoints(&self.conjure_runtime), true)
     }
 
     /// Installs an async service under the server's `/api` prefix.
@@ -93,7 +94,7 @@ impl Witchcraft {
     where
         T: AsyncService<RequestBody, ResponseWriter>,
     {
-        self.endpoints(Some("/api"), service.endpoints(), true)
+        self.endpoints(Some("/api"), service.endpoints(&self.conjure_runtime), true)
     }
 
     pub(crate) fn endpoints(
@@ -121,7 +122,7 @@ impl Witchcraft {
     where
         T: Service<blocking::RequestBody, blocking::ResponseWriter>,
     {
-        self.blocking_endpoints(None, service.endpoints())
+        self.blocking_endpoints(None, service.endpoints(&self.conjure_runtime))
     }
 
     /// Installs a blocking service under the server's `/api` prefix.
@@ -129,7 +130,7 @@ impl Witchcraft {
     where
         T: Service<blocking::RequestBody, blocking::ResponseWriter>,
     {
-        self.blocking_endpoints(Some("/api"), service.endpoints())
+        self.blocking_endpoints(Some("/api"), service.endpoints(&self.conjure_runtime))
     }
 
     fn blocking_endpoints(

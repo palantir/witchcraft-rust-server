@@ -12,10 +12,10 @@ members = [
 ]
 
 [patch.crates-io]
-conjure-codegen = { git = "https://github.com/palantir/conjure-rust", branch = "dependabot/cargo/http-1.0.0" }
-conjure-error = { git = "https://github.com/palantir/conjure-rust", branch = "dependabot/cargo/http-1.0.0" }
-conjure-http = { git = "https://github.com/palantir/conjure-rust", branch = "dependabot/cargo/http-1.0.0" }
-conjure-object = { git = "https://github.com/palantir/conjure-rust", branch = "dependabot/cargo/http-1.0.0" }
-conjure-serde = { git = "https://github.com/palantir/conjure-rust", branch = "dependabot/cargo/http-1.0.0" }
+conjure-codegen = { git = "https://github.com/palantir/conjure-rust" }
+conjure-error = { git = "https://github.com/palantir/conjure-rust" }
+conjure-http = { git = "https://github.com/palantir/conjure-rust" }
+conjure-object = { git = "https://github.com/palantir/conjure-rust" }
+conjure-serde = { git = "https://github.com/palantir/conjure-rust" }
 conjure-runtime = { git = "https://github.com/palantir/conjure-rust-runtime", branch = "upgrades" }
 conjure-runtime-config = { git = "https://github.com/palantir/conjure-rust-runtime", branch = "upgrades" }

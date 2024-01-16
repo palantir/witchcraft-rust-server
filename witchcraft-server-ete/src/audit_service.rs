@@ -15,19 +15,20 @@
 use async_trait::async_trait;
 use conjure_error::Error;
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, Endpoint, EndpointMetadata, PathSegment,
-    ResponseBody, Service,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, ConjureRuntime, Endpoint, EndpointMetadata,
+    PathSegment, ResponseBody, Service,
 };
 use conjure_object::{Utc, Uuid};
 use http::{Extensions, Method, Request, Response};
 use std::borrow::Cow;
+use std::sync::Arc;
 use witchcraft_server::audit::{AuditLogV3, AuditProducer, AuditResult};
 use witchcraft_server::extensions::AuditLogEntry;
 
 pub struct AuditService;
 
 impl<I, O> Service<I, O> for AuditService {
-    fn endpoints(&self) -> Vec<Box<dyn Endpoint<I, O> + Sync + Send>> {
+    fn endpoints(&self, _: &Arc<ConjureRuntime>) -> Vec<Box<dyn Endpoint<I, O> + Sync + Send>> {
         vec![Box::new(AuditEndpoint)]
     }
 }
@@ -36,7 +37,10 @@ impl<I, O> AsyncService<I, O> for AuditService
 where
     I: 'static + Send,
 {
-    fn endpoints(&self) -> Vec<Box<dyn AsyncEndpoint<I, O> + Sync + Send>> {
+    fn endpoints(
+        &self,
+        _: &Arc<ConjureRuntime>,
+    ) -> Vec<Box<dyn AsyncEndpoint<I, O> + Sync + Send>> {
         vec![Box::new(AuditEndpoint)]
     }
 }
