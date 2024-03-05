@@ -47,7 +47,7 @@ futures = { version = "0.3.28", features = ["executor"] }
 futures-channel = "0.3"
 futures-sink = "0.3"
 futures-util = "0.3"
-http = "0.2"
+http = "1.1"
 http-body = "0.4"
 http-zipkin = "0.3"
 hyper = { version = "0.14", features = ["http1", "http2", "server"] }
