@@ -1,0 +1,6 @@
+type: feature
+feature:
+  description: Added HealthCheckRegistry::register_if_absent and downcast support
+    to HealthCheck.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/176
