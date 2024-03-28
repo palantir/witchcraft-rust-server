@@ -47,6 +47,7 @@ impl TimestampedResult {
 }
 
 struct InstalledCheck {
+    check: Arc<dyn HealthCheck + Sync + Send>,
     result: Arc<ArcSwap<TimestampedResult>>,
     handle: JoinHandle<()>,
 }
@@ -73,36 +74,63 @@ impl HealthCheckRegistry {
 
     /// Registers a new health check.
     ///
+    /// If a check already exists with the same type, it will be replaced.
+    ///
     /// # Panics
     ///
-    /// Panics if the check's type is not `SCREAMING_SNAKE_CASE` or if a check with the same type is already registered.
+    /// Panics if the check's type is not `SCREAMING_SNAKE_CASE`.
     pub fn register<T>(&self, check: T)
     where
         T: HealthCheck + 'static + Sync + Send,
     {
-        self.register_inner(Box::new(check))
+        let type_ = check.type_();
+        self.check_type(type_);
+
+        self.checks.lock().insert(
+            CheckType(type_.to_string()),
+            self.make_check(Arc::new(check)),
+        );
     }
 
-    fn register_inner(&self, check: Box<dyn HealthCheck + Sync + Send>) {
+    /// Registers a new check if one does not already exist with the same type.
+    ///
+    /// The registered check will be returned.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the check's type is not `SCREAMING_SNAKE_CASE`.
+    pub fn register_if_absent<T>(&self, check: T) -> Arc<dyn HealthCheck + Sync + Send>
+    where
+        T: HealthCheck + 'static + Sync + Send,
+    {
         let type_ = check.type_();
-
-        assert!(
-            TYPE_PATTERN.is_match(type_),
-            "{type_} must `SCREAMING_SNAKE_CASE`",
-        );
+        self.check_type(type_);
 
         match self.checks.lock().entry(CheckType(type_.to_string())) {
-            Entry::Occupied(_) => panic!("a check has already been registered for type {type_}"),
-            Entry::Vacant(e) => {
-                let _guard = self.handle.enter();
+            Entry::Occupied(e) => e.get().check.clone(),
+            Entry::Vacant(e) => e.insert(self.make_check(Arc::new(check))).check.clone(),
+        }
+    }
 
-                let result = Arc::new(ArcSwap::new(Arc::new(TimestampedResult::new(
-                    computing_for_the_first_time(),
-                ))));
-                let handle = task::spawn(run_check(check, result.clone()));
+    fn check_type(&self, type_: &str) {
+        assert!(
+            TYPE_PATTERN.is_match(type_),
+            "{type_} must be `SCREAMING_SNAKE_CASE`",
+        );
+    }
 
-                e.insert(InstalledCheck { result, handle });
-            }
+    fn make_check(&self, check: Arc<dyn HealthCheck + Sync + Send>) -> InstalledCheck {
+        let _guard = self.handle.enter();
+
+        let result = Arc::new(ArcSwap::new(Arc::new(TimestampedResult::new(
+            computing_for_the_first_time(),
+        ))));
+        let handle = task::spawn(run_check(check.clone(), result.clone()));
+
+        InstalledCheck {
+            check,
+            result,
+            handle,
         }
     }
 
@@ -178,7 +206,7 @@ fn panic_error() -> HealthCheckResult {
 }
 
 async fn run_check(
-    check: Box<dyn HealthCheck + Sync + Send>,
+    check: Arc<dyn HealthCheck + Sync + Send>,
     state: Arc<ArcSwap<TimestampedResult>>,
 ) {
     loop {
