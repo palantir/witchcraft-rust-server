@@ -54,7 +54,7 @@ pub async fn init(
 ) -> Result<(), Error> {
     let appender = logger::appender(install, metrics, hooks).await?;
     let levels = Arc::new(ArcSwap::new(Arc::new(Levels::empty())));
-    let subscription = runtime.subscribe_ok({
+    let subscription = runtime.subscribe({
         let levels = levels.clone();
         move |config| {
             let new_levels = Levels::new(config);

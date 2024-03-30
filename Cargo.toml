@@ -10,3 +10,8 @@ members = [
     "witchcraft-server-ete",
     "witchcraft-server-macros",
 ]
+
+[patch.crates-io]
+refreshable = { git = "https://github.com/palantir/rust-refreshable", branch = "try-map" }
+conjure-runtime = { git = "https://github.com/palantir/conjure-rust-runtime", branch = "per-host" }
+conjure-runtime-config = { git = "https://github.com/palantir/conjure-rust-runtime", branch = "per-host" }
