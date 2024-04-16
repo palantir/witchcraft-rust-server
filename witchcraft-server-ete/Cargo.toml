@@ -25,7 +25,7 @@ witchcraft-server = { path = "../witchcraft-server" }
 [dev-dependencies]
 bytes = "1"
 conjure-serde = "3"
-hyper = "0.14"
+hyper = "1.3"
 libc = "0.2"
 openssl = "0.10"
 tempfile = "3"
