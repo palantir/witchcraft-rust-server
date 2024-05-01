@@ -19,4 +19,12 @@ pub fn register_metrics(metrics: &MetricRegistry) {
         let _ = epoch::advance();
         stats::allocated::read().unwrap_or(0)
     });
+    metrics.gauge("process.heap.active", move || {
+        let _ = epoch::advance();
+        stats::active::read().unwrap_or(0)
+    });
+    metrics.gauge("process.heap.resident", move || {
+        let _ = epoch::advance();
+        stats::resident::read().unwrap_or(0)
+    });
 }
