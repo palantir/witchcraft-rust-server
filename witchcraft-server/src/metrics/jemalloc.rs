@@ -44,7 +44,7 @@ pub fn register_metrics(metrics: &MetricRegistry) {
 
 struct Debounced<F>
 where
-    F: FnMut() -> (),
+    F: FnMut(),
 {
     function: F,
     loaded: Instant,
@@ -52,7 +52,7 @@ where
 
 impl<F> Debounced<F>
 where
-    F: FnMut() -> (),
+    F: FnMut(),
 {
     fn new(function: F) -> Debounced<F> {
         Debounced {
@@ -61,7 +61,7 @@ where
         }
     }
 
-    fn call_debounced(&mut self) -> () {
+    fn call_debounced(&mut self) {
         let now = Instant::now();
         if now - self.loaded > Duration::from_secs(1) {
             (self.function)();
