@@ -17,7 +17,7 @@ conjure-error = "3"
 conjure-http = "3"
 conjure-object = "3"
 http = "0.2"
-refreshable = "1"
+refreshable = "2"
 tokio = "1"
 
 witchcraft-server = { path = "../witchcraft-server" }
