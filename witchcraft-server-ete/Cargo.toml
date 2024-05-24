@@ -9,13 +9,13 @@ name = "witchcraft-server-ete"
 test = false
 
 [build-dependencies]
-conjure-codegen = "4.0.0-rc3"
+conjure-codegen = "4.0.0-rc4"
 
 [dependencies]
 async-trait = "0.1"
-conjure-error = "4.0.0-rc3"
-conjure-http = "4.0.0-rc3"
-conjure-object = "4.0.0-rc3"
+conjure-error = "4.0.0-rc4"
+conjure-http = "4.0.0-rc4"
+conjure-object = "4.0.0-rc4"
 http = "1"
 refreshable = "2"
 tokio = "1"
@@ -24,7 +24,7 @@ witchcraft-server = { path = "../witchcraft-server" }
 
 [dev-dependencies]
 bytes = "1"
-conjure-serde = "4.0.0-rc3"
+conjure-serde = "4.0.0-rc4"
 http-body-util = "0.1"
 hyper = "1"
 hyper-util = { version = "0.1", features = ["tokio"] }
