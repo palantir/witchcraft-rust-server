@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use async_trait::async_trait;
 use conjure_error::Error;
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, ConjureRuntime, Endpoint, EndpointMetadata,
-    PathSegment, ResponseBody, Service,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, BoxAsyncEndpoint, ConjureRuntime, Endpoint,
+    EndpointMetadata, PathSegment, ResponseBody, Service,
 };
 use conjure_object::{Utc, Uuid};
 use http::{Extensions, Method, Request, Response};
@@ -37,11 +36,8 @@ impl<I, O> AsyncService<I, O> for AuditService
 where
     I: 'static + Send,
 {
-    fn endpoints(
-        &self,
-        _: &Arc<ConjureRuntime>,
-    ) -> Vec<Box<dyn AsyncEndpoint<I, O> + Sync + Send>> {
-        vec![Box::new(AuditEndpoint)]
+    fn endpoints(&self, _: &Arc<ConjureRuntime>) -> Vec<BoxAsyncEndpoint<'static, I, O>> {
+        vec![BoxAsyncEndpoint::new(AuditEndpoint)]
     }
 }
 
@@ -102,7 +98,6 @@ impl<I, O> Endpoint<I, O> for AuditEndpoint {
     }
 }
 
-#[async_trait]
 impl<I, O> AsyncEndpoint<I, O> for AuditEndpoint
 where
     I: 'static + Send,
