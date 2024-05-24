@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::tls::ClientCertificate;
-use async_trait::async_trait;
 use conjure_error::{Error, PermissionDenied};
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, ConjureRuntime, Endpoint, EndpointMetadata,
-    PathSegment, ResponseBody, Service,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, BoxAsyncEndpoint, ConjureRuntime, Endpoint,
+    EndpointMetadata, PathSegment, ResponseBody, Service,
 };
 use http::{Extensions, Method, Request, Response};
 use refreshable::Refreshable;
@@ -76,15 +75,12 @@ where
     I: 'static + Send,
     O: 'static,
 {
-    fn endpoints(
-        &self,
-        runtime: &Arc<ConjureRuntime>,
-    ) -> Vec<Box<dyn AsyncEndpoint<I, O> + Sync + Send>> {
+    fn endpoints(&self, runtime: &Arc<ConjureRuntime>) -> Vec<BoxAsyncEndpoint<'static, I, O>> {
         self.inner
             .endpoints(runtime)
             .into_iter()
             .map(|inner| {
-                Box::new(TlsClientAuthenticationEndpoint {
+                BoxAsyncEndpoint::new(TlsClientAuthenticationEndpoint {
                     inner,
                     trusted_subject_names: self.trusted_subject_names.clone(),
                 }) as _
@@ -171,7 +167,6 @@ where
     }
 }
 
-#[async_trait]
 impl<T, I, O> AsyncEndpoint<I, O> for TlsClientAuthenticationEndpoint<T>
 where
     T: AsyncEndpoint<I, O> + Sync + Send,
@@ -181,10 +176,7 @@ where
         &self,
         req: Request<I>,
         response_extensions: &mut Extensions,
-    ) -> Result<Response<AsyncResponseBody<O>>, Error>
-    where
-        I: 'async_trait,
-    {
+    ) -> Result<Response<AsyncResponseBody<O>>, Error> {
         self.check_request(&req)?;
         self.inner.handle(req, response_extensions).await
     }

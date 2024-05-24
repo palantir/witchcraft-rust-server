@@ -459,9 +459,8 @@ where
     #[cfg(target_os = "linux")]
     diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
-    let mut client_factory =
-        ClientFactory::new(runtime_config.map(|c| c.as_ref().service_discovery().clone()));
-    client_factory
+    let client_factory = ClientFactory::builder()
+        .config(runtime_config.map(|c| c.as_ref().service_discovery().clone()))
         .user_agent(UserAgent::new(Agent::new(
             install_config.as_ref().product_name(),
             install_config.as_ref().product_version(),

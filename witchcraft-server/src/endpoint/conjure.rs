@@ -20,7 +20,10 @@ use crate::{RequestBody, ResponseWriter};
 use async_trait::async_trait;
 use bytes::Bytes;
 use conjure_error::Error;
-use conjure_http::server::{AsyncEndpoint, AsyncResponseBody, EndpointMetadata, PathSegment};
+use conjure_http::server::{
+    AsyncEndpoint, AsyncResponseBody, AsyncWriteBody, BoxAsyncEndpoint, EndpointMetadata,
+    PathSegment,
+};
 use futures_channel::mpsc;
 use futures_util::future::{BoxFuture, Fuse, FusedFuture};
 use futures_util::{FutureExt, Stream};
@@ -40,7 +43,7 @@ use witchcraft_metrics::MetricRegistry;
 
 /// A [`WitchcraftEndpoint`] wrapping a Conjure [`AsyncEndpoint`].
 pub struct ConjureEndpoint {
-    inner: Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>,
+    inner: BoxAsyncEndpoint<'static, RequestBody, ResponseWriter>,
     metrics: Option<EndpointMetrics>,
     health: Option<Arc<EndpointHealth>>,
 }
@@ -48,7 +51,7 @@ pub struct ConjureEndpoint {
 impl ConjureEndpoint {
     pub fn new(
         metrics: Option<&MetricRegistry>,
-        inner: Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>,
+        inner: BoxAsyncEndpoint<'static, RequestBody, ResponseWriter>,
     ) -> Self {
         ConjureEndpoint {
             metrics: metrics.map(|metrics| EndpointMetrics::new(metrics, &inner)),

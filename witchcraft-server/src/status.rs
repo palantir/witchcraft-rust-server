@@ -14,11 +14,11 @@
 use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
 use crate::{RequestBody, ResponseWriter};
-use async_trait::async_trait;
 use bytes::Bytes;
 use conjure_error::{Error, PermissionDenied};
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, ConjureRuntime, EndpointMetadata, PathSegment,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, BoxAsyncEndpoint, ConjureRuntime,
+    EndpointMetadata, PathSegment,
 };
 use conjure_serde::json;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
@@ -68,13 +68,13 @@ impl AsyncService<RequestBody, ResponseWriter> for StatusEndpoints {
     fn endpoints(
         &self,
         _: &Arc<ConjureRuntime>,
-    ) -> Vec<Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>> {
+    ) -> Vec<BoxAsyncEndpoint<'static, RequestBody, ResponseWriter>> {
         vec![
-            Box::new(LivenessEndpoint),
-            Box::new(HealthEndpoint {
+            BoxAsyncEndpoint::new(LivenessEndpoint),
+            BoxAsyncEndpoint::new(HealthEndpoint {
                 state: self.state.clone(),
             }),
-            Box::new(ReadinessEndpoint {
+            BoxAsyncEndpoint::new(ReadinessEndpoint {
                 state: self.state.clone(),
             }),
         ]
@@ -112,7 +112,6 @@ impl EndpointMetadata for LivenessEndpoint {
     }
 }
 
-#[async_trait]
 impl AsyncEndpoint<RequestBody, ResponseWriter> for LivenessEndpoint {
     async fn handle(
         &self,
@@ -158,7 +157,6 @@ impl EndpointMetadata for HealthEndpoint {
     }
 }
 
-#[async_trait]
 impl AsyncEndpoint<RequestBody, ResponseWriter> for HealthEndpoint {
     async fn handle(
         &self,
@@ -227,7 +225,6 @@ impl EndpointMetadata for ReadinessEndpoint {
     }
 }
 
-#[async_trait]
 impl AsyncEndpoint<RequestBody, ResponseWriter> for ReadinessEndpoint {
     async fn handle(
         &self,

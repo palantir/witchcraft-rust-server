@@ -21,7 +21,7 @@ use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::{blocking, RequestBody, ResponseWriter};
-use conjure_http::server::{AsyncEndpoint, AsyncService, ConjureRuntime, Endpoint, Service};
+use conjure_http::server::{AsyncService, BoxAsyncEndpoint, ConjureRuntime, Endpoint, Service};
 use conjure_runtime::ClientFactory;
 use futures_util::Future;
 use std::sync::Arc;
@@ -100,7 +100,7 @@ impl Witchcraft {
     pub(crate) fn endpoints(
         &mut self,
         prefix: Option<&str>,
-        endpoints: Vec<Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>>,
+        endpoints: Vec<BoxAsyncEndpoint<'static, RequestBody, ResponseWriter>>,
         track_metrics: bool,
     ) {
         let metrics = if track_metrics {

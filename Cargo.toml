@@ -10,3 +10,10 @@ members = [
     "witchcraft-server-ete",
     "witchcraft-server-macros",
 ]
+
+[patch.crates-io]
+conjure-codegen = { git = "https://github.com/palantir/conjure-rust", branch = "fix-endpoint-lifetime" }
+conjure-error = { git = "https://github.com/palantir/conjure-rust", branch = "fix-endpoint-lifetime" }
+conjure-http = { git = "https://github.com/palantir/conjure-rust", branch = "fix-endpoint-lifetime" }
+conjure-object = { git = "https://github.com/palantir/conjure-rust", branch = "fix-endpoint-lifetime" }
+conjure-serde = { git = "https://github.com/palantir/conjure-rust", branch = "fix-endpoint-lifetime" }
