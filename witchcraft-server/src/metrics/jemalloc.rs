@@ -1,3 +1,9 @@
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use parking_lot::Mutex;
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +21,51 @@ use tikv_jemalloc_ctl::{epoch, stats};
 use witchcraft_metrics::MetricRegistry;
 
 pub fn register_metrics(metrics: &MetricRegistry) {
-    metrics.gauge("process.heap", move || {
+    let advance = Arc::new(Mutex::new(Debounced::new(|| {
         let _ = epoch::advance();
+    })));
+
+    let advance_for_heap = advance.clone();
+    metrics.gauge("process.heap", move || {
+        advance_for_heap.lock().call_debounced();
         stats::allocated::read().unwrap_or(0)
     });
+
+    let advance_for_active = advance.clone();
+    metrics.gauge("process.heap.active", move || {
+        advance_for_active.lock().call_debounced();
+        stats::active::read().unwrap_or(0)
+    });
+    metrics.gauge("process.heap.resident", move || {
+        advance.lock().call_debounced();
+        stats::resident::read().unwrap_or(0)
+    });
+}
+
+struct Debounced<F>
+where
+    F: FnMut(),
+{
+    function: F,
+    loaded: Instant,
+}
+
+impl<F> Debounced<F>
+where
+    F: FnMut(),
+{
+    fn new(function: F) -> Debounced<F> {
+        Debounced {
+            function,
+            loaded: Instant::now(),
+        }
+    }
+
+    fn call_debounced(&mut self) {
+        let now = Instant::now();
+        if now - self.loaded > Duration::from_secs(1) {
+            (self.function)();
+            self.loaded = now;
+        }
+    }
 }

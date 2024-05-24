@@ -230,6 +230,10 @@
 //!
 //! * `process.heap` (gauge) - The total number of bytes allocated from the heap. Requires the `jemalloc` feature
 //!     (enabled by default).
+//! * `process.heap.active` (gauge) - The total number of bytes in active pages. Requires the `jemalloc` feature
+//!     (enabled by default).
+//! * `process.heap.resident` (gauge) - The total number of bytes in physically resident pages. Requires the `jemalloc` feature
+//!     (enabled by default).
 //! * `process.uptime` (gauge) - The number of microseconds that have elapsed since the server started.
 //! * `process.panics` (counter) - The number of times the server has panicked.
 //! * `process.user-time` (gauge) - The number of microseconds the process has spent running in user-space.

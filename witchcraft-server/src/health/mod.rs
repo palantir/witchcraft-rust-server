@@ -17,7 +17,9 @@ use conjure_object::Any;
 pub use registry::HealthCheckRegistry;
 use serde::Serialize;
 use staged_builder::staged_builder;
+use std::any::TypeId;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[allow(warnings)]
 #[rustfmt::skip]
@@ -28,7 +30,12 @@ pub(crate) mod panics;
 mod registry;
 pub(crate) mod service_dependency;
 
+mod private {
+    pub struct PrivacyToken;
+}
+
 /// A health check.
+// FIXME move 'static + Sync + Send to trait def
 pub trait HealthCheck {
     /// Returns the check's type.
     ///
@@ -37,6 +44,51 @@ pub trait HealthCheck {
 
     /// Performs the check, returning its result.
     fn result(&self) -> HealthCheckResult;
+
+    // PrivacyToken can't be named outside of this crate, so it prevents anyone from overriding this
+    // default implementation in another crate. That allows us to trust it to be correct in the
+    // downcast methods below.
+    #[doc(hidden)]
+    fn __private_api_type_id(&self, _: private::PrivacyToken) -> TypeId
+    where
+        Self: 'static,
+    {
+        TypeId::of::<Self>()
+    }
+}
+
+impl dyn HealthCheck + Sync + Send {
+    /// Returns `true` if the health check's type is `T`.
+    pub fn is<T>(&self) -> bool
+    where
+        T: HealthCheck + 'static,
+    {
+        self.__private_api_type_id(private::PrivacyToken) == TypeId::of::<T>()
+    }
+
+    /// Attempts to downcast the health check to the type `T` if it is that type.
+    pub fn downcast_ref<T>(&self) -> Option<&T>
+    where
+        T: HealthCheck + 'static,
+    {
+        if self.is::<T>() {
+            unsafe { Some(&*(self as *const dyn HealthCheck as *const T)) }
+        } else {
+            None
+        }
+    }
+
+    /// Attempts to downcast the health check to the type `T` if it is that type.
+    pub fn downcast_arc<T>(self: Arc<Self>) -> Result<Arc<T>, Arc<Self>>
+    where
+        T: HealthCheck + 'static,
+    {
+        if self.is::<T>() {
+            unsafe { Ok(Arc::from_raw(Arc::into_raw(self).cast::<T>())) }
+        } else {
+            Err(self)
+        }
+    }
 }
 
 /// The result of a health check.
