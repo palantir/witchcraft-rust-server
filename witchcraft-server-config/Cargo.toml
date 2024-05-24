@@ -12,5 +12,5 @@ conjure-runtime-config = "5.0.0-rc1"
 humantime-serde = "1"
 num_cpus = "1"
 serde = { version = "1", features = ["derive"] }
-staged-builder = "0.1.2"
+staged-builder = "0.2.0"
 witchcraft-log = "4.0.0-rc1"
