@@ -15,7 +15,6 @@ use conjure_error::Error;
 use refreshable::{RefreshHandle, Refreshable};
 use serde::de::DeserializeOwned;
 use serde_encrypted_value::{Key, ReadOnly};
-use serde_file_value::Listen;
 use sha2::digest::Output;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -92,16 +91,17 @@ impl ConfigFiles {
 
         true
     }
-}
 
-impl Listen for ConfigFiles {
-    fn on_read(&mut self, path: &Path, contents: &[u8]) {
-        self.ok_files
-            .insert(path.to_owned(), Sha256::digest(contents));
-    }
-
-    fn on_error(&mut self, path: &Path, _: &io::Error) {
-        self.err_files.insert(path.to_owned());
+    fn add(&mut self, path: &Path, r: &io::Result<Vec<u8>>) {
+        match r {
+            Ok(bytes) => {
+                self.ok_files
+                    .insert(path.to_path_buf(), Sha256::digest(bytes));
+            }
+            Err(_) => {
+                self.err_files.insert(path.to_path_buf());
+            }
+        }
     }
 }
 
@@ -122,10 +122,11 @@ where
         ok_files: HashMap::new(),
         err_files: HashSet::new(),
     };
+    let mut callback = |path: &Path, r: &io::Result<Vec<u8>>| files.add(path, r);
 
     let de = serde_yaml::Deserializer::from_slice(raw);
     let de = serde_encrypted_value::Deserializer::new(de, key);
-    let de = serde_file_value::Deserializer::new(de, &mut files);
+    let de = serde_file_value::Deserializer::new(de, &mut callback);
 
     let value = T::deserialize(de).map_err(Error::internal);
     (value, files)
