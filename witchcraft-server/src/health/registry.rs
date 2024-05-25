@@ -205,10 +205,7 @@ fn panic_error() -> HealthCheckResult {
         .build()
 }
 
-async fn run_check(
-    check: Arc<dyn HealthCheck + Sync + Send>,
-    state: Arc<ArcSwap<TimestampedResult>>,
-) {
+async fn run_check(check: Arc<dyn HealthCheck>, state: Arc<ArcSwap<TimestampedResult>>) {
     loop {
         // it's okay to use block_in_place here since we know this future is running as its own task.
         let result = task::block_in_place(|| {
