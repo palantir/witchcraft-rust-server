@@ -92,7 +92,7 @@
 //!
 //! ## Sensitive values
 //!
-//! The server's configuration deserializer supports two methods to encode sensitive values:
+//! The server's configuration deserializer supports two methods to handle sensitive values:
 //!
 //! * `${enc:5BBfGvf90H6bApwfx...}` - inline in an encrypted form using [`serde_encrypted_value`] with the
 //!     key stored in `var/conf/encrypted-config-value.key`.
