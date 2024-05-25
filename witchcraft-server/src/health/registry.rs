@@ -47,7 +47,7 @@ impl TimestampedResult {
 }
 
 struct InstalledCheck {
-    check: Arc<dyn HealthCheck + Sync + Send>,
+    check: Arc<dyn HealthCheck>,
     result: Arc<ArcSwap<TimestampedResult>>,
     handle: JoinHandle<()>,
 }
