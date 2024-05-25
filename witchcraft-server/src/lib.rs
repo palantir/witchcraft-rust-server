@@ -92,8 +92,11 @@
 //!
 //! ## Sensitive values
 //!
-//! The server's configuration deserializer uses [`serde_encrypted_value`] to transparently decrypt values in
-//! in the configuration files using the key stored in `var/conf/encrypted-config-value.key`.
+//! The server's configuration deserializer supports two methods to encode sensitive values:
+//!
+//! * `${enc:5BBfGvf90H6bApwfx...}` - inline in an encrypted form using [`serde_encrypted_value`] with the
+//!     key stored in `var/conf/encrypted-config-value.key`.
+//! * `${file:/mnt/secrets/foo}` - as a reference to a file containing the value using [`serde_file_value`].
 //!
 //! ## Refreshable runtime configuration
 //!

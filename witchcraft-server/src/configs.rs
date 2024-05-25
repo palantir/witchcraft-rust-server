@@ -15,10 +15,15 @@ use conjure_error::Error;
 use refreshable::{RefreshHandle, Refreshable};
 use serde::de::DeserializeOwned;
 use serde_encrypted_value::{Key, ReadOnly};
-use std::fs;
+use serde_file_value::Listen;
+use sha2::digest::Output;
+use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use std::{fs, io};
 use tokio::runtime::Handle;
 use tokio::{task, time};
 use witchcraft_log::{error, info};
@@ -34,7 +39,7 @@ where
 {
     let key = load_key()?;
     let bytes = load_file(INSTALL_YML)?;
-    parse(&bytes, key.as_ref())
+    parse(&bytes, key.as_ref()).0
 }
 
 pub fn load_runtime<T>(
@@ -46,13 +51,58 @@ where
 {
     let key = load_key()?;
     let bytes = load_file(RUNTIME_YML)?;
-    let value = parse(&bytes, key.as_ref())?;
+    let (value, files) = parse(&bytes, key.as_ref());
+    let value = value?;
 
     let (refreshable, handle) = Refreshable::new(value);
 
-    runtime.spawn(runtime_reload(bytes, key, handle, config_ok.clone()));
+    runtime.spawn(runtime_reload(files, key, handle, config_ok.clone()));
 
     Ok(refreshable)
+}
+
+struct ConfigFiles {
+    root_hash: Output<Sha256>,
+    ok_files: HashMap<PathBuf, Output<Sha256>>,
+    err_files: HashSet<PathBuf>,
+}
+
+impl ConfigFiles {
+    fn up_to_date(&self, root_bytes: &[u8]) -> bool {
+        if self.root_hash != Sha256::digest(root_bytes) {
+            return false;
+        }
+
+        for (path, hash) in &self.ok_files {
+            match fs::read(path) {
+                Ok(bytes) => {
+                    if *hash != Sha256::digest(&bytes) {
+                        return false;
+                    }
+                }
+                Err(_) => return false,
+            }
+        }
+
+        for path in &self.err_files {
+            if fs::read(path).is_ok() {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl Listen for ConfigFiles {
+    fn on_read(&mut self, path: &Path, contents: &[u8]) {
+        self.ok_files
+            .insert(path.to_owned(), Sha256::digest(contents));
+    }
+
+    fn on_error(&mut self, path: &Path, _: &io::Error) {
+        self.err_files.insert(path.to_owned());
+    }
 }
 
 fn load_key() -> Result<Option<Key<ReadOnly>>, Error> {
@@ -63,18 +113,26 @@ fn load_file(path: &str) -> Result<Vec<u8>, Error> {
     fs::read(path).map_err(|e| Error::internal_safe(e).with_safe_param("path", path))
 }
 
-fn parse<T>(raw: &[u8], key: Option<&Key<ReadOnly>>) -> Result<T, Error>
+fn parse<T>(raw: &[u8], key: Option<&Key<ReadOnly>>) -> (Result<T, Error>, ConfigFiles)
 where
     T: DeserializeOwned,
 {
+    let mut files = ConfigFiles {
+        root_hash: Sha256::digest(raw),
+        ok_files: HashMap::new(),
+        err_files: HashSet::new(),
+    };
+
     let de = serde_yaml::Deserializer::from_slice(raw);
     let de = serde_encrypted_value::Deserializer::new(de, key);
+    let de = serde_file_value::Deserializer::new(de, &mut files);
 
-    T::deserialize(de).map_err(Error::internal)
+    let value = T::deserialize(de).map_err(Error::internal);
+    (value, files)
 }
 
 async fn runtime_reload<T>(
-    mut bytes: Vec<u8>,
+    mut files: ConfigFiles,
     key: Option<Key<ReadOnly>>,
     mut handle: RefreshHandle<T, Error>,
     config_ok: Arc<AtomicBool>,
@@ -84,43 +142,46 @@ async fn runtime_reload<T>(
     loop {
         time::sleep(RELOAD_INTERVAL).await;
 
-        let new_bytes = match tokio::fs::read(RUNTIME_YML).await {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                error!(
-                    "error reading runtime config",
-                    error: Error::internal_safe(e)
-                );
-                config_ok.store(false, Ordering::Relaxed);
-                continue;
-            }
-        };
-
-        if bytes == new_bytes {
-            continue;
-        }
-        bytes = new_bytes;
-
-        let value = match parse(&bytes, key.as_ref()) {
-            Ok(value) => value,
-            Err(e) => {
-                error!("error parsing runtime config", error: e);
-                config_ok.store(false, Ordering::Relaxed);
-                continue;
-            }
-        };
-
         // it's okay to use block_in_place here since we know this future is running as its own task.
-        match task::block_in_place(|| handle.refresh(value)) {
-            Ok(()) => config_ok.store(true, Ordering::Relaxed),
-            Err(errors) => {
-                for error in errors {
-                    error!("error reloading runtime config", error: error);
+        task::block_in_place(|| {
+            let new_bytes = match fs::read(RUNTIME_YML) {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    error!(
+                        "error reading runtime config",
+                        error: Error::internal_safe(e)
+                    );
+                    config_ok.store(false, Ordering::Relaxed);
+                    return;
                 }
-                config_ok.store(false, Ordering::Relaxed);
-            }
-        }
+            };
 
-        info!("reloaded runtime config");
+            if files.up_to_date(&new_bytes) {
+                return;
+            }
+
+            let (value, new_files) = parse(&new_bytes, key.as_ref());
+            files = new_files;
+            let value = match value {
+                Ok(value) => value,
+                Err(e) => {
+                    error!("error parsing runtime config", error: e);
+                    config_ok.store(false, Ordering::Relaxed);
+                    return;
+                }
+            };
+
+            match handle.refresh(value) {
+                Ok(()) => config_ok.store(true, Ordering::Relaxed),
+                Err(errors) => {
+                    for error in errors {
+                        error!("error reloading runtime config", error: error);
+                    }
+                    config_ok.store(false, Ordering::Relaxed);
+                }
+            }
+
+            info!("reloaded runtime config");
+        });
     }
 }
