@@ -35,8 +35,7 @@ mod private {
 }
 
 /// A health check.
-// FIXME move 'static + Sync + Send to trait def
-pub trait HealthCheck {
+pub trait HealthCheck: 'static + Sync + Send {
     /// Returns the check's type.
     ///
     /// The type must be `SCREAMING_SNAKE_CASE`.
@@ -57,7 +56,7 @@ pub trait HealthCheck {
     }
 }
 
-impl dyn HealthCheck + Sync + Send {
+impl dyn HealthCheck {
     /// Returns `true` if the health check's type is `T`.
     pub fn is<T>(&self) -> bool
     where

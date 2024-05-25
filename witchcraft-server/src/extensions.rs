@@ -14,9 +14,10 @@
 
 //! Types used with the extensions maps of requests or responses in a Witchcraft server.
 
-use crate::audit::AuditLogV3;
 use std::net::SocketAddr;
 use std::ops::Deref;
+
+use crate::logging::api::AuditLogV3;
 
 /// An extension containing the peer's socket address.
 ///

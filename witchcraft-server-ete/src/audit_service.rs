@@ -21,8 +21,8 @@ use conjure_object::{Utc, Uuid};
 use http::{Extensions, Method, Request, Response};
 use std::borrow::Cow;
 use std::sync::Arc;
-use witchcraft_server::audit::{AuditLogV3, AuditProducer, AuditResult};
 use witchcraft_server::extensions::AuditLogEntry;
+use witchcraft_server::logging::api::{AuditLogV3, AuditProducer, AuditResult};
 
 pub struct AuditService;
 

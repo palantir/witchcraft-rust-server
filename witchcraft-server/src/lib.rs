@@ -108,8 +108,7 @@
 //! traits. These implementations can be generated from a [Conjure] YML [definition] with the [`conjure-codegen`] crate.
 //!
 //! While we strongly encourage the use of Conjure-generated APIs, some services may need to expose endpoints that can't
-//! be defined in Conjure. The [`Service`] and [`AsyncService`] traits provide enough flexibility to support arbitrary
-//! HTTP APIs and can be implemented manually if necessary.
+//! be defined in Conjure. The [`conjure_http::conjure_endpoints`] macro can be used to define arbitrary HTTP endpoints.
 //!
 //! API endpoints should normally be registered with the [`Witchcraft::api`] and [`Witchcraft::blocking_api`] methods,
 //! which will place the endpoints under the `/api` route. If necessary, the [`Witchcraft::app`] and
@@ -330,10 +329,6 @@ use crate::server::Listener;
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::status::StatusEndpoints;
 
-// FIXME remove in next breaking release
-#[doc(hidden)]
-#[deprecated(note = "Use `logging::api` instead", since = "3.2.0")]
-pub mod audit;
 pub mod blocking;
 mod body;
 mod configs;

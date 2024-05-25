@@ -81,7 +81,7 @@ impl HealthCheckRegistry {
     /// Panics if the check's type is not `SCREAMING_SNAKE_CASE`.
     pub fn register<T>(&self, check: T)
     where
-        T: HealthCheck + 'static + Sync + Send,
+        T: HealthCheck,
     {
         let type_ = check.type_();
         self.check_type(type_);
@@ -99,9 +99,9 @@ impl HealthCheckRegistry {
     /// # Panics
     ///
     /// Panics if the check's type is not `SCREAMING_SNAKE_CASE`.
-    pub fn register_if_absent<T>(&self, check: T) -> Arc<dyn HealthCheck + Sync + Send>
+    pub fn register_if_absent<T>(&self, check: T) -> Arc<dyn HealthCheck>
     where
-        T: HealthCheck + 'static + Sync + Send,
+        T: HealthCheck,
     {
         let type_ = check.type_();
         self.check_type(type_);
@@ -119,7 +119,7 @@ impl HealthCheckRegistry {
         );
     }
 
-    fn make_check(&self, check: Arc<dyn HealthCheck + Sync + Send>) -> InstalledCheck {
+    fn make_check(&self, check: Arc<dyn HealthCheck>) -> InstalledCheck {
         let _guard = self.handle.enter();
 
         let result = Arc::new(ArcSwap::new(Arc::new(TimestampedResult::new(
