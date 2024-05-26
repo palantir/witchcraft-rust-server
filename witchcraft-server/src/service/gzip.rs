@@ -204,6 +204,7 @@ where
                             let buf = encoder.get_mut().get_mut().split().freeze();
                             Poll::Ready(Some(Ok(Frame::data(buf))))
                         } else {
+                            // FIXME only flush on Poll::Pending, cut a chunk if the buffer is large
                             encoder.flush().unwrap();
                             let buf = encoder.get_mut().get_mut().split().freeze();
                             *this.state = State::Compressing(encoder);
