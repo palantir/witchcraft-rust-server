@@ -1,0 +1,6 @@
+type: feature
+feature:
+  description: Adds global functions to the logging module to allow writing event
+    logs manually.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/186
