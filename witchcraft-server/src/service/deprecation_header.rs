@@ -13,13 +13,8 @@
 // limitations under the License.
 use crate::service::routing::Route;
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use http::header::HeaderName;
 use http::{HeaderValue, Request, Response};
-use pin_project::pin_project;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 #[allow(clippy::declare_interior_mutable_const)]
 const DEPRECATION: HeaderName = HeaderName::from_static("deprecation");
@@ -67,29 +62,5 @@ where
         }
 
         response
-    }
-}
-
-#[pin_project]
-pub struct DeprecationHeaderFuture<F> {
-    #[pin]
-    inner: F,
-    deprecated: bool,
-}
-
-impl<F, B> Future for DeprecationHeaderFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = Response<B>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let mut response = ready!(this.inner.poll(cx));
-        if *this.deprecated {
-            response.headers_mut().insert(DEPRECATION, IS_DEPRECATED);
-        }
-        Poll::Ready(response)
     }
 }

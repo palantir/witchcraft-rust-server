@@ -25,7 +25,7 @@ use std::sync::Arc;
 static TYPE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new("^[A-Z_]+$").unwrap());
 
 /// A readiness check.
-pub trait ReadinessCheck {
+pub trait ReadinessCheck: 'static + Sync + Send {
     /// Returns the check's type.
     ///
     /// The type must be `SCREAMING_SNAKE_CASE`.
@@ -52,7 +52,7 @@ impl ReadinessCheckResult {
 
 /// A registry of readiness checks for the server.
 pub struct ReadinessCheckRegistry {
-    checks: Mutex<HashMap<String, Arc<dyn ReadinessCheck + Sync + Send>>>,
+    checks: Mutex<HashMap<String, Arc<dyn ReadinessCheck>>>,
 }
 
 impl ReadinessCheckRegistry {
@@ -69,12 +69,12 @@ impl ReadinessCheckRegistry {
     /// Panics if the check's type is not `SCREAMING_SNAKE_CASE` or if a check with the same type is already registered.
     pub fn register<T>(&self, check: T)
     where
-        T: ReadinessCheck + 'static + Sync + Send,
+        T: ReadinessCheck,
     {
         self.register_inner(Arc::new(check))
     }
 
-    fn register_inner(&self, check: Arc<dyn ReadinessCheck + Sync + Send>) {
+    fn register_inner(&self, check: Arc<dyn ReadinessCheck>) {
         let type_ = check.type_();
 
         assert!(

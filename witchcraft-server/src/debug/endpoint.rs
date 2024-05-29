@@ -13,10 +13,10 @@
 // limitations under the License.
 use crate::debug::DiagnosticRegistry;
 use crate::{RequestBody, ResponseWriter};
-use async_trait::async_trait;
 use conjure_error::{Error, NotFound, PermissionDenied};
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, EndpointMetadata, PathSegment,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, BoxAsyncEndpoint, ConjureRuntime,
+    EndpointMetadata, PathSegment,
 };
 use conjure_http::{PathParams, SafeParams};
 use http::header::{HeaderName, AUTHORIZATION, CONTENT_TYPE};
@@ -63,8 +63,11 @@ impl DebugEndpoints {
 }
 
 impl AsyncService<RequestBody, ResponseWriter> for DebugEndpoints {
-    fn endpoints(&self) -> Vec<Box<dyn AsyncEndpoint<RequestBody, ResponseWriter> + Sync + Send>> {
-        vec![Box::new(DiagnosticEndpoint {
+    fn endpoints(
+        &self,
+        _: &Arc<ConjureRuntime>,
+    ) -> Vec<BoxAsyncEndpoint<'static, RequestBody, ResponseWriter>> {
+        vec![BoxAsyncEndpoint::new(DiagnosticEndpoint {
             state: self.state.clone(),
         })]
     }
@@ -107,7 +110,6 @@ impl EndpointMetadata for DiagnosticEndpoint {
     }
 }
 
-#[async_trait]
 impl AsyncEndpoint<RequestBody, ResponseWriter> for DiagnosticEndpoint {
     async fn handle(
         &self,
