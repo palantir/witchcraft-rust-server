@@ -14,7 +14,7 @@
 
 //! Logging APIs
 use crate::extensions::AuditLogEntry;
-use crate::logging::api::{AuditLogV3, RequestLogV2};
+use crate::logging::api::{AuditLogV3, EventLogV2, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
 use futures::executor::block_on;
@@ -42,6 +42,8 @@ mod trace;
 
 pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Arc<Mutex<Appender<AuditLogV3>>>> =
     AtomicLazyCell::NONE;
+pub(crate) static EVENT_LOGGER: AtomicLazyCell<Arc<Mutex<Appender<EventLogV2>>>> =
+    AtomicLazyCell::NONE;
 
 pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
@@ -49,6 +51,7 @@ pub(crate) const SAMPLED_KEY: &str = "_sampled";
 pub(crate) struct Loggers {
     pub request_logger: Arc<Appender<RequestLogV2>>,
     pub audit_logger: Arc<Mutex<Appender<AuditLogV3>>>,
+    pub event_logger: Arc<Mutex<Appender<EventLogV2>>>,
 }
 
 pub(crate) fn early_init() {
@@ -68,17 +71,24 @@ pub(crate) async fn init(
     let request_logger = Arc::new(request_logger);
     let audit_logger = logger::appender(install, metrics, hooks).await?;
     let audit_logger = Arc::new(Mutex::new(audit_logger));
+    let event_logger = logger::appender(install, metrics, hooks).await?;
+    let event_logger = Arc::new(Mutex::new(event_logger));
 
     AUDIT_LOGGER
         .fill(audit_logger.clone())
         .ok()
         .expect("Audit logger already initialized");
+    EVENT_LOGGER
+        .fill(event_logger.clone())
+        .ok()
+        .expect("Event logger already initialized");
 
     cleanup::cleanup_logs().await;
 
     Ok(Loggers {
         request_logger,
         audit_logger,
+        event_logger,
     })
 }
 
@@ -109,8 +119,41 @@ pub async fn audit_log(entry: AuditLogEntry) -> Result<(), Error> {
     }
 }
 
-/// Blocking variant of [audit_log] that only returns once the the audit log has been
+/// Blocking variant of [audit_log] that only returns once the audit log has been
 /// successfully written or if the audit log has failed.
 pub fn audit_log_blocking(entry: AuditLogEntry) -> Result<(), Error> {
     block_on(audit_log(entry))
+}
+
+/// Writes the provided V2 event log entry using the standard logging appender.
+/// Returns an error if the global event logger is not initialized.
+///
+/// The returned future completes once the event log has been successfully written.
+pub async fn event_log(entry: EventLogV2) -> Result<(), Error> {
+    let event_logger = EVENT_LOGGER
+        .borrow()
+        .ok_or_else(|| Error::internal_safe("Event logger not initialized"))?;
+
+    let (tx, rx) = oneshot::channel();
+
+    event_logger
+        .lock()
+        .await
+        .try_send(Payload {
+            value: entry,
+            cb: Some(tx),
+        })
+        .map_err(|_| Error::internal_safe("Event logger is closed or not ready"))?;
+
+    match rx.await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(Error::internal_safe("Error writing event log")),
+        Err(error) => Err(Error::internal_safe(error)),
+    }
+}
+
+/// Blocking variant of [event_log] that only returns once the event log has been
+/// successfully written or if the event log has failed.
+pub fn event_log_blocking(entry: EventLogV2) -> Result<(), Error> {
+    block_on(event_log(entry))
 }
