@@ -51,7 +51,6 @@ pub(crate) const SAMPLED_KEY: &str = "_sampled";
 pub(crate) struct Loggers {
     pub request_logger: Arc<Appender<RequestLogV2>>,
     pub audit_logger: Arc<Mutex<Appender<AuditLogV3>>>,
-    pub event_logger: Arc<Mutex<Appender<EventLogV2>>>,
 }
 
 pub(crate) fn early_init() {
@@ -88,7 +87,6 @@ pub(crate) async fn init(
     Ok(Loggers {
         request_logger,
         audit_logger,
-        event_logger,
     })
 }
 
