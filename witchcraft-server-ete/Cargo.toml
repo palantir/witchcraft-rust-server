@@ -19,15 +19,14 @@ conjure-object = "4.0.0-rc4"
 http = "1"
 refreshable = "2"
 tokio = "1"
-
 witchcraft-server = { path = "../witchcraft-server" }
 
 [dev-dependencies]
 bytes = "1"
 conjure-serde = "4.0.0-rc4"
 http-body-util = "0.1"
-hyper = "1"
 hyper-util = { version = "0.1", features = ["tokio"] }
+hyper = "1"
 libc = "0.2"
 openssl = "0.10"
 tempfile = "3"
