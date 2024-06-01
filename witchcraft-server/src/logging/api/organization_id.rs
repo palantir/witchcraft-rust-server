@@ -18,6 +18,12 @@ impl conjure_object::FromPlain for OrganizationId {
         conjure_object::FromPlain::from_plain(s).map(OrganizationId)
     }
 }
+impl std::convert::From<String> for OrganizationId {
+    #[inline]
+    fn from(v: String) -> Self {
+        OrganizationId(std::convert::From::from(v))
+    }
+}
 impl std::ops::Deref for OrganizationId {
     type Target = String;
     #[inline]

@@ -3,24 +3,68 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Definition of the event.2 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct EventLogV2 {
+    #[builder(into)]
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(into)]
     event_name: String,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     values: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(default, into)]
     uid: Option<super::UserId>,
+    #[builder(default, into)]
     sid: Option<super::SessionId>,
+    #[builder(default, into)]
     token_id: Option<super::TokenId>,
+    #[builder(default, into)]
     org_id: Option<super::OrganizationId>,
+    #[builder(default, into)]
     trace_id: Option<super::TraceId>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(default, map(key(type = String, into), value(type = String, into)))]
     tags: std::collections::BTreeMap<String, String>,
 }
 impl EventLogV2 {
-    /// Returns a new builder.
+    /// Constructs a new instance of the type.
     #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(
+        type_: impl Into<String>,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+        event_name: impl Into<String>,
+    ) -> Self {
+        Self::builder().type_(type_).time(time).event_name(event_name).build()
     }
     #[inline]
     pub fn type_(&self) -> &str {
@@ -76,282 +120,6 @@ impl EventLogV2 {
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<EventLogV2> for BuilderStage3 {
-    #[inline]
-    fn from(value: EventLogV2) -> Self {
-        BuilderStage3 {
-            type_: value.type_,
-            time: value.time,
-            event_name: value.event_name,
-            values: value.values,
-            uid: value.uid,
-            sid: value.sid,
-            token_id: value.token_id,
-            org_id: value.org_id,
-            trace_id: value.trace_id,
-            unsafe_params: value.unsafe_params,
-            tags: value.tags,
-        }
-    }
-}
-///The stage 0 builder for the [`EventLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`EventLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            time: time,
-        }
-    }
-}
-///The stage 2 builder for the [`EventLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage2 {
-    ///Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
-    #[inline]
-    pub fn event_name<T>(self, event_name: T) -> BuilderStage3
-    where
-        T: Into<String>,
-    {
-        BuilderStage3 {
-            type_: self.type_,
-            time: self.time,
-            event_name: event_name.into(),
-            values: Default::default(),
-            uid: Default::default(),
-            sid: Default::default(),
-            token_id: Default::default(),
-            org_id: Default::default(),
-            trace_id: Default::default(),
-            unsafe_params: Default::default(),
-            tags: Default::default(),
-        }
-    }
-}
-///The stage 3 builder for the [`EventLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    event_name: String,
-    values: std::collections::BTreeMap<String, conjure_object::Any>,
-    uid: Option<super::UserId>,
-    sid: Option<super::SessionId>,
-    token_id: Option<super::TokenId>,
-    org_id: Option<super::OrganizationId>,
-    trace_id: Option<super::TraceId>,
-    unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
-    tags: std::collections::BTreeMap<String, String>,
-}
-impl BuilderStage3 {
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    ///Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
-    #[inline]
-    pub fn event_name<T>(mut self, event_name: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.event_name = event_name.into();
-        self
-    }
-    ///Observations, measurements and context associated with the event
-    #[inline]
-    pub fn values<T>(mut self, values: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.values = values.into_iter().collect();
-        self
-    }
-    ///Observations, measurements and context associated with the event
-    #[inline]
-    pub fn extend_values<T>(mut self, values: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.values.extend(values);
-        self
-    }
-    ///Observations, measurements and context associated with the event
-    #[inline]
-    pub fn insert_values<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.values
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///User id (if available)
-    #[inline]
-    pub fn uid<T>(mut self, uid: T) -> Self
-    where
-        T: Into<Option<super::UserId>>,
-    {
-        self.uid = uid.into();
-        self
-    }
-    ///Session id (if available)
-    #[inline]
-    pub fn sid<T>(mut self, sid: T) -> Self
-    where
-        T: Into<Option<super::SessionId>>,
-    {
-        self.sid = sid.into();
-        self
-    }
-    ///API token id (if available)
-    #[inline]
-    pub fn token_id<T>(mut self, token_id: T) -> Self
-    where
-        T: Into<Option<super::TokenId>>,
-    {
-        self.token_id = token_id.into();
-        self
-    }
-    ///Organization id (if available)
-    #[inline]
-    pub fn org_id<T>(mut self, org_id: T) -> Self
-    where
-        T: Into<Option<super::OrganizationId>>,
-    {
-        self.org_id = org_id.into();
-        self
-    }
-    ///Zipkin trace id (if available)
-    #[inline]
-    pub fn trace_id<T>(mut self, trace_id: T) -> Self
-    where
-        T: Into<Option<super::TraceId>>,
-    {
-        self.trace_id = trace_id.into();
-        self
-    }
-    ///Unsafe metadata describing the event
-    #[inline]
-    pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params = unsafe_params.into_iter().collect();
-        self
-    }
-    ///Unsafe metadata describing the event
-    #[inline]
-    pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params.extend(unsafe_params);
-        self
-    }
-    ///Unsafe metadata describing the event
-    #[inline]
-    pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.unsafe_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///Additional dimensions that describe the instance of the log event
-    #[inline]
-    pub fn tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags = tags.into_iter().collect();
-        self
-    }
-    ///Additional dimensions that describe the instance of the log event
-    #[inline]
-    pub fn extend_tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags.extend(tags);
-        self
-    }
-    ///Additional dimensions that describe the instance of the log event
-    #[inline]
-    pub fn insert_tags<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: Into<String>,
-    {
-        self.tags.insert(key.into(), value.into());
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> EventLogV2 {
-        EventLogV2 {
-            type_: self.type_,
-            time: self.time,
-            event_name: self.event_name,
-            values: self.values,
-            uid: self.uid,
-            sid: self.sid,
-            token_id: self.token_id,
-            org_id: self.org_id,
-            trace_id: self.trace_id,
-            unsafe_params: self.unsafe_params,
-            tags: self.tags,
-        }
     }
 }
 impl ser::Serialize for EventLogV2 {

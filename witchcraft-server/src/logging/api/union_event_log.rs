@@ -110,7 +110,7 @@ enum Variant_ {
 }
 impl Variant_ {
     fn as_str(&self) -> &'static str {
-        match self {
+        match *self {
             Variant_::EventLog => "eventLog",
             Variant_::EventLogV2 => "eventLogV2",
         }

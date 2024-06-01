@@ -3,27 +3,63 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Definition of the audit.2 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct AuditLogV2 {
+    #[builder(into)]
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(default, into)]
     uid: Option<super::UserId>,
+    #[builder(default, into)]
     sid: Option<super::SessionId>,
+    #[builder(default, into)]
     token_id: Option<super::TokenId>,
+    #[builder(default, into)]
     org_id: Option<super::OrganizationId>,
+    #[builder(default, into)]
     trace_id: Option<super::TraceId>,
+    #[builder(default, list(item(type = super::UserId)))]
     other_uids: Vec<super::UserId>,
+    #[builder(default, into)]
     origin: Option<String>,
+    #[builder(into)]
     name: String,
     result: super::AuditResult,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     request_params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     result_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl AuditLogV2 {
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
-    }
     ///"audit.2"
     #[inline]
     pub fn type_(&self) -> &str {
@@ -92,322 +128,6 @@ impl AuditLogV2 {
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.result_params
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<AuditLogV2> for BuilderStage4 {
-    #[inline]
-    fn from(value: AuditLogV2) -> Self {
-        BuilderStage4 {
-            type_: value.type_,
-            time: value.time,
-            uid: value.uid,
-            sid: value.sid,
-            token_id: value.token_id,
-            org_id: value.org_id,
-            trace_id: value.trace_id,
-            other_uids: value.other_uids,
-            origin: value.origin,
-            name: value.name,
-            result: value.result,
-            request_params: value.request_params,
-            result_params: value.result_params,
-        }
-    }
-}
-///The stage 0 builder for the [`AuditLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///"audit.2"
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`AuditLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            time: time,
-        }
-    }
-}
-///The stage 2 builder for the [`AuditLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage2 {
-    ///Name of the audit event, e.g. PUT_FILE
-    #[inline]
-    pub fn name<T>(self, name: T) -> BuilderStage3
-    where
-        T: Into<String>,
-    {
-        BuilderStage3 {
-            type_: self.type_,
-            time: self.time,
-            name: name.into(),
-        }
-    }
-}
-///The stage 3 builder for the [`AuditLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    name: String,
-}
-impl BuilderStage3 {
-    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
-    #[inline]
-    pub fn result(self, result: super::AuditResult) -> BuilderStage4 {
-        BuilderStage4 {
-            type_: self.type_,
-            time: self.time,
-            name: self.name,
-            result: result,
-            uid: Default::default(),
-            sid: Default::default(),
-            token_id: Default::default(),
-            org_id: Default::default(),
-            trace_id: Default::default(),
-            other_uids: Default::default(),
-            origin: Default::default(),
-            request_params: Default::default(),
-            result_params: Default::default(),
-        }
-    }
-}
-///The stage 4 builder for the [`AuditLogV2`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage4 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    name: String,
-    result: super::AuditResult,
-    uid: Option<super::UserId>,
-    sid: Option<super::SessionId>,
-    token_id: Option<super::TokenId>,
-    org_id: Option<super::OrganizationId>,
-    trace_id: Option<super::TraceId>,
-    other_uids: Vec<super::UserId>,
-    origin: Option<String>,
-    request_params: std::collections::BTreeMap<String, conjure_object::Any>,
-    result_params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage4 {
-    ///"audit.2"
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    ///Name of the audit event, e.g. PUT_FILE
-    #[inline]
-    pub fn name<T>(mut self, name: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.name = name.into();
-        self
-    }
-    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
-    #[inline]
-    pub fn result(mut self, result: super::AuditResult) -> Self {
-        self.result = result;
-        self
-    }
-    ///User id (if available). This is the most downstream caller.
-    #[inline]
-    pub fn uid<T>(mut self, uid: T) -> Self
-    where
-        T: Into<Option<super::UserId>>,
-    {
-        self.uid = uid.into();
-        self
-    }
-    ///Session id (if available)
-    #[inline]
-    pub fn sid<T>(mut self, sid: T) -> Self
-    where
-        T: Into<Option<super::SessionId>>,
-    {
-        self.sid = sid.into();
-        self
-    }
-    ///API token id (if available)
-    #[inline]
-    pub fn token_id<T>(mut self, token_id: T) -> Self
-    where
-        T: Into<Option<super::TokenId>>,
-    {
-        self.token_id = token_id.into();
-        self
-    }
-    ///Organization id (if available)
-    #[inline]
-    pub fn org_id<T>(mut self, org_id: T) -> Self
-    where
-        T: Into<Option<super::OrganizationId>>,
-    {
-        self.org_id = org_id.into();
-        self
-    }
-    ///Zipkin trace id (if available)
-    #[inline]
-    pub fn trace_id<T>(mut self, trace_id: T) -> Self
-    where
-        T: Into<Option<super::TraceId>>,
-    {
-        self.trace_id = trace_id.into();
-        self
-    }
-    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
-    #[inline]
-    pub fn other_uids<T>(mut self, other_uids: T) -> Self
-    where
-        T: IntoIterator<Item = super::UserId>,
-    {
-        self.other_uids = other_uids.into_iter().collect();
-        self
-    }
-    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
-    #[inline]
-    pub fn extend_other_uids<T>(mut self, other_uids: T) -> Self
-    where
-        T: IntoIterator<Item = super::UserId>,
-    {
-        self.other_uids.extend(other_uids);
-        self
-    }
-    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
-    #[inline]
-    pub fn push_other_uids(mut self, value: super::UserId) -> Self {
-        self.other_uids.push(value);
-        self
-    }
-    ///Best-effort identifier of the originating machine, e.g. an IP address, a Kubernetes node identifier,
-    ///or similar
-    #[inline]
-    pub fn origin<T>(mut self, origin: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.origin = origin.into();
-        self
-    }
-    ///The parameters known at method invocation time.
-    #[inline]
-    pub fn request_params<T>(mut self, request_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.request_params = request_params.into_iter().collect();
-        self
-    }
-    ///The parameters known at method invocation time.
-    #[inline]
-    pub fn extend_request_params<T>(mut self, request_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.request_params.extend(request_params);
-        self
-    }
-    ///The parameters known at method invocation time.
-    #[inline]
-    pub fn insert_request_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.request_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///Information derived within a method, commonly parts of the return value.
-    #[inline]
-    pub fn result_params<T>(mut self, result_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.result_params = result_params.into_iter().collect();
-        self
-    }
-    ///Information derived within a method, commonly parts of the return value.
-    #[inline]
-    pub fn extend_result_params<T>(mut self, result_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.result_params.extend(result_params);
-        self
-    }
-    ///Information derived within a method, commonly parts of the return value.
-    #[inline]
-    pub fn insert_result_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.result_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> AuditLogV2 {
-        AuditLogV2 {
-            type_: self.type_,
-            time: self.time,
-            uid: self.uid,
-            sid: self.sid,
-            token_id: self.token_id,
-            org_id: self.org_id,
-            trace_id: self.trace_id,
-            other_uids: self.other_uids,
-            origin: self.origin,
-            name: self.name,
-            result: self.result,
-            request_params: self.request_params,
-            result_params: self.result_params,
-        }
     }
 }
 impl ser::Serialize for AuditLogV2 {

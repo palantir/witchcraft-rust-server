@@ -3,17 +3,40 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Definition of the diagnostic.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct DiagnosticLogV1 {
+    #[builder(into)]
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(custom(type = super::Diagnostic, convert = Box::new))]
     diagnostic: Box<super::Diagnostic>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl DiagnosticLogV1 {
-    /// Returns a new builder.
+    /// Constructs a new instance of the type.
     #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(
+        type_: impl Into<String>,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+        diagnostic: super::Diagnostic,
+    ) -> Self {
+        Self::builder().type_(type_).time(time).diagnostic(diagnostic).build()
     }
     ///"diagnostic.1"
     #[inline]
@@ -35,145 +58,6 @@ impl DiagnosticLogV1 {
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<DiagnosticLogV1> for BuilderStage3 {
-    #[inline]
-    fn from(value: DiagnosticLogV1) -> Self {
-        BuilderStage3 {
-            type_: value.type_,
-            time: value.time,
-            diagnostic: value.diagnostic,
-            unsafe_params: value.unsafe_params,
-        }
-    }
-}
-///The stage 0 builder for the [`DiagnosticLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///"diagnostic.1"
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`DiagnosticLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            time: time,
-        }
-    }
-}
-///The stage 2 builder for the [`DiagnosticLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage2 {
-    ///The diagnostic being logged.
-    #[inline]
-    pub fn diagnostic(self, diagnostic: super::Diagnostic) -> BuilderStage3 {
-        BuilderStage3 {
-            type_: self.type_,
-            time: self.time,
-            diagnostic: Box::new(diagnostic),
-            unsafe_params: Default::default(),
-        }
-    }
-}
-///The stage 3 builder for the [`DiagnosticLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    diagnostic: Box<super::Diagnostic>,
-    unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage3 {
-    ///"diagnostic.1"
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    ///The diagnostic being logged.
-    #[inline]
-    pub fn diagnostic(mut self, diagnostic: super::Diagnostic) -> Self {
-        self.diagnostic = Box::new(diagnostic);
-        self
-    }
-    ///Unredacted parameters
-    #[inline]
-    pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params = unsafe_params.into_iter().collect();
-        self
-    }
-    ///Unredacted parameters
-    #[inline]
-    pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params.extend(unsafe_params);
-        self
-    }
-    ///Unredacted parameters
-    #[inline]
-    pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.unsafe_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> DiagnosticLogV1 {
-        DiagnosticLogV1 {
-            type_: self.type_,
-            time: self.time,
-            diagnostic: self.diagnostic,
-            unsafe_params: self.unsafe_params,
-        }
     }
 }
 impl ser::Serialize for DiagnosticLogV1 {

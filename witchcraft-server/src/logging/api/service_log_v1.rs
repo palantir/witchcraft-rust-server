@@ -3,30 +3,69 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Definition of the service.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct ServiceLogV1 {
+    #[builder(into)]
     type_: String,
     level: super::LogLevel,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(default, into)]
     origin: Option<String>,
+    #[builder(default, into)]
     thread: Option<String>,
+    #[builder(into)]
     message: String,
+    #[builder(default, into)]
     safe: Option<bool>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(default, into)]
     uid: Option<super::UserId>,
+    #[builder(default, into)]
     sid: Option<super::SessionId>,
+    #[builder(default, into)]
     token_id: Option<super::TokenId>,
+    #[builder(default, into)]
     org_id: Option<super::OrganizationId>,
+    #[builder(default, into)]
     trace_id: Option<super::TraceId>,
+    #[builder(default, into)]
     stacktrace: Option<String>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(default, map(key(type = String, into), value(type = String, into)))]
     tags: std::collections::BTreeMap<String, String>,
 }
 impl ServiceLogV1 {
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
-    }
     ///"service.1"
     #[inline]
     pub fn type_(&self) -> &str {
@@ -108,366 +147,6 @@ impl ServiceLogV1 {
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<ServiceLogV1> for BuilderStage4 {
-    #[inline]
-    fn from(value: ServiceLogV1) -> Self {
-        BuilderStage4 {
-            type_: value.type_,
-            level: value.level,
-            time: value.time,
-            origin: value.origin,
-            thread: value.thread,
-            message: value.message,
-            safe: value.safe,
-            params: value.params,
-            uid: value.uid,
-            sid: value.sid,
-            token_id: value.token_id,
-            org_id: value.org_id,
-            trace_id: value.trace_id,
-            stacktrace: value.stacktrace,
-            unsafe_params: value.unsafe_params,
-            tags: value.tags,
-        }
-    }
-}
-///The stage 0 builder for the [`ServiceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///"service.1"
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`ServiceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    ///The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)
-    #[inline]
-    pub fn level(self, level: super::LogLevel) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            level: level,
-        }
-    }
-}
-///The stage 2 builder for the [`ServiceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    level: super::LogLevel,
-}
-impl BuilderStage2 {
-    ///RFC3339Nano UTC datetime string when the log event was emitted
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage3 {
-        BuilderStage3 {
-            type_: self.type_,
-            level: self.level,
-            time: time,
-        }
-    }
-}
-///The stage 3 builder for the [`ServiceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    level: super::LogLevel,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage3 {
-    ///Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text.
-    #[inline]
-    pub fn message<T>(self, message: T) -> BuilderStage4
-    where
-        T: Into<String>,
-    {
-        BuilderStage4 {
-            type_: self.type_,
-            level: self.level,
-            time: self.time,
-            message: message.into(),
-            origin: Default::default(),
-            thread: Default::default(),
-            safe: Default::default(),
-            params: Default::default(),
-            uid: Default::default(),
-            sid: Default::default(),
-            token_id: Default::default(),
-            org_id: Default::default(),
-            trace_id: Default::default(),
-            stacktrace: Default::default(),
-            unsafe_params: Default::default(),
-            tags: Default::default(),
-        }
-    }
-}
-///The stage 4 builder for the [`ServiceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage4 {
-    type_: String,
-    level: super::LogLevel,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    message: String,
-    origin: Option<String>,
-    thread: Option<String>,
-    safe: Option<bool>,
-    params: std::collections::BTreeMap<String, conjure_object::Any>,
-    uid: Option<super::UserId>,
-    sid: Option<super::SessionId>,
-    token_id: Option<super::TokenId>,
-    org_id: Option<super::OrganizationId>,
-    trace_id: Option<super::TraceId>,
-    stacktrace: Option<String>,
-    unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
-    tags: std::collections::BTreeMap<String, String>,
-}
-impl BuilderStage4 {
-    ///"service.1"
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    ///The logger output level. One of {FATAL,ERROR,WARN,INFO,DEBUG,TRACE} based on [log level coding guidelines](https://github.com/palantir/gradle-baseline/blob/develop/docs/best-practices/java-coding-guidelines/readme.md#log-levels)
-    #[inline]
-    pub fn level(mut self, level: super::LogLevel) -> Self {
-        self.level = level;
-        self
-    }
-    ///RFC3339Nano UTC datetime string when the log event was emitted
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    ///Log message. Palantir Java services using slf4j should not use slf4j placeholders ({}). Logs obtained from 3rd party libraries or services that use slf4j and contain slf4j placeholders will always produce `unsafeParams` with numeric indexes corresponding to the zero-indexed order of placeholders. Renderers should substitute numeric parameters from `unsafeParams` and may leave placeholders that do not match indexes as the original placeholder text.
-    #[inline]
-    pub fn message<T>(mut self, message: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.message = message.into();
-        self
-    }
-    ///Class or file name. May include line number.
-    #[inline]
-    pub fn origin<T>(mut self, origin: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.origin = origin.into();
-        self
-    }
-    ///Thread name
-    #[inline]
-    pub fn thread<T>(mut self, thread: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.thread = thread.into();
-        self
-    }
-    ///Describes the safety of this log event based on prior knowledge within the application which produced the message. This field should not be set to `true` without _total_ confidence that it is correct. * _empty_:  Considered unsafe unless the logging pipeline has special configuration for this `origin`. Eventually these will all be equivalent to `false`. * `true`: All safe components can be trusted. * `false`: Event is _unsafe_ and cannot be exported.
-    #[inline]
-    pub fn safe<T>(mut self, safe: T) -> Self
-    where
-        T: Into<Option<bool>>,
-    {
-        self.safe = safe.into();
-        self
-    }
-    ///Known-safe parameters (redaction may be used to make params knowably safe, but is not required).
-    #[inline]
-    pub fn params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params = params.into_iter().collect();
-        self
-    }
-    ///Known-safe parameters (redaction may be used to make params knowably safe, but is not required).
-    #[inline]
-    pub fn extend_params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params.extend(params);
-        self
-    }
-    ///Known-safe parameters (redaction may be used to make params knowably safe, but is not required).
-    #[inline]
-    pub fn insert_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///User id (if available).
-    #[inline]
-    pub fn uid<T>(mut self, uid: T) -> Self
-    where
-        T: Into<Option<super::UserId>>,
-    {
-        self.uid = uid.into();
-        self
-    }
-    ///Session id (if available)
-    #[inline]
-    pub fn sid<T>(mut self, sid: T) -> Self
-    where
-        T: Into<Option<super::SessionId>>,
-    {
-        self.sid = sid.into();
-        self
-    }
-    ///API token id (if available)
-    #[inline]
-    pub fn token_id<T>(mut self, token_id: T) -> Self
-    where
-        T: Into<Option<super::TokenId>>,
-    {
-        self.token_id = token_id.into();
-        self
-    }
-    ///Organization id (if available)
-    #[inline]
-    pub fn org_id<T>(mut self, org_id: T) -> Self
-    where
-        T: Into<Option<super::OrganizationId>>,
-    {
-        self.org_id = org_id.into();
-        self
-    }
-    ///Zipkin trace id (if available)
-    #[inline]
-    pub fn trace_id<T>(mut self, trace_id: T) -> Self
-    where
-        T: Into<Option<super::TraceId>>,
-    {
-        self.trace_id = trace_id.into();
-        self
-    }
-    ///Language-specific stack trace. Content is knowably safe. Renderers should substitute named placeholders ({name}, for name as a key) with keyed value from unsafeParams and leave non-matching keys as the original placeholder text.
-    #[inline]
-    pub fn stacktrace<T>(mut self, stacktrace: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.stacktrace = stacktrace.into();
-        self
-    }
-    ///Unredacted parameters
-    #[inline]
-    pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params = unsafe_params.into_iter().collect();
-        self
-    }
-    ///Unredacted parameters
-    #[inline]
-    pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params.extend(unsafe_params);
-        self
-    }
-    ///Unredacted parameters
-    #[inline]
-    pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.unsafe_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///Additional dimensions that describe the instance of the log event
-    #[inline]
-    pub fn tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags = tags.into_iter().collect();
-        self
-    }
-    ///Additional dimensions that describe the instance of the log event
-    #[inline]
-    pub fn extend_tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags.extend(tags);
-        self
-    }
-    ///Additional dimensions that describe the instance of the log event
-    #[inline]
-    pub fn insert_tags<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: Into<String>,
-    {
-        self.tags.insert(key.into(), value.into());
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> ServiceLogV1 {
-        ServiceLogV1 {
-            type_: self.type_,
-            level: self.level,
-            time: self.time,
-            origin: self.origin,
-            thread: self.thread,
-            message: self.message,
-            safe: self.safe,
-            params: self.params,
-            uid: self.uid,
-            sid: self.sid,
-            token_id: self.token_id,
-            org_id: self.org_id,
-            trace_id: self.trace_id,
-            stacktrace: self.stacktrace,
-            unsafe_params: self.unsafe_params,
-            tags: self.tags,
-        }
     }
 }
 impl ser::Serialize for ServiceLogV1 {
