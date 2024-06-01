@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +43,7 @@ where
     async fn call(&self, req: R) -> Self::Response {
         let response = self.inner.call(req).await;
 
-        if let Some(error) = response.extensions().get::<Error>() {
+        if let Some(error) = response.extensions().get::<Arc<Error>>() {
             let level = match response.status() {
                 StatusCode::INTERNAL_SERVER_ERROR => Level::Error,
                 _ => Level::Info,

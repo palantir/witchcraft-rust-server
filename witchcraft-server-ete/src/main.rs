@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::audit_service::AuditService;
-use crate::conjure::TestServiceEndpoints;
+use crate::conjure::{AsyncTestServiceEndpoints, TestServiceEndpoints};
 use conjure_error::Error;
 use refreshable::Refreshable;
 use std::env;
@@ -37,7 +37,7 @@ fn main(
 ) -> Result<(), Error> {
     match &*env::var("HANDLER_TYPE").unwrap() {
         "async" => {
-            wc.api(TestServiceEndpoints::new(async_handler::TestResource));
+            wc.api(AsyncTestServiceEndpoints::new(async_handler::TestResource));
             wc.api(AuditService);
         }
         "blocking" => {

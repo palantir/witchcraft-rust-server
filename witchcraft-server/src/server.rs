@@ -48,12 +48,13 @@ use crate::service::witchcraft_mdc::WitchcraftMdcLayer;
 use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;
+use hyper::body::Incoming;
 use std::mem;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
 
-pub type RawBody = RequestLogRequestBody<SpannedBody<hyper::Body>>;
+pub type RawBody = RequestLogRequestBody<SpannedBody<Incoming>>;
 
 #[derive(Copy, Clone)]
 pub enum Listener {

@@ -16,7 +16,7 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
-conjure-error = "3"
-refreshable = "1"
+conjure-error = "4.0.0-rc4"
+refreshable = "2"
 
-witchcraft-server = { version = "3.12.0", path = "../witchcraft-server" }
+witchcraft-server = { version = "4.0.0-rc1", path = "../witchcraft-server" }

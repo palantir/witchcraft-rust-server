@@ -19,8 +19,8 @@ use bytes::Buf;
 use conjure_http::SafeParams;
 use conjure_object::{Any, SafeLong, Utc};
 use futures_util::ready;
-use http::{HeaderMap, Request, Response};
-use http_body::Body;
+use http::{Request, Response};
+use http_body::{Body, Frame};
 use pin_project::pin_project;
 use serde::Deserialize;
 use std::mem;
@@ -236,25 +236,21 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
 
-        let value = ready!(this.inner.poll_data(cx));
-        if let Some(Ok(chunk)) = &value {
-            this.request_size
-                .fetch_add(chunk.remaining() as i64, Ordering::Relaxed);
+        let value = ready!(this.inner.poll_frame(cx));
+        if let Some(Ok(frame)) = &value {
+            if let Some(chunk) = frame.data_ref() {
+                this.request_size
+                    .fetch_add(chunk.remaining() as i64, Ordering::Relaxed);
+            }
         }
-        Poll::Ready(value)
-    }
 
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        self.project().inner.poll_trailers(cx)
+        Poll::Ready(value)
     }
 
     fn is_end_stream(&self) -> bool {
@@ -281,23 +277,18 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
-        let value = ready!(this.inner.poll_data(cx));
-        if let Some(Ok(chunk)) = &value {
-            this.state.response_size += chunk.remaining() as i64;
+        let value = ready!(this.inner.poll_frame(cx));
+        if let Some(Ok(frame)) = &value {
+            if let Some(chunk) = frame.data_ref() {
+                this.state.response_size += chunk.remaining() as i64;
+            }
         }
         Poll::Ready(value)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        self.project().inner.poll_trailers(cx)
     }
 
     fn is_end_stream(&self) -> bool {

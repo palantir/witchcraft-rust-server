@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use async_trait::async_trait;
 use conjure_error::Error;
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, Endpoint, EndpointMetadata, PathSegment,
-    ResponseBody, Service,
+    AsyncEndpoint, AsyncResponseBody, AsyncService, BoxAsyncEndpoint, ConjureRuntime, Endpoint,
+    EndpointMetadata, PathSegment, ResponseBody, Service,
 };
 use conjure_object::{Utc, Uuid};
 use http::{Extensions, Method, Request, Response};
 use std::borrow::Cow;
-use witchcraft_server::audit::{AuditLogV3, AuditProducer, AuditResult};
+use std::sync::Arc;
 use witchcraft_server::extensions::AuditLogEntry;
+use witchcraft_server::logging::api::{AuditLogV3, AuditProducer, AuditResult};
 
 pub struct AuditService;
 
 impl<I, O> Service<I, O> for AuditService {
-    fn endpoints(&self) -> Vec<Box<dyn Endpoint<I, O> + Sync + Send>> {
+    fn endpoints(&self, _: &Arc<ConjureRuntime>) -> Vec<Box<dyn Endpoint<I, O> + Sync + Send>> {
         vec![Box::new(AuditEndpoint)]
     }
 }
@@ -36,8 +36,8 @@ impl<I, O> AsyncService<I, O> for AuditService
 where
     I: 'static + Send,
 {
-    fn endpoints(&self) -> Vec<Box<dyn AsyncEndpoint<I, O> + Sync + Send>> {
-        vec![Box::new(AuditEndpoint)]
+    fn endpoints(&self, _: &Arc<ConjureRuntime>) -> Vec<BoxAsyncEndpoint<'static, I, O>> {
+        vec![BoxAsyncEndpoint::new(AuditEndpoint)]
     }
 }
 
@@ -98,7 +98,6 @@ impl<I, O> Endpoint<I, O> for AuditEndpoint {
     }
 }
 
-#[async_trait]
 impl<I, O> AsyncEndpoint<I, O> for AuditEndpoint
 where
     I: 'static + Send,

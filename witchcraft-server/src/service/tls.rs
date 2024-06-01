@@ -20,14 +20,14 @@ use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_rustls::rustls::crypto::ring::cipher_suite::{
+use tokio_rustls::rustls::crypto::aws_lc_rs::cipher_suite::{
     TLS13_AES_128_GCM_SHA256, TLS13_AES_256_GCM_SHA384, TLS13_CHACHA20_POLY1305_SHA256,
     TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
     TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
     TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
 };
-use tokio_rustls::rustls::crypto::ring::kx_group::{SECP256R1, SECP384R1, X25519};
-use tokio_rustls::rustls::crypto::{ring, CryptoProvider, SupportedKxGroup};
+use tokio_rustls::rustls::crypto::aws_lc_rs::kx_group::{SECP256R1, SECP384R1, X25519};
+use tokio_rustls::rustls::crypto::{aws_lc_rs, CryptoProvider, SupportedKxGroup};
 use tokio_rustls::rustls::server::WebPkiClientVerifier;
 use tokio_rustls::rustls::version::{TLS12, TLS13};
 use tokio_rustls::rustls::{
@@ -64,7 +64,7 @@ impl TlsLayer {
         let provider = CryptoProvider {
             cipher_suites: CIPHER_SUITES.to_vec(),
             kx_groups: KX_GROUPS.to_vec(),
-            ..ring::default_provider()
+            ..aws_lc_rs::default_provider()
         };
 
         let builder = ServerConfig::builder_with_provider(Arc::new(provider))

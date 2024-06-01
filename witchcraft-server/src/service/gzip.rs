@@ -16,15 +16,14 @@ use bytes::buf::Writer;
 use bytes::{BufMut, Bytes, BytesMut};
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use futures_util::ready;
 use http::header::{ACCEPT_ENCODING, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE};
-use http::{HeaderMap, HeaderValue, Request, Response};
-use http_body::{Body, SizeHint};
+use http::{HeaderValue, Request, Response};
+use http_body::{Body, Frame, SizeHint};
 use pin_project::pin_project;
-use std::error;
 use std::io::Write;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::{error, mem};
 use witchcraft_server_config::install::InstallConfig;
 
 const MIN_SIZE: u64 = 1024 * 1024;
@@ -87,23 +86,19 @@ where
         let can_gzip = self.enabled && can_gzip(&req);
 
         let mut response = self.inner.call(req).await;
-        let encoder = if can_gzip && should_gzip(&response) {
+        let state = if can_gzip && should_gzip(&response) {
             response.headers_mut().remove(CONTENT_LENGTH);
             response.headers_mut().insert(CONTENT_ENCODING, GZIP);
 
-            Some(GzEncoder::new(
+            State::Compressing(GzEncoder::new(
                 BytesMut::new().writer(),
                 Compression::fast(),
             ))
         } else {
-            None
+            State::Done
         };
 
-        response.map(|body| GzipBody {
-            body,
-            encoder,
-            done: false,
-        })
+        response.map(|body| GzipBody { body, state })
     }
 }
 
@@ -172,12 +167,17 @@ where
     true
 }
 
+enum State {
+    Compressing(GzEncoder<Writer<BytesMut>>),
+    Last(Frame<Bytes>),
+    Done,
+}
+
 #[pin_project]
 pub struct GzipBody<B> {
     #[pin]
     body: B,
-    encoder: Option<GzEncoder<Writer<BytesMut>>>,
-    done: bool,
+    state: State,
 }
 
 impl<B> Body for GzipBody<B>
@@ -188,57 +188,75 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let mut this = self.project();
 
-        if *this.done {
-            return Poll::Ready(None);
-        }
-
-        let next = ready!(this.body.as_mut().poll_data(cx)).transpose()?;
-
-        let Some(encoder) = this.encoder else {
-            return Poll::Ready(next.map(Ok));
-        };
-
-        match next {
-            Some(next) => {
-                encoder.write_all(&next).unwrap();
-                if this.body.is_end_stream() {
+        match mem::replace(this.state, State::Done) {
+            State::Compressing(mut encoder) => match this.body.as_mut().poll_frame(cx) {
+                Poll::Ready(Some(Ok(frame))) => match frame.data_ref() {
+                    Some(data) => {
+                        encoder.write_all(data).unwrap();
+                        if this.body.is_end_stream() {
+                            encoder.try_finish().unwrap();
+                            let buf = encoder.get_mut().get_mut().split().freeze();
+                            Poll::Ready(Some(Ok(Frame::data(buf))))
+                        } else {
+                            // FIXME only flush on Poll::Pending, cut a chunk if the buffer is large
+                            encoder.flush().unwrap();
+                            let buf = encoder.get_mut().get_mut().split().freeze();
+                            *this.state = State::Compressing(encoder);
+                            Poll::Ready(Some(Ok(Frame::data(buf))))
+                        }
+                    }
+                    None => {
+                        encoder.try_finish().unwrap();
+                        if encoder.get_ref().get_ref().is_empty() {
+                            Poll::Ready(Some(Ok(frame)))
+                        } else {
+                            *this.state = State::Last(frame);
+                            let buf = encoder.get_mut().get_mut().split().freeze();
+                            Poll::Ready(Some(Ok(Frame::data(buf))))
+                        }
+                    }
+                },
+                Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
+                Poll::Ready(None) => {
                     encoder.try_finish().unwrap();
-                    *this.done = true;
-                } else {
-                    encoder.flush().unwrap();
+                    if encoder.get_ref().get_ref().is_empty() {
+                        Poll::Ready(None)
+                    } else {
+                        let buf = encoder.get_mut().get_mut().split().freeze();
+                        Poll::Ready(Some(Ok(Frame::data(buf))))
+                    }
                 }
-            }
-            None => {
-                encoder.try_finish().unwrap();
-                *this.done = true;
-            }
+                Poll::Pending => {
+                    *this.state = State::Compressing(encoder);
+                    Poll::Pending
+                }
+            },
+            State::Last(frame) => Poll::Ready(Some(Ok(frame))),
+            State::Done => this.body.poll_frame(cx),
         }
-
-        Poll::Ready(Some(Ok(encoder.get_mut().get_mut().split().freeze())))
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        self.project().body.poll_trailers(cx)
     }
 
     fn is_end_stream(&self) -> bool {
-        self.body.is_end_stream()
+        match self.state {
+            State::Compressing(_) | State::Done => self.body.is_end_stream(),
+            State::Last(_) => false,
+        }
     }
 
     fn size_hint(&self) -> SizeHint {
-        if self.encoder.is_some() {
-            SizeHint::new()
-        } else {
-            self.body.size_hint()
+        match &self.state {
+            State::Compressing(_) => SizeHint::new(),
+            State::Last(frame) => match frame.data_ref() {
+                Some(data) => SizeHint::with_exact(data.len() as u64),
+                None => SizeHint::with_exact(0),
+            },
+            State::Done => self.body.size_hint(),
         }
     }
 }
@@ -248,13 +266,16 @@ mod test {
     use super::*;
     use crate::service::test_util::service_fn;
     use flate2::write::GzDecoder;
-    use std::io::Write;
+    use futures_channel::mpsc;
+    use futures_util::SinkExt;
+    use http_body_util::{BodyExt, Full, StreamBody};
+    use std::{convert::Infallible, io::Write};
     use tokio::task;
 
     #[tokio::test]
     async fn gzip_large_response() {
         let service = GzipLayer { enabled: true }.layer(service_fn(|_| async {
-            Response::new(hyper::Body::from(vec![0; MIN_SIZE as usize + 1]))
+            Response::new(Full::new(Bytes::from(vec![0; MIN_SIZE as usize + 1])))
         }));
 
         let response = service
@@ -271,8 +292,10 @@ mod test {
         let mut body = response.into_body();
 
         let mut decompressor = GzDecoder::new(vec![]);
-        while let Some(chunk) = body.data().await {
-            decompressor.write_all(&chunk.unwrap()).unwrap();
+        while let Some(chunk) = body.frame().await {
+            decompressor
+                .write_all(chunk.unwrap().data_ref().unwrap())
+                .unwrap();
         }
 
         assert_eq!(decompressor.finish().unwrap(), [0; MIN_SIZE as usize + 1]);
@@ -281,27 +304,22 @@ mod test {
     #[tokio::test]
     async fn respect_missing_accept_encoding() {
         let service = GzipLayer { enabled: true }.layer(service_fn(|_| async {
-            Response::new(hyper::Body::from(vec![0; MIN_SIZE as usize + 1]))
+            Response::new(Full::new(Bytes::from(vec![0; MIN_SIZE as usize + 1])))
         }));
 
         let response = service.call(Request::builder().body(()).unwrap()).await;
 
         assert_eq!(response.headers().get(CONTENT_ENCODING), None);
 
-        let mut body = response.into_body();
-
-        let mut buf = vec![];
-        while let Some(chunk) = body.data().await {
-            buf.extend_from_slice(&chunk.unwrap());
-        }
-
-        assert_eq!(buf, [0; MIN_SIZE as usize + 1]);
+        let body = response.into_body();
+        let buf = body.collect().await.unwrap().to_bytes();
+        assert_eq!(&*buf, [0; MIN_SIZE as usize + 1]);
     }
 
     #[tokio::test]
     async fn respect_rejecting_accept_encoding() {
         let service = GzipLayer { enabled: true }.layer(service_fn(|_| async {
-            Response::new(hyper::Body::from(vec![0; MIN_SIZE as usize + 1]))
+            Response::new(Full::new(Bytes::from(vec![0; MIN_SIZE as usize + 1])))
         }));
 
         let response = service
@@ -315,20 +333,15 @@ mod test {
 
         assert_eq!(response.headers().get(CONTENT_ENCODING), None);
 
-        let mut body = response.into_body();
-
-        let mut buf = vec![];
-        while let Some(chunk) = body.data().await {
-            buf.extend_from_slice(&chunk.unwrap());
-        }
-
-        assert_eq!(buf, [0; MIN_SIZE as usize + 1]);
+        let body = response.into_body();
+        let buf = body.collect().await.unwrap().to_bytes();
+        assert_eq!(&*buf, [0; MIN_SIZE as usize + 1]);
     }
 
     #[tokio::test]
     async fn dont_gzip_small_response() {
         let service = GzipLayer { enabled: true }.layer(service_fn(|_| async {
-            Response::new(hyper::Body::from(vec![0; 10]))
+            Response::new(Full::new(Bytes::from(vec![0; 10])))
         }));
 
         let response = service
@@ -342,14 +355,9 @@ mod test {
 
         assert_eq!(response.headers().get(CONTENT_ENCODING), None);
 
-        let mut body = response.into_body();
-
-        let mut buf = vec![];
-        while let Some(chunk) = body.data().await {
-            buf.extend_from_slice(&chunk.unwrap());
-        }
-
-        assert_eq!(buf, [0; 10]);
+        let body = response.into_body();
+        let buf = body.collect().await.unwrap().to_bytes();
+        assert_eq!(&*buf, [0; 10]);
     }
 
     #[tokio::test]
@@ -357,7 +365,7 @@ mod test {
         let service = GzipLayer { enabled: true }.layer(service_fn(|_| async {
             Response::builder()
                 .header(CONTENT_ENCODING, "deflate")
-                .body(hyper::Body::from(vec![0; MIN_SIZE as usize + 1]))
+                .body(Full::new(Bytes::from(vec![0; MIN_SIZE as usize + 1])))
                 .unwrap()
         }));
 
@@ -372,14 +380,9 @@ mod test {
 
         assert_eq!(response.headers().get(CONTENT_ENCODING).unwrap(), "deflate");
 
-        let mut body = response.into_body();
-
-        let mut buf = vec![];
-        while let Some(chunk) = body.data().await {
-            buf.extend_from_slice(&chunk.unwrap());
-        }
-
-        assert_eq!(buf, [0; MIN_SIZE as usize + 1]);
+        let body = response.into_body();
+        let buf = body.collect().await.unwrap().to_bytes();
+        assert_eq!(&*buf, [0; MIN_SIZE as usize + 1]);
     }
 
     #[tokio::test]
@@ -387,7 +390,7 @@ mod test {
         let service = GzipLayer { enabled: true }.layer(service_fn(|_| async {
             Response::builder()
                 .header(CONTENT_TYPE, "image/jpeg")
-                .body(hyper::Body::from(vec![0; MIN_SIZE as usize + 1]))
+                .body(Full::new(Bytes::from(vec![0; MIN_SIZE as usize + 1])))
                 .unwrap()
         }));
 
@@ -402,26 +405,21 @@ mod test {
 
         assert_eq!(response.headers().get(CONTENT_ENCODING), None);
 
-        let mut body = response.into_body();
-
-        let mut buf = vec![];
-        while let Some(chunk) = body.data().await {
-            buf.extend_from_slice(&chunk.unwrap());
-        }
-
-        assert_eq!(buf, [0; MIN_SIZE as usize + 1]);
+        let body = response.into_body();
+        let buf = body.collect().await.unwrap().to_bytes();
+        assert_eq!(&*buf, [0; MIN_SIZE as usize + 1]);
     }
 
     #[tokio::test]
     async fn each_chunk_is_decodable() {
         let service = GzipLayer { enabled: true }.layer(service_fn(|_| async {
-            let (mut tx, rx) = hyper::Body::channel();
+            let (mut tx, rx) = mpsc::channel::<Result<_, Infallible>>(1);
             task::spawn(async move {
-                let _ = tx.send_data(Bytes::from("hello")).await;
-                let _ = tx.send_data(Bytes::from("world")).await;
+                let _ = tx.send(Ok(Frame::data(Bytes::from("hello")))).await;
+                let _ = tx.send(Ok(Frame::data(Bytes::from("world")))).await;
             });
 
-            Response::builder().body(rx).unwrap()
+            Response::builder().body(StreamBody::new(rx)).unwrap()
         }));
 
         let response = service
@@ -435,7 +433,14 @@ mod test {
 
         assert_eq!(response.headers().get(CONTENT_ENCODING).unwrap(), "gzip");
 
-        let chunk = response.into_body().data().await.unwrap().unwrap();
+        let chunk = response
+            .into_body()
+            .frame()
+            .await
+            .unwrap()
+            .unwrap()
+            .into_data()
+            .unwrap();
         let mut decoder = GzDecoder::new(vec![]);
         decoder.write_all(&chunk).unwrap();
         decoder.flush().unwrap();

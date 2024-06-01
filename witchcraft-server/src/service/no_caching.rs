@@ -12,13 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::service::{Layer, Service};
-use futures_util::ready;
 use http::header::{Entry, CACHE_CONTROL};
 use http::{HeaderValue, Method, Request, Response};
-use pin_project::pin_project;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 #[allow(clippy::declare_interior_mutable_const)]
 const DO_NOT_CACHE: HeaderValue = HeaderValue::from_static("no-cache, no-store, must-revalidate");
@@ -56,32 +51,5 @@ where
         }
 
         response
-    }
-}
-
-#[pin_project]
-pub struct NoCachingFuture<F> {
-    #[pin]
-    inner: F,
-    is_get: bool,
-}
-
-impl<F, B> Future for NoCachingFuture<F>
-where
-    F: Future<Output = Response<B>>,
-{
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        let mut response = ready!(this.inner.poll(cx));
-        if *this.is_get {
-            if let Entry::Vacant(e) = response.headers_mut().entry(CACHE_CONTROL) {
-                e.insert(DO_NOT_CACHE);
-            }
-        }
-
-        Poll::Ready(response)
     }
 }

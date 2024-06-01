@@ -13,8 +13,8 @@
 // limitations under the License.
 use crate::server::Listener;
 use crate::service::{Layer, Service};
-use http::{HeaderMap, Response, StatusCode};
-use http_body::Body;
+use http::{Response, StatusCode};
+use http_body::{Body, Frame};
 use pin_project::pin_project;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -123,18 +123,11 @@ where
 
     type Error = B::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        self.project().inner.poll_data(cx)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        self.project().inner.poll_trailers(cx)
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        self.project().inner.poll_frame(cx)
     }
 
     fn is_end_stream(&self) -> bool {
