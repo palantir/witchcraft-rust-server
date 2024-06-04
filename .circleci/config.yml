@@ -20,7 +20,7 @@ save_deps: &SAVE_DEPS
 
 version: 2
 jobs:
-  build:
+  circle-all:
     docker:
       - image: rust:1.78.0
     environment:
@@ -44,3 +44,10 @@ jobs:
             exit 1
           fi
       - *SAVE_DEPS
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - circle-all:
+          filters: { tags: { only: /.*/ } }
