@@ -2,42 +2,82 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct AuditLogV3 {
+    #[builder(into)]
     type_: String,
+    #[builder(into)]
     deployment: String,
+    #[builder(into)]
     host: String,
+    #[builder(into)]
     product: String,
+    #[builder(into)]
     product_version: String,
+    #[builder(default, into)]
     stack: Option<String>,
+    #[builder(default, into)]
     service: Option<String>,
+    #[builder(default, into)]
     environment: Option<String>,
     producer_type: super::AuditProducer,
+    #[builder(default, list(item(type = super::Organization)))]
     organizations: Vec<super::Organization>,
     event_id: conjure_object::Uuid,
+    #[builder(default, into)]
     user_agent: Option<String>,
+    #[builder(default, list(item(type = String, into)))]
     categories: Vec<String>,
+    #[builder(
+        default,
+        list(
+            item(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     entities: Vec<conjure_object::Any>,
+    #[builder(default, list(item(type = super::ContextualizedUser)))]
     users: Vec<super::ContextualizedUser>,
+    #[builder(default, list(item(type = String, into)))]
     origins: Vec<String>,
+    #[builder(default, into)]
     source_origin: Option<String>,
+    #[builder(
+        default,
+        map(key(type = String, into), value(type = super::SensitivityTaggedValue))
+    )]
     request_params: std::collections::BTreeMap<String, super::SensitivityTaggedValue>,
+    #[builder(
+        default,
+        map(key(type = String, into), value(type = super::SensitivityTaggedValue))
+    )]
     result_params: std::collections::BTreeMap<String, super::SensitivityTaggedValue>,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(default, into)]
     uid: Option<super::UserId>,
+    #[builder(default, into)]
     sid: Option<super::SessionId>,
+    #[builder(default, into)]
     token_id: Option<super::TokenId>,
+    #[builder(default, into)]
     org_id: Option<super::OrganizationId>,
+    #[builder(default, into)]
     trace_id: Option<super::TraceId>,
+    #[builder(default, into)]
     origin: Option<String>,
+    #[builder(into)]
     name: String,
     result: super::AuditResult,
 }
 impl AuditLogV3 {
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
-    }
     ///"audit.3"
     #[inline]
     pub fn type_(&self) -> &str {
@@ -202,794 +242,6 @@ impl AuditLogV3 {
     #[inline]
     pub fn result(&self) -> &super::AuditResult {
         &self.result
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<AuditLogV3> for BuilderStage10 {
-    #[inline]
-    fn from(value: AuditLogV3) -> Self {
-        BuilderStage10 {
-            type_: value.type_,
-            deployment: value.deployment,
-            host: value.host,
-            product: value.product,
-            product_version: value.product_version,
-            stack: value.stack,
-            service: value.service,
-            environment: value.environment,
-            producer_type: value.producer_type,
-            organizations: value.organizations,
-            event_id: value.event_id,
-            user_agent: value.user_agent,
-            categories: value.categories,
-            entities: value.entities,
-            users: value.users,
-            origins: value.origins,
-            source_origin: value.source_origin,
-            request_params: value.request_params,
-            result_params: value.result_params,
-            time: value.time,
-            uid: value.uid,
-            sid: value.sid,
-            token_id: value.token_id,
-            org_id: value.org_id,
-            trace_id: value.trace_id,
-            origin: value.origin,
-            name: value.name,
-            result: value.result,
-        }
-    }
-}
-///The stage 0 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///"audit.3"
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    ///The deployment that produced this log. Not exposed to downstream consumers.
-    #[inline]
-    pub fn deployment<T>(self, deployment: T) -> BuilderStage2
-    where
-        T: Into<String>,
-    {
-        BuilderStage2 {
-            type_: self.type_,
-            deployment: deployment.into(),
-        }
-    }
-}
-///The stage 2 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    deployment: String,
-}
-impl BuilderStage2 {
-    ///The host of the service that produced this log.
-    #[inline]
-    pub fn host<T>(self, host: T) -> BuilderStage3
-    where
-        T: Into<String>,
-    {
-        BuilderStage3 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: host.into(),
-        }
-    }
-}
-///The stage 3 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    deployment: String,
-    host: String,
-}
-impl BuilderStage3 {
-    ///The name of the product that produced this log.
-    #[inline]
-    pub fn product<T>(self, product: T) -> BuilderStage4
-    where
-        T: Into<String>,
-    {
-        BuilderStage4 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: product.into(),
-        }
-    }
-}
-///The stage 4 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage4 {
-    type_: String,
-    deployment: String,
-    host: String,
-    product: String,
-}
-impl BuilderStage4 {
-    ///The version of the product that produced this log.
-    #[inline]
-    pub fn product_version<T>(self, product_version: T) -> BuilderStage5
-    where
-        T: Into<String>,
-    {
-        BuilderStage5 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: self.product,
-            product_version: product_version.into(),
-        }
-    }
-}
-///The stage 5 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage5 {
-    type_: String,
-    deployment: String,
-    host: String,
-    product: String,
-    product_version: String,
-}
-impl BuilderStage5 {
-    ///How this audit log was produced, eg. from a backend Server, frontend Client etc.
-    #[inline]
-    pub fn producer_type(self, producer_type: super::AuditProducer) -> BuilderStage6 {
-        BuilderStage6 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: self.product,
-            product_version: self.product_version,
-            producer_type: producer_type,
-        }
-    }
-}
-///The stage 6 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage6 {
-    type_: String,
-    deployment: String,
-    host: String,
-    product: String,
-    product_version: String,
-    producer_type: super::AuditProducer,
-}
-impl BuilderStage6 {
-    ///Unique identifier for this audit log event.
-    #[inline]
-    pub fn event_id(self, event_id: conjure_object::Uuid) -> BuilderStage7 {
-        BuilderStage7 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: self.product,
-            product_version: self.product_version,
-            producer_type: self.producer_type,
-            event_id: event_id,
-        }
-    }
-}
-///The stage 7 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage7 {
-    type_: String,
-    deployment: String,
-    host: String,
-    product: String,
-    product_version: String,
-    producer_type: super::AuditProducer,
-    event_id: conjure_object::Uuid,
-}
-impl BuilderStage7 {
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage8 {
-        BuilderStage8 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: self.product,
-            product_version: self.product_version,
-            producer_type: self.producer_type,
-            event_id: self.event_id,
-            time: time,
-        }
-    }
-}
-///The stage 8 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage8 {
-    type_: String,
-    deployment: String,
-    host: String,
-    product: String,
-    product_version: String,
-    producer_type: super::AuditProducer,
-    event_id: conjure_object::Uuid,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage8 {
-    ///Name of the audit event, e.g. PUT_FILE
-    #[inline]
-    pub fn name<T>(self, name: T) -> BuilderStage9
-    where
-        T: Into<String>,
-    {
-        BuilderStage9 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: self.product,
-            product_version: self.product_version,
-            producer_type: self.producer_type,
-            event_id: self.event_id,
-            time: self.time,
-            name: name.into(),
-        }
-    }
-}
-///The stage 9 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage9 {
-    type_: String,
-    deployment: String,
-    host: String,
-    product: String,
-    product_version: String,
-    producer_type: super::AuditProducer,
-    event_id: conjure_object::Uuid,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    name: String,
-}
-impl BuilderStage9 {
-    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
-    #[inline]
-    pub fn result(self, result: super::AuditResult) -> BuilderStage10 {
-        BuilderStage10 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: self.product,
-            product_version: self.product_version,
-            producer_type: self.producer_type,
-            event_id: self.event_id,
-            time: self.time,
-            name: self.name,
-            result: result,
-            stack: Default::default(),
-            service: Default::default(),
-            environment: Default::default(),
-            organizations: Default::default(),
-            user_agent: Default::default(),
-            categories: Default::default(),
-            entities: Default::default(),
-            users: Default::default(),
-            origins: Default::default(),
-            source_origin: Default::default(),
-            request_params: Default::default(),
-            result_params: Default::default(),
-            uid: Default::default(),
-            sid: Default::default(),
-            token_id: Default::default(),
-            org_id: Default::default(),
-            trace_id: Default::default(),
-            origin: Default::default(),
-        }
-    }
-}
-///The stage 10 builder for the [`AuditLogV3`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage10 {
-    type_: String,
-    deployment: String,
-    host: String,
-    product: String,
-    product_version: String,
-    producer_type: super::AuditProducer,
-    event_id: conjure_object::Uuid,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    name: String,
-    result: super::AuditResult,
-    stack: Option<String>,
-    service: Option<String>,
-    environment: Option<String>,
-    organizations: Vec<super::Organization>,
-    user_agent: Option<String>,
-    categories: Vec<String>,
-    entities: Vec<conjure_object::Any>,
-    users: Vec<super::ContextualizedUser>,
-    origins: Vec<String>,
-    source_origin: Option<String>,
-    request_params: std::collections::BTreeMap<String, super::SensitivityTaggedValue>,
-    result_params: std::collections::BTreeMap<String, super::SensitivityTaggedValue>,
-    uid: Option<super::UserId>,
-    sid: Option<super::SessionId>,
-    token_id: Option<super::TokenId>,
-    org_id: Option<super::OrganizationId>,
-    trace_id: Option<super::TraceId>,
-    origin: Option<String>,
-}
-impl BuilderStage10 {
-    ///"audit.3"
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    ///The deployment that produced this log. Not exposed to downstream consumers.
-    #[inline]
-    pub fn deployment<T>(mut self, deployment: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.deployment = deployment.into();
-        self
-    }
-    ///The host of the service that produced this log.
-    #[inline]
-    pub fn host<T>(mut self, host: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.host = host.into();
-        self
-    }
-    ///The name of the product that produced this log.
-    #[inline]
-    pub fn product<T>(mut self, product: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.product = product.into();
-        self
-    }
-    ///The version of the product that produced this log.
-    #[inline]
-    pub fn product_version<T>(mut self, product_version: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.product_version = product_version.into();
-        self
-    }
-    ///How this audit log was produced, eg. from a backend Server, frontend Client etc.
-    #[inline]
-    pub fn producer_type(mut self, producer_type: super::AuditProducer) -> Self {
-        self.producer_type = producer_type;
-        self
-    }
-    ///Unique identifier for this audit log event.
-    #[inline]
-    pub fn event_id(mut self, event_id: conjure_object::Uuid) -> Self {
-        self.event_id = event_id;
-        self
-    }
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    ///Name of the audit event, e.g. PUT_FILE
-    #[inline]
-    pub fn name<T>(mut self, name: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.name = name.into();
-        self
-    }
-    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
-    #[inline]
-    pub fn result(mut self, result: super::AuditResult) -> Self {
-        self.result = result;
-        self
-    }
-    ///The stack that this log was generated on.
-    #[inline]
-    pub fn stack<T>(mut self, stack: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.stack = stack.into();
-        self
-    }
-    ///The service name that produced this log.
-    #[inline]
-    pub fn service<T>(mut self, service: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.service = service.into();
-        self
-    }
-    ///The environment that produced this log.
-    #[inline]
-    pub fn environment<T>(mut self, environment: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.environment = environment.into();
-        self
-    }
-    ///A list of organizations that have been attributed to this log.
-    ///Attribution is typically based on the user that originated this log, and the resources that
-    ///they targeted.
-    ///Not exposed to downstream consumers.
-    #[inline]
-    pub fn organizations<T>(mut self, organizations: T) -> Self
-    where
-        T: IntoIterator<Item = super::Organization>,
-    {
-        self.organizations = organizations.into_iter().collect();
-        self
-    }
-    ///A list of organizations that have been attributed to this log.
-    ///Attribution is typically based on the user that originated this log, and the resources that
-    ///they targeted.
-    ///Not exposed to downstream consumers.
-    #[inline]
-    pub fn extend_organizations<T>(mut self, organizations: T) -> Self
-    where
-        T: IntoIterator<Item = super::Organization>,
-    {
-        self.organizations.extend(organizations);
-        self
-    }
-    ///A list of organizations that have been attributed to this log.
-    ///Attribution is typically based on the user that originated this log, and the resources that
-    ///they targeted.
-    ///Not exposed to downstream consumers.
-    #[inline]
-    pub fn push_organizations(mut self, value: super::Organization) -> Self {
-        self.organizations.push(value);
-        self
-    }
-    ///The user agent of the user that originated this log.
-    #[inline]
-    pub fn user_agent<T>(mut self, user_agent: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.user_agent = user_agent.into();
-        self
-    }
-    ///All audit categories produced by this audit event.
-    ///Each audit categories produces a set of keys that will be distributed between the request and
-    ///response params.
-    #[inline]
-    pub fn categories<T>(mut self, categories: T) -> Self
-    where
-        T: IntoIterator<Item = String>,
-    {
-        self.categories = categories.into_iter().collect();
-        self
-    }
-    ///All audit categories produced by this audit event.
-    ///Each audit categories produces a set of keys that will be distributed between the request and
-    ///response params.
-    #[inline]
-    pub fn extend_categories<T>(mut self, categories: T) -> Self
-    where
-        T: IntoIterator<Item = String>,
-    {
-        self.categories.extend(categories);
-        self
-    }
-    ///All audit categories produced by this audit event.
-    ///Each audit categories produces a set of keys that will be distributed between the request and
-    ///response params.
-    #[inline]
-    pub fn push_categories<T>(mut self, value: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.categories.push(value.into());
-        self
-    }
-    ///All contextualized entities present in the request and response params of this log.
-    ///Note: Some resources cannot be contextualized, and will not be included in this list as a result.
-    #[inline]
-    pub fn entities<T>(mut self, entities: T) -> Self
-    where
-        T: IntoIterator<Item = conjure_object::Any>,
-    {
-        self.entities = entities.into_iter().collect();
-        self
-    }
-    ///All contextualized entities present in the request and response params of this log.
-    ///Note: Some resources cannot be contextualized, and will not be included in this list as a result.
-    #[inline]
-    pub fn extend_entities<T>(mut self, entities: T) -> Self
-    where
-        T: IntoIterator<Item = conjure_object::Any>,
-    {
-        self.entities.extend(entities);
-        self
-    }
-    ///All contextualized entities present in the request and response params of this log.
-    ///Note: Some resources cannot be contextualized, and will not be included in this list as a result.
-    #[inline]
-    pub fn push_entities<T>(mut self, value: T) -> Self
-    where
-        T: conjure_object::serde::Serialize,
-    {
-        self.entities
-            .push(conjure_object::Any::new(value).expect("value failed to serialize"));
-        self
-    }
-    ///All contextualized users present in the request and response params of this log, including the top level
-    ///UUID of this log.
-    #[inline]
-    pub fn users<T>(mut self, users: T) -> Self
-    where
-        T: IntoIterator<Item = super::ContextualizedUser>,
-    {
-        self.users = users.into_iter().collect();
-        self
-    }
-    ///All contextualized users present in the request and response params of this log, including the top level
-    ///UUID of this log.
-    #[inline]
-    pub fn extend_users<T>(mut self, users: T) -> Self
-    where
-        T: IntoIterator<Item = super::ContextualizedUser>,
-    {
-        self.users.extend(users);
-        self
-    }
-    ///All contextualized users present in the request and response params of this log, including the top level
-    ///UUID of this log.
-    #[inline]
-    pub fn push_users(mut self, value: super::ContextualizedUser) -> Self {
-        self.users.push(value);
-        self
-    }
-    ///All addresses attached to the request. Contains information
-    ///from unreliable sources such as the X-Forwarded-For header.
-    ///
-    ///This value can be spoofed.
-    #[inline]
-    pub fn origins<T>(mut self, origins: T) -> Self
-    where
-        T: IntoIterator<Item = String>,
-    {
-        self.origins = origins.into_iter().collect();
-        self
-    }
-    ///All addresses attached to the request. Contains information
-    ///from unreliable sources such as the X-Forwarded-For header.
-    ///
-    ///This value can be spoofed.
-    #[inline]
-    pub fn extend_origins<T>(mut self, origins: T) -> Self
-    where
-        T: IntoIterator<Item = String>,
-    {
-        self.origins.extend(origins);
-        self
-    }
-    ///All addresses attached to the request. Contains information
-    ///from unreliable sources such as the X-Forwarded-For header.
-    ///
-    ///This value can be spoofed.
-    #[inline]
-    pub fn push_origins<T>(mut self, value: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.origins.push(value.into());
-        self
-    }
-    ///Origin of the network request. If a request goes through a proxy,
-    ///this will contain the proxy''s address.
-    ///
-    ///This value is verified through the TCP stack.
-    #[inline]
-    pub fn source_origin<T>(mut self, source_origin: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.source_origin = source_origin.into();
-        self
-    }
-    ///The parameters known at method invocation time.
-    ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
-    #[inline]
-    pub fn request_params<T>(mut self, request_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, super::SensitivityTaggedValue)>,
-    {
-        self.request_params = request_params.into_iter().collect();
-        self
-    }
-    ///The parameters known at method invocation time.
-    ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
-    #[inline]
-    pub fn extend_request_params<T>(mut self, request_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, super::SensitivityTaggedValue)>,
-    {
-        self.request_params.extend(request_params);
-        self
-    }
-    ///The parameters known at method invocation time.
-    ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
-    #[inline]
-    pub fn insert_request_params<K>(
-        mut self,
-        key: K,
-        value: super::SensitivityTaggedValue,
-    ) -> Self
-    where
-        K: Into<String>,
-    {
-        self.request_params.insert(key.into(), value);
-        self
-    }
-    ///Information derived within a method, commonly parts of the return value.
-    ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
-    #[inline]
-    pub fn result_params<T>(mut self, result_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, super::SensitivityTaggedValue)>,
-    {
-        self.result_params = result_params.into_iter().collect();
-        self
-    }
-    ///Information derived within a method, commonly parts of the return value.
-    ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
-    #[inline]
-    pub fn extend_result_params<T>(mut self, result_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, super::SensitivityTaggedValue)>,
-    {
-        self.result_params.extend(result_params);
-        self
-    }
-    ///Information derived within a method, commonly parts of the return value.
-    ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
-    #[inline]
-    pub fn insert_result_params<K>(
-        mut self,
-        key: K,
-        value: super::SensitivityTaggedValue,
-    ) -> Self
-    where
-        K: Into<String>,
-    {
-        self.result_params.insert(key.into(), value);
-        self
-    }
-    ///User id (if available). This is the most downstream caller.
-    #[inline]
-    pub fn uid<T>(mut self, uid: T) -> Self
-    where
-        T: Into<Option<super::UserId>>,
-    {
-        self.uid = uid.into();
-        self
-    }
-    ///Session id (if available)
-    #[inline]
-    pub fn sid<T>(mut self, sid: T) -> Self
-    where
-        T: Into<Option<super::SessionId>>,
-    {
-        self.sid = sid.into();
-        self
-    }
-    ///API token id (if available)
-    #[inline]
-    pub fn token_id<T>(mut self, token_id: T) -> Self
-    where
-        T: Into<Option<super::TokenId>>,
-    {
-        self.token_id = token_id.into();
-        self
-    }
-    ///Organization id (if available)
-    #[inline]
-    pub fn org_id<T>(mut self, org_id: T) -> Self
-    where
-        T: Into<Option<super::OrganizationId>>,
-    {
-        self.org_id = org_id.into();
-        self
-    }
-    ///Zipkin trace id (if available)
-    #[inline]
-    pub fn trace_id<T>(mut self, trace_id: T) -> Self
-    where
-        T: Into<Option<super::TraceId>>,
-    {
-        self.trace_id = trace_id.into();
-        self
-    }
-    ///Best-effort identifier of the originating machine, e.g. an
-    ///IP address, a Kubernetes node identifier, or similar.
-    ///
-    ///This value can be spoofed.
-    #[inline]
-    pub fn origin<T>(mut self, origin: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.origin = origin.into();
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> AuditLogV3 {
-        AuditLogV3 {
-            type_: self.type_,
-            deployment: self.deployment,
-            host: self.host,
-            product: self.product,
-            product_version: self.product_version,
-            stack: self.stack,
-            service: self.service,
-            environment: self.environment,
-            producer_type: self.producer_type,
-            organizations: self.organizations,
-            event_id: self.event_id,
-            user_agent: self.user_agent,
-            categories: self.categories,
-            entities: self.entities,
-            users: self.users,
-            origins: self.origins,
-            source_origin: self.source_origin,
-            request_params: self.request_params,
-            result_params: self.result_params,
-            time: self.time,
-            uid: self.uid,
-            sid: self.sid,
-            token_id: self.token_id,
-            org_id: self.org_id,
-            trace_id: self.trace_id,
-            origin: self.origin,
-            name: self.name,
-            result: self.result,
-        }
     }
 }
 impl ser::Serialize for AuditLogV3 {

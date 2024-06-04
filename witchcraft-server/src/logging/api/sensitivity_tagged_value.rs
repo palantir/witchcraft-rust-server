@@ -2,28 +2,25 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct SensitivityTaggedValue {
+    #[builder(default, list(item(type = String, into)))]
     level: Vec<String>,
+    #[builder(
+        custom(
+            type = impl
+            conjure_object::serde::Serialize,
+            convert = |v|conjure_object::Any::new(v).expect("value failed to serialize")
+        )
+    )]
     payload: conjure_object::Any,
 }
 impl SensitivityTaggedValue {
     /// Constructs a new instance of the type.
     #[inline]
-    pub fn new<T, U>(level: T, payload: U) -> SensitivityTaggedValue
-    where
-        T: IntoIterator<Item = String>,
-        U: conjure_object::serde::Serialize,
-    {
-        SensitivityTaggedValue {
-            level: level.into_iter().collect(),
-            payload: conjure_object::Any::new(payload)
-                .expect("value failed to serialize"),
-        }
-    }
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(payload: impl conjure_object::serde::Serialize) -> Self {
+        Self::builder().payload(payload).build()
     }
     ///Sensitivity level of this value; must be a known level in sls-spec.
     #[inline]
@@ -33,90 +30,6 @@ impl SensitivityTaggedValue {
     #[inline]
     pub fn payload(&self) -> &conjure_object::Any {
         &self.payload
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<SensitivityTaggedValue> for BuilderStage1 {
-    #[inline]
-    fn from(value: SensitivityTaggedValue) -> Self {
-        BuilderStage1 {
-            level: value.level,
-            payload: value.payload,
-        }
-    }
-}
-///The stage 0 builder for the [`SensitivityTaggedValue`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    #[inline]
-    pub fn payload<T>(self, payload: T) -> BuilderStage1
-    where
-        T: conjure_object::serde::Serialize,
-    {
-        BuilderStage1 {
-            payload: conjure_object::Any::new(payload)
-                .expect("value failed to serialize"),
-            level: Default::default(),
-        }
-    }
-}
-///The stage 1 builder for the [`SensitivityTaggedValue`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    payload: conjure_object::Any,
-    level: Vec<String>,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn payload<T>(mut self, payload: T) -> Self
-    where
-        T: conjure_object::serde::Serialize,
-    {
-        self
-            .payload = conjure_object::Any::new(payload)
-            .expect("value failed to serialize");
-        self
-    }
-    ///Sensitivity level of this value; must be a known level in sls-spec.
-    #[inline]
-    pub fn level<T>(mut self, level: T) -> Self
-    where
-        T: IntoIterator<Item = String>,
-    {
-        self.level = level.into_iter().collect();
-        self
-    }
-    ///Sensitivity level of this value; must be a known level in sls-spec.
-    #[inline]
-    pub fn extend_level<T>(mut self, level: T) -> Self
-    where
-        T: IntoIterator<Item = String>,
-    {
-        self.level.extend(level);
-        self
-    }
-    ///Sensitivity level of this value; must be a known level in sls-spec.
-    #[inline]
-    pub fn push_level<T>(mut self, value: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.level.push(value.into());
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> SensitivityTaggedValue {
-        SensitivityTaggedValue {
-            level: self.level,
-            payload: self.payload,
-        }
     }
 }
 impl ser::Serialize for SensitivityTaggedValue {

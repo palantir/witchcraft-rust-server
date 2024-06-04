@@ -2,30 +2,21 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct Endpoint {
+    #[builder(into)]
     service_name: String,
+    #[builder(default, into)]
     ipv4: Option<String>,
+    #[builder(default, into)]
     ipv6: Option<String>,
 }
 impl Endpoint {
     /// Constructs a new instance of the type.
     #[inline]
-    pub fn new<T, U, V>(service_name: T, ipv4: U, ipv6: V) -> Endpoint
-    where
-        T: Into<String>,
-        U: Into<String>,
-        V: Into<String>,
-    {
-        Endpoint {
-            service_name: service_name.into(),
-            ipv4: Some(ipv4.into()),
-            ipv6: Some(ipv6.into()),
-        }
-    }
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(service_name: impl Into<String>) -> Self {
+        Self::builder().service_name(service_name).build()
     }
     ///Name of the service that generated the annotation
     #[inline]
@@ -41,84 +32,6 @@ impl Endpoint {
     #[inline]
     pub fn ipv6(&self) -> Option<&str> {
         self.ipv6.as_ref().map(|o| &**o)
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<Endpoint> for BuilderStage1 {
-    #[inline]
-    fn from(value: Endpoint) -> Self {
-        BuilderStage1 {
-            service_name: value.service_name,
-            ipv4: value.ipv4,
-            ipv6: value.ipv6,
-        }
-    }
-}
-///The stage 0 builder for the [`Endpoint`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///Name of the service that generated the annotation
-    #[inline]
-    pub fn service_name<T>(self, service_name: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            service_name: service_name.into(),
-            ipv4: Default::default(),
-            ipv6: Default::default(),
-        }
-    }
-}
-///The stage 1 builder for the [`Endpoint`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    service_name: String,
-    ipv4: Option<String>,
-    ipv6: Option<String>,
-}
-impl BuilderStage1 {
-    ///Name of the service that generated the annotation
-    #[inline]
-    pub fn service_name<T>(mut self, service_name: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.service_name = service_name.into();
-        self
-    }
-    ///IPv4 address of the machine that generated this annotation (`xxx.xxx.xxx.xxx`)
-    #[inline]
-    pub fn ipv4<T>(mut self, ipv4: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.ipv4 = ipv4.into();
-        self
-    }
-    ///IPv6 address of the machine that generated this annotation (standard hextet form)
-    #[inline]
-    pub fn ipv6<T>(mut self, ipv6: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.ipv6 = ipv6.into();
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> Endpoint {
-        Endpoint {
-            service_name: self.service_name,
-            ipv4: self.ipv4,
-            ipv6: self.ipv6,
-        }
     }
 }
 impl ser::Serialize for Endpoint {

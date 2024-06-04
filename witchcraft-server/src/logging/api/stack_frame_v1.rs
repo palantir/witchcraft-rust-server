@@ -2,18 +2,39 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct StackFrameV1 {
+    #[builder(default, into)]
     address: Option<String>,
+    #[builder(default, into)]
     procedure: Option<String>,
+    #[builder(default, into)]
     file: Option<String>,
+    #[builder(default, into)]
     line: Option<i32>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl StackFrameV1 {
-    /// Returns a new builder.
+    /// Constructs a new instance of the type.
     #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new() -> Self {
+        Self::builder().build()
     }
     ///The address of the execution point of this stack frame. This is a string because a safelong can't represent the full 64 bit address space.
     #[inline]
@@ -39,120 +60,6 @@ impl StackFrameV1 {
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {
-            address: Default::default(),
-            procedure: Default::default(),
-            file: Default::default(),
-            line: Default::default(),
-            params: Default::default(),
-        }
-    }
-}
-impl From<StackFrameV1> for BuilderStage0 {
-    #[inline]
-    fn from(value: StackFrameV1) -> Self {
-        BuilderStage0 {
-            address: value.address,
-            procedure: value.procedure,
-            file: value.file,
-            line: value.line,
-            params: value.params,
-        }
-    }
-}
-///The stage 0 builder for the [`StackFrameV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {
-    address: Option<String>,
-    procedure: Option<String>,
-    file: Option<String>,
-    line: Option<i32>,
-    params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage0 {
-    ///The address of the execution point of this stack frame. This is a string because a safelong can't represent the full 64 bit address space.
-    #[inline]
-    pub fn address<T>(mut self, address: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.address = address.into();
-        self
-    }
-    ///The identifier of the procedure containing the execution point of this stack frame. This is a fully qualified method name in Java and a demangled symbol name in native code, for example. Note that procedure names may include unsafe information if a service is, for exmaple, running user-defined code. It must be safely redacted.
-    #[inline]
-    pub fn procedure<T>(mut self, procedure: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.procedure = procedure.into();
-        self
-    }
-    ///The name of the file containing the source location of the execution point of this stack frame. Note that file names may include unsafe information if a service is, for example, running user-defined code. It must be safely redacted.
-    #[inline]
-    pub fn file<T>(mut self, file: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.file = file.into();
-        self
-    }
-    ///The line number of the source location of the execution point of this stack frame.
-    #[inline]
-    pub fn line<T>(mut self, line: T) -> Self
-    where
-        T: Into<Option<i32>>,
-    {
-        self.line = line.into();
-        self
-    }
-    ///Other frame-level information.
-    #[inline]
-    pub fn params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params = params.into_iter().collect();
-        self
-    }
-    ///Other frame-level information.
-    #[inline]
-    pub fn extend_params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params.extend(params);
-        self
-    }
-    ///Other frame-level information.
-    #[inline]
-    pub fn insert_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> StackFrameV1 {
-        StackFrameV1 {
-            address: self.address,
-            procedure: self.procedure,
-            file: self.file,
-            line: self.line,
-            params: self.params,
-        }
     }
 }
 impl ser::Serialize for StackFrameV1 {

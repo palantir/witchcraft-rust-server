@@ -3,33 +3,116 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Definition of the request.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct RequestLogV1 {
+    #[builder(into)]
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(default, into)]
     method: Option<String>,
+    #[builder(into)]
     protocol: String,
+    #[builder(into)]
     path: String,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     path_params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     query_params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     header_params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     body_params: std::collections::BTreeMap<String, conjure_object::Any>,
     status: i32,
+    #[builder(into)]
     request_size: String,
+    #[builder(into)]
     response_size: String,
     duration: i32,
+    #[builder(default, into)]
     uid: Option<super::UserId>,
+    #[builder(default, into)]
     sid: Option<super::SessionId>,
+    #[builder(default, into)]
     token_id: Option<super::TokenId>,
+    #[builder(default, into)]
     org_id: Option<super::OrganizationId>,
+    #[builder(default, into)]
     trace_id: Option<super::TraceId>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl RequestLogV1 {
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
-    }
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -132,549 +215,6 @@ impl RequestLogV1 {
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<RequestLogV1> for BuilderStage8 {
-    #[inline]
-    fn from(value: RequestLogV1) -> Self {
-        BuilderStage8 {
-            type_: value.type_,
-            time: value.time,
-            method: value.method,
-            protocol: value.protocol,
-            path: value.path,
-            path_params: value.path_params,
-            query_params: value.query_params,
-            header_params: value.header_params,
-            body_params: value.body_params,
-            status: value.status,
-            request_size: value.request_size,
-            response_size: value.response_size,
-            duration: value.duration,
-            uid: value.uid,
-            sid: value.sid,
-            token_id: value.token_id,
-            org_id: value.org_id,
-            trace_id: value.trace_id,
-            unsafe_params: value.unsafe_params,
-        }
-    }
-}
-///The stage 0 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            time: time,
-        }
-    }
-}
-///The stage 2 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage2 {
-    ///Protocol, e.g. `HTTP/1.1`, `HTTP/2`
-    #[inline]
-    pub fn protocol<T>(self, protocol: T) -> BuilderStage3
-    where
-        T: Into<String>,
-    {
-        BuilderStage3 {
-            type_: self.type_,
-            time: self.time,
-            protocol: protocol.into(),
-        }
-    }
-}
-///The stage 3 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    protocol: String,
-}
-impl BuilderStage3 {
-    ///Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`.
-    #[inline]
-    pub fn path<T>(self, path: T) -> BuilderStage4
-    where
-        T: Into<String>,
-    {
-        BuilderStage4 {
-            type_: self.type_,
-            time: self.time,
-            protocol: self.protocol,
-            path: path.into(),
-        }
-    }
-}
-///The stage 4 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage4 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    protocol: String,
-    path: String,
-}
-impl BuilderStage4 {
-    ///HTTP status code of response
-    #[inline]
-    pub fn status(self, status: i32) -> BuilderStage5 {
-        BuilderStage5 {
-            type_: self.type_,
-            time: self.time,
-            protocol: self.protocol,
-            path: self.path,
-            status: status,
-        }
-    }
-}
-///The stage 5 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage5 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    protocol: String,
-    path: String,
-    status: i32,
-}
-impl BuilderStage5 {
-    ///Size of request (bytes). string to allow large numbers.
-    #[inline]
-    pub fn request_size<T>(self, request_size: T) -> BuilderStage6
-    where
-        T: Into<String>,
-    {
-        BuilderStage6 {
-            type_: self.type_,
-            time: self.time,
-            protocol: self.protocol,
-            path: self.path,
-            status: self.status,
-            request_size: request_size.into(),
-        }
-    }
-}
-///The stage 6 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage6 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    protocol: String,
-    path: String,
-    status: i32,
-    request_size: String,
-}
-impl BuilderStage6 {
-    ///Size of response (bytes). string to allow large numbers.
-    #[inline]
-    pub fn response_size<T>(self, response_size: T) -> BuilderStage7
-    where
-        T: Into<String>,
-    {
-        BuilderStage7 {
-            type_: self.type_,
-            time: self.time,
-            protocol: self.protocol,
-            path: self.path,
-            status: self.status,
-            request_size: self.request_size,
-            response_size: response_size.into(),
-        }
-    }
-}
-///The stage 7 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage7 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    protocol: String,
-    path: String,
-    status: i32,
-    request_size: String,
-    response_size: String,
-}
-impl BuilderStage7 {
-    ///Amount of time spent handling request (microseconds)
-    #[inline]
-    pub fn duration(self, duration: i32) -> BuilderStage8 {
-        BuilderStage8 {
-            type_: self.type_,
-            time: self.time,
-            protocol: self.protocol,
-            path: self.path,
-            status: self.status,
-            request_size: self.request_size,
-            response_size: self.response_size,
-            duration: duration,
-            method: Default::default(),
-            path_params: Default::default(),
-            query_params: Default::default(),
-            header_params: Default::default(),
-            body_params: Default::default(),
-            uid: Default::default(),
-            sid: Default::default(),
-            token_id: Default::default(),
-            org_id: Default::default(),
-            trace_id: Default::default(),
-            unsafe_params: Default::default(),
-        }
-    }
-}
-///The stage 8 builder for the [`RequestLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage8 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    protocol: String,
-    path: String,
-    status: i32,
-    request_size: String,
-    response_size: String,
-    duration: i32,
-    method: Option<String>,
-    path_params: std::collections::BTreeMap<String, conjure_object::Any>,
-    query_params: std::collections::BTreeMap<String, conjure_object::Any>,
-    header_params: std::collections::BTreeMap<String, conjure_object::Any>,
-    body_params: std::collections::BTreeMap<String, conjure_object::Any>,
-    uid: Option<super::UserId>,
-    sid: Option<super::SessionId>,
-    token_id: Option<super::TokenId>,
-    org_id: Option<super::OrganizationId>,
-    trace_id: Option<super::TraceId>,
-    unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage8 {
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    ///Protocol, e.g. `HTTP/1.1`, `HTTP/2`
-    #[inline]
-    pub fn protocol<T>(mut self, protocol: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.protocol = protocol.into();
-        self
-    }
-    ///Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`.
-    #[inline]
-    pub fn path<T>(mut self, path: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.path = path.into();
-        self
-    }
-    ///HTTP status code of response
-    #[inline]
-    pub fn status(mut self, status: i32) -> Self {
-        self.status = status;
-        self
-    }
-    ///Size of request (bytes). string to allow large numbers.
-    #[inline]
-    pub fn request_size<T>(mut self, request_size: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.request_size = request_size.into();
-        self
-    }
-    ///Size of response (bytes). string to allow large numbers.
-    #[inline]
-    pub fn response_size<T>(mut self, response_size: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.response_size = response_size.into();
-        self
-    }
-    ///Amount of time spent handling request (microseconds)
-    #[inline]
-    pub fn duration(mut self, duration: i32) -> Self {
-        self.duration = duration;
-        self
-    }
-    ///HTTP method of request
-    #[inline]
-    pub fn method<T>(mut self, method: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.method = method.into();
-        self
-    }
-    ///Known-safe path parameters
-    #[inline]
-    pub fn path_params<T>(mut self, path_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.path_params = path_params.into_iter().collect();
-        self
-    }
-    ///Known-safe path parameters
-    #[inline]
-    pub fn extend_path_params<T>(mut self, path_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.path_params.extend(path_params);
-        self
-    }
-    ///Known-safe path parameters
-    #[inline]
-    pub fn insert_path_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.path_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///Known-safe query parameters
-    #[inline]
-    pub fn query_params<T>(mut self, query_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.query_params = query_params.into_iter().collect();
-        self
-    }
-    ///Known-safe query parameters
-    #[inline]
-    pub fn extend_query_params<T>(mut self, query_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.query_params.extend(query_params);
-        self
-    }
-    ///Known-safe query parameters
-    #[inline]
-    pub fn insert_query_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.query_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///Known-safe header parameters
-    #[inline]
-    pub fn header_params<T>(mut self, header_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.header_params = header_params.into_iter().collect();
-        self
-    }
-    ///Known-safe header parameters
-    #[inline]
-    pub fn extend_header_params<T>(mut self, header_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.header_params.extend(header_params);
-        self
-    }
-    ///Known-safe header parameters
-    #[inline]
-    pub fn insert_header_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.header_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///Known-safe body parameters
-    #[inline]
-    pub fn body_params<T>(mut self, body_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.body_params = body_params.into_iter().collect();
-        self
-    }
-    ///Known-safe body parameters
-    #[inline]
-    pub fn extend_body_params<T>(mut self, body_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.body_params.extend(body_params);
-        self
-    }
-    ///Known-safe body parameters
-    #[inline]
-    pub fn insert_body_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.body_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///User id (if available)
-    #[inline]
-    pub fn uid<T>(mut self, uid: T) -> Self
-    where
-        T: Into<Option<super::UserId>>,
-    {
-        self.uid = uid.into();
-        self
-    }
-    ///Session id (if available)
-    #[inline]
-    pub fn sid<T>(mut self, sid: T) -> Self
-    where
-        T: Into<Option<super::SessionId>>,
-    {
-        self.sid = sid.into();
-        self
-    }
-    ///API token id (if available)
-    #[inline]
-    pub fn token_id<T>(mut self, token_id: T) -> Self
-    where
-        T: Into<Option<super::TokenId>>,
-    {
-        self.token_id = token_id.into();
-        self
-    }
-    ///Organization id (if available)
-    #[inline]
-    pub fn org_id<T>(mut self, org_id: T) -> Self
-    where
-        T: Into<Option<super::OrganizationId>>,
-    {
-        self.org_id = org_id.into();
-        self
-    }
-    ///Zipkin trace id (if available)
-    #[inline]
-    pub fn trace_id<T>(mut self, trace_id: T) -> Self
-    where
-        T: Into<Option<super::TraceId>>,
-    {
-        self.trace_id = trace_id.into();
-        self
-    }
-    ///Unredacted parameters such as path, query and header parameters
-    #[inline]
-    pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params = unsafe_params.into_iter().collect();
-        self
-    }
-    ///Unredacted parameters such as path, query and header parameters
-    #[inline]
-    pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params.extend(unsafe_params);
-        self
-    }
-    ///Unredacted parameters such as path, query and header parameters
-    #[inline]
-    pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.unsafe_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> RequestLogV1 {
-        RequestLogV1 {
-            type_: self.type_,
-            time: self.time,
-            method: self.method,
-            protocol: self.protocol,
-            path: self.path,
-            path_params: self.path_params,
-            query_params: self.query_params,
-            header_params: self.header_params,
-            body_params: self.body_params,
-            status: self.status,
-            request_size: self.request_size,
-            response_size: self.response_size,
-            duration: self.duration,
-            uid: self.uid,
-            sid: self.sid,
-            token_id: self.token_id,
-            org_id: self.org_id,
-            trace_id: self.trace_id,
-            unsafe_params: self.unsafe_params,
-        }
     }
 }
 impl ser::Serialize for RequestLogV1 {

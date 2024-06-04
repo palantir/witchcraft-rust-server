@@ -3,22 +3,27 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Wraps a log entry with entity information.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct WrappedLogV1 {
+    #[builder(into)]
     type_: String,
+    #[builder(custom(type = super::WrappedLogV1Payload, convert = Box::new))]
     payload: Box<super::WrappedLogV1Payload>,
+    #[builder(into)]
     entity_name: String,
+    #[builder(into)]
     entity_version: String,
+    #[builder(default, into)]
     service: Option<String>,
+    #[builder(default, into)]
     service_id: Option<String>,
+    #[builder(default, into)]
     stack: Option<String>,
+    #[builder(default, into)]
     stack_id: Option<String>,
 }
 impl WrappedLogV1 {
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
-    }
     ///"wrapped.1"
     #[inline]
     pub fn type_(&self) -> &str {
@@ -56,196 +61,6 @@ impl WrappedLogV1 {
     #[inline]
     pub fn stack_id(&self) -> Option<&str> {
         self.stack_id.as_ref().map(|o| &**o)
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<WrappedLogV1> for BuilderStage4 {
-    #[inline]
-    fn from(value: WrappedLogV1) -> Self {
-        BuilderStage4 {
-            type_: value.type_,
-            payload: value.payload,
-            entity_name: value.entity_name,
-            entity_version: value.entity_version,
-            service: value.service,
-            service_id: value.service_id,
-            stack: value.stack,
-            stack_id: value.stack_id,
-        }
-    }
-}
-///The stage 0 builder for the [`WrappedLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///"wrapped.1"
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`WrappedLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn payload(self, payload: super::WrappedLogV1Payload) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            payload: Box::new(payload),
-        }
-    }
-}
-///The stage 2 builder for the [`WrappedLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    payload: Box<super::WrappedLogV1Payload>,
-}
-impl BuilderStage2 {
-    ///Artifact part of entity's maven coordinate
-    #[inline]
-    pub fn entity_name<T>(self, entity_name: T) -> BuilderStage3
-    where
-        T: Into<String>,
-    {
-        BuilderStage3 {
-            type_: self.type_,
-            payload: self.payload,
-            entity_name: entity_name.into(),
-        }
-    }
-}
-///The stage 3 builder for the [`WrappedLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    payload: Box<super::WrappedLogV1Payload>,
-    entity_name: String,
-}
-impl BuilderStage3 {
-    #[inline]
-    pub fn entity_version<T>(self, entity_version: T) -> BuilderStage4
-    where
-        T: Into<String>,
-    {
-        BuilderStage4 {
-            type_: self.type_,
-            payload: self.payload,
-            entity_name: self.entity_name,
-            entity_version: entity_version.into(),
-            service: Default::default(),
-            service_id: Default::default(),
-            stack: Default::default(),
-            stack_id: Default::default(),
-        }
-    }
-}
-///The stage 4 builder for the [`WrappedLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage4 {
-    type_: String,
-    payload: Box<super::WrappedLogV1Payload>,
-    entity_name: String,
-    entity_version: String,
-    service: Option<String>,
-    service_id: Option<String>,
-    stack: Option<String>,
-    stack_id: Option<String>,
-}
-impl BuilderStage4 {
-    ///"wrapped.1"
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    #[inline]
-    pub fn payload(mut self, payload: super::WrappedLogV1Payload) -> Self {
-        self.payload = Box::new(payload);
-        self
-    }
-    ///Artifact part of entity's maven coordinate
-    #[inline]
-    pub fn entity_name<T>(mut self, entity_name: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.entity_name = entity_name.into();
-        self
-    }
-    #[inline]
-    pub fn entity_version<T>(mut self, entity_version: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.entity_version = entity_version.into();
-        self
-    }
-    ///Defaults to the wrapped log producer's Skylab service name.
-    #[inline]
-    pub fn service<T>(mut self, service: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.service = service.into();
-        self
-    }
-    ///Defaults to the wrapped log producer's Skylab service ID.
-    #[inline]
-    pub fn service_id<T>(mut self, service_id: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.service_id = service_id.into();
-        self
-    }
-    ///Defaults to the wrapped log producer's Skylab stack name.
-    #[inline]
-    pub fn stack<T>(mut self, stack: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.stack = stack.into();
-        self
-    }
-    ///Defaults to the wrapped log producer's Skylab stack ID.
-    #[inline]
-    pub fn stack_id<T>(mut self, stack_id: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.stack_id = stack_id.into();
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> WrappedLogV1 {
-        WrappedLogV1 {
-            type_: self.type_,
-            payload: self.payload,
-            entity_name: self.entity_name,
-            entity_version: self.entity_version,
-            service: self.service,
-            service_id: self.service_id,
-            stack: self.stack,
-            stack_id: self.stack_id,
-        }
     }
 }
 impl ser::Serialize for WrappedLogV1 {

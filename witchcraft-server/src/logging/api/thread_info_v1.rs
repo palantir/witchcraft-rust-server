@@ -2,17 +2,37 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct ThreadInfoV1 {
+    #[builder(default, into)]
     id: Option<conjure_object::SafeLong>,
+    #[builder(default, into)]
     name: Option<String>,
+    #[builder(default, list(item(type = super::StackFrameV1)))]
     stack_trace: Vec<super::StackFrameV1>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl ThreadInfoV1 {
-    /// Returns a new builder.
+    /// Constructs a new instance of the type.
     #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new() -> Self {
+        Self::builder().build()
     }
     ///The ID of the thread.
     #[inline]
@@ -33,122 +53,6 @@ impl ThreadInfoV1 {
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {
-            id: Default::default(),
-            name: Default::default(),
-            stack_trace: Default::default(),
-            params: Default::default(),
-        }
-    }
-}
-impl From<ThreadInfoV1> for BuilderStage0 {
-    #[inline]
-    fn from(value: ThreadInfoV1) -> Self {
-        BuilderStage0 {
-            id: value.id,
-            name: value.name,
-            stack_trace: value.stack_trace,
-            params: value.params,
-        }
-    }
-}
-///The stage 0 builder for the [`ThreadInfoV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {
-    id: Option<conjure_object::SafeLong>,
-    name: Option<String>,
-    stack_trace: Vec<super::StackFrameV1>,
-    params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage0 {
-    ///The ID of the thread.
-    #[inline]
-    pub fn id<T>(mut self, id: T) -> Self
-    where
-        T: Into<Option<conjure_object::SafeLong>>,
-    {
-        self.id = id.into();
-        self
-    }
-    ///The name of the thread. Note that thread names may include unsafe information such as the path of the HTTP request being processed. It must be safely redacted.
-    #[inline]
-    pub fn name<T>(mut self, name: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.name = name.into();
-        self
-    }
-    ///A list of stack frames for the thread, ordered with the current frame first.
-    #[inline]
-    pub fn stack_trace<T>(mut self, stack_trace: T) -> Self
-    where
-        T: IntoIterator<Item = super::StackFrameV1>,
-    {
-        self.stack_trace = stack_trace.into_iter().collect();
-        self
-    }
-    ///A list of stack frames for the thread, ordered with the current frame first.
-    #[inline]
-    pub fn extend_stack_trace<T>(mut self, stack_trace: T) -> Self
-    where
-        T: IntoIterator<Item = super::StackFrameV1>,
-    {
-        self.stack_trace.extend(stack_trace);
-        self
-    }
-    ///A list of stack frames for the thread, ordered with the current frame first.
-    #[inline]
-    pub fn push_stack_trace(mut self, value: super::StackFrameV1) -> Self {
-        self.stack_trace.push(value);
-        self
-    }
-    ///Other thread-level information.
-    #[inline]
-    pub fn params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params = params.into_iter().collect();
-        self
-    }
-    ///Other thread-level information.
-    #[inline]
-    pub fn extend_params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params.extend(params);
-        self
-    }
-    ///Other thread-level information.
-    #[inline]
-    pub fn insert_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> ThreadInfoV1 {
-        ThreadInfoV1 {
-            id: self.id,
-            name: self.name,
-            stack_trace: self.stack_trace,
-            params: self.params,
-        }
     }
 }
 impl ser::Serialize for ThreadInfoV1 {

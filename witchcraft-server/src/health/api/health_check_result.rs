@@ -3,17 +3,35 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Metadata describing the status of a service.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct HealthCheckResult {
     type_: super::CheckType,
     state: super::HealthState,
+    #[builder(default, into)]
     message: Option<String>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl HealthCheckResult {
-    /// Returns a new builder.
+    /// Constructs a new instance of the type.
     #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(type_: super::CheckType, state: super::HealthState) -> Self {
+        Self::builder().type_(type_).state(state).build()
     }
     ///A constant representing the type of health check. Values should be uppercase, underscore delimited, ascii letters with no spaces, ([A-Z_]).
     #[inline]
@@ -34,123 +52,6 @@ impl HealthCheckResult {
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<HealthCheckResult> for BuilderStage2 {
-    #[inline]
-    fn from(value: HealthCheckResult) -> Self {
-        BuilderStage2 {
-            type_: value.type_,
-            state: value.state,
-            message: value.message,
-            params: value.params,
-        }
-    }
-}
-///The stage 0 builder for the [`HealthCheckResult`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///A constant representing the type of health check. Values should be uppercase, underscore delimited, ascii letters with no spaces, ([A-Z_]).
-    #[inline]
-    pub fn type_(self, type_: super::CheckType) -> BuilderStage1 {
-        BuilderStage1 { type_: type_ }
-    }
-}
-///The stage 1 builder for the [`HealthCheckResult`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: super::CheckType,
-}
-impl BuilderStage1 {
-    ///Health state of the check.
-    #[inline]
-    pub fn state(self, state: super::HealthState) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            state: state,
-            message: Default::default(),
-            params: Default::default(),
-        }
-    }
-}
-///The stage 2 builder for the [`HealthCheckResult`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: super::CheckType,
-    state: super::HealthState,
-    message: Option<String>,
-    params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage2 {
-    ///A constant representing the type of health check. Values should be uppercase, underscore delimited, ascii letters with no spaces, ([A-Z_]).
-    #[inline]
-    pub fn type_(mut self, type_: super::CheckType) -> Self {
-        self.type_ = type_;
-        self
-    }
-    ///Health state of the check.
-    #[inline]
-    pub fn state(mut self, state: super::HealthState) -> Self {
-        self.state = state;
-        self
-    }
-    ///Text describing the state of the check which should provide enough information for the check to be actionable when included in an alert.
-    #[inline]
-    pub fn message<T>(mut self, message: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.message = message.into();
-        self
-    }
-    ///Additional redacted information on the nature of the health check.
-    #[inline]
-    pub fn params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params = params.into_iter().collect();
-        self
-    }
-    ///Additional redacted information on the nature of the health check.
-    #[inline]
-    pub fn extend_params<T>(mut self, params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.params.extend(params);
-        self
-    }
-    ///Additional redacted information on the nature of the health check.
-    #[inline]
-    pub fn insert_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> HealthCheckResult {
-        HealthCheckResult {
-            type_: self.type_,
-            state: self.state,
-            message: self.message,
-            params: self.params,
-        }
     }
 }
 impl ser::Serialize for HealthCheckResult {

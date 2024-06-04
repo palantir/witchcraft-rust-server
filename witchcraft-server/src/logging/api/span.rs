@@ -3,22 +3,25 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///A Zipkin-compatible Span object.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct Span {
+    #[builder(into)]
     trace_id: String,
+    #[builder(into)]
     id: String,
+    #[builder(into)]
     name: String,
+    #[builder(default, into)]
     parent_id: Option<String>,
     timestamp: conjure_object::SafeLong,
     duration: conjure_object::SafeLong,
+    #[builder(default, list(item(type = super::Annotation)))]
     annotations: Vec<super::Annotation>,
+    #[builder(default, map(key(type = String, into), value(type = String, into)))]
     tags: std::collections::BTreeMap<String, String>,
 }
 impl Span {
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
-    }
     ///16-digit hex trace identifier
     #[inline]
     pub fn trace_id(&self) -> &str {
@@ -57,248 +60,6 @@ impl Span {
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<Span> for BuilderStage5 {
-    #[inline]
-    fn from(value: Span) -> Self {
-        BuilderStage5 {
-            trace_id: value.trace_id,
-            id: value.id,
-            name: value.name,
-            parent_id: value.parent_id,
-            timestamp: value.timestamp,
-            duration: value.duration,
-            annotations: value.annotations,
-            tags: value.tags,
-        }
-    }
-}
-///The stage 0 builder for the [`Span`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///16-digit hex trace identifier
-    #[inline]
-    pub fn trace_id<T>(self, trace_id: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            trace_id: trace_id.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`Span`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    trace_id: String,
-}
-impl BuilderStage1 {
-    ///16-digit hex span identifier
-    #[inline]
-    pub fn id<T>(self, id: T) -> BuilderStage2
-    where
-        T: Into<String>,
-    {
-        BuilderStage2 {
-            trace_id: self.trace_id,
-            id: id.into(),
-        }
-    }
-}
-///The stage 2 builder for the [`Span`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    trace_id: String,
-    id: String,
-}
-impl BuilderStage2 {
-    ///Name of the span (typically the operation/RPC/method name for corresponding to this span)
-    #[inline]
-    pub fn name<T>(self, name: T) -> BuilderStage3
-    where
-        T: Into<String>,
-    {
-        BuilderStage3 {
-            trace_id: self.trace_id,
-            id: self.id,
-            name: name.into(),
-        }
-    }
-}
-///The stage 3 builder for the [`Span`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    trace_id: String,
-    id: String,
-    name: String,
-}
-impl BuilderStage3 {
-    ///Timestamp of the start of this span (epoch microsecond value)
-    #[inline]
-    pub fn timestamp(self, timestamp: conjure_object::SafeLong) -> BuilderStage4 {
-        BuilderStage4 {
-            trace_id: self.trace_id,
-            id: self.id,
-            name: self.name,
-            timestamp: timestamp,
-        }
-    }
-}
-///The stage 4 builder for the [`Span`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage4 {
-    trace_id: String,
-    id: String,
-    name: String,
-    timestamp: conjure_object::SafeLong,
-}
-impl BuilderStage4 {
-    ///Duration of this span (microseconds)
-    #[inline]
-    pub fn duration(self, duration: conjure_object::SafeLong) -> BuilderStage5 {
-        BuilderStage5 {
-            trace_id: self.trace_id,
-            id: self.id,
-            name: self.name,
-            timestamp: self.timestamp,
-            duration: duration,
-            parent_id: Default::default(),
-            annotations: Default::default(),
-            tags: Default::default(),
-        }
-    }
-}
-///The stage 5 builder for the [`Span`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage5 {
-    trace_id: String,
-    id: String,
-    name: String,
-    timestamp: conjure_object::SafeLong,
-    duration: conjure_object::SafeLong,
-    parent_id: Option<String>,
-    annotations: Vec<super::Annotation>,
-    tags: std::collections::BTreeMap<String, String>,
-}
-impl BuilderStage5 {
-    ///16-digit hex trace identifier
-    #[inline]
-    pub fn trace_id<T>(mut self, trace_id: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.trace_id = trace_id.into();
-        self
-    }
-    ///16-digit hex span identifier
-    #[inline]
-    pub fn id<T>(mut self, id: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.id = id.into();
-        self
-    }
-    ///Name of the span (typically the operation/RPC/method name for corresponding to this span)
-    #[inline]
-    pub fn name<T>(mut self, name: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.name = name.into();
-        self
-    }
-    ///Timestamp of the start of this span (epoch microsecond value)
-    #[inline]
-    pub fn timestamp(mut self, timestamp: conjure_object::SafeLong) -> Self {
-        self.timestamp = timestamp;
-        self
-    }
-    ///Duration of this span (microseconds)
-    #[inline]
-    pub fn duration(mut self, duration: conjure_object::SafeLong) -> Self {
-        self.duration = duration;
-        self
-    }
-    ///16-digit hex identifer of the parent span
-    #[inline]
-    pub fn parent_id<T>(mut self, parent_id: T) -> Self
-    where
-        T: Into<Option<String>>,
-    {
-        self.parent_id = parent_id.into();
-        self
-    }
-    #[inline]
-    pub fn annotations<T>(mut self, annotations: T) -> Self
-    where
-        T: IntoIterator<Item = super::Annotation>,
-    {
-        self.annotations = annotations.into_iter().collect();
-        self
-    }
-    #[inline]
-    pub fn extend_annotations<T>(mut self, annotations: T) -> Self
-    where
-        T: IntoIterator<Item = super::Annotation>,
-    {
-        self.annotations.extend(annotations);
-        self
-    }
-    #[inline]
-    pub fn push_annotations(mut self, value: super::Annotation) -> Self {
-        self.annotations.push(value);
-        self
-    }
-    ///Additional dimensions that describe the instance of the trace span
-    #[inline]
-    pub fn tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags = tags.into_iter().collect();
-        self
-    }
-    ///Additional dimensions that describe the instance of the trace span
-    #[inline]
-    pub fn extend_tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags.extend(tags);
-        self
-    }
-    ///Additional dimensions that describe the instance of the trace span
-    #[inline]
-    pub fn insert_tags<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: Into<String>,
-    {
-        self.tags.insert(key.into(), value.into());
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> Span {
-        Span {
-            trace_id: self.trace_id,
-            id: self.id,
-            name: self.name,
-            parent_id: self.parent_id,
-            timestamp: self.timestamp,
-            duration: self.duration,
-            annotations: self.annotations,
-            tags: self.tags,
-        }
     }
 }
 impl ser::Serialize for Span {
