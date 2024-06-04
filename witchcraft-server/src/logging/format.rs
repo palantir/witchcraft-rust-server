@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::api::{
-    AuditLogV3, LogLevel, MetricLogV1, RequestLogV2, ServiceLogV1, TraceLogV1,
+    AuditLogV3, EventLogV2, LogLevel, MetricLogV1, RequestLogV2, ServiceLogV1, TraceLogV1,
 };
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -76,6 +76,15 @@ impl LogFormat for AuditLogV3 {
 
     const SIZE_LIMIT_GB: u32 = 1024;
 
+    const TIME_LIMIT_DAYS: u32 = 30;
+
+    type Reporter = StandardReporter<Self>;
+}
+
+impl LogFormat for EventLogV2 {
+    const TYPE: &'static str = "event.2";
+    const FILE_STEM: &'static str = "event";
+    const SIZE_LIMIT_GB: u32 = 5;
     const TIME_LIMIT_DAYS: u32 = 30;
 
     type Reporter = StandardReporter<Self>;

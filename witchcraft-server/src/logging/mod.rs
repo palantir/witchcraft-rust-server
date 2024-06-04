@@ -14,14 +14,18 @@
 
 //! Logging APIs
 use crate::extensions::AuditLogEntry;
-use crate::logging::api::{AuditLogV3, RequestLogV2};
+use crate::logging::api::{AuditLogV3, EventLogV2, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
+use conjure_serde::json;
 use futures::executor::block_on;
 use futures_channel::oneshot;
 use lazycell::AtomicLazyCell;
 pub(crate) use logger::{Appender, Payload};
+use once_cell::sync::OnceCell;
 use refreshable::Refreshable;
+use std::io;
+use std::io::Write as _;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use witchcraft_metrics::MetricRegistry;
@@ -42,6 +46,8 @@ mod trace;
 
 pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Arc<Mutex<Appender<AuditLogV3>>>> =
     AtomicLazyCell::NONE;
+
+static EVENT_LOGGER: OnceCell<Appender<EventLogV2>> = OnceCell::new();
 
 pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
@@ -68,11 +74,17 @@ pub(crate) async fn init(
     let request_logger = Arc::new(request_logger);
     let audit_logger = logger::appender(install, metrics, hooks).await?;
     let audit_logger = Arc::new(Mutex::new(audit_logger));
+    let event_logger = logger::appender(install, metrics, hooks).await?;
 
     AUDIT_LOGGER
         .fill(audit_logger.clone())
         .ok()
         .expect("Audit logger already initialized");
+
+    EVENT_LOGGER
+        .set(event_logger)
+        .ok()
+        .expect("Event logger already initialized");
 
     cleanup::cleanup_logs().await;
 
@@ -109,8 +121,26 @@ pub async fn audit_log(entry: AuditLogEntry) -> Result<(), Error> {
     }
 }
 
-/// Blocking variant of [audit_log] that only returns once the the audit log has been
+/// Blocking variant of [audit_log] that only returns once the audit log has been
 /// successfully written or if the audit log has failed.
 pub fn audit_log_blocking(entry: AuditLogEntry) -> Result<(), Error> {
     block_on(audit_log(entry))
+}
+
+/// Writes the provided V2 event log entry using the standard logging appender without blocking.
+/// If the logging appender is not initialized, this instead writes out to stdout.
+pub fn event_log(entry: EventLogV2) {
+    match EVENT_LOGGER.get() {
+        Some(event_logger) => {
+            let _ = event_logger.try_send(Payload {
+                value: entry,
+                cb: None,
+            });
+        }
+        None => {
+            let mut buf = json::to_vec(&entry).unwrap();
+            buf.push(b'\n');
+            let _ = io::stdout().write_all(&buf);
+        }
+    }
 }
