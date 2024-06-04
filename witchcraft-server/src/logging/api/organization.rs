@@ -2,27 +2,19 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct Organization {
+    #[builder(into)]
     id: String,
+    #[builder(into)]
     reason: String,
 }
 impl Organization {
     /// Constructs a new instance of the type.
     #[inline]
-    pub fn new<T, U>(id: T, reason: U) -> Organization
-    where
-        T: Into<String>,
-        U: Into<String>,
-    {
-        Organization {
-            id: id.into(),
-            reason: reason.into(),
-        }
-    }
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(id: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::builder().id(id).reason(reason).build()
     }
     ///Organization RID. Not exposed to downstream consumers.
     #[inline]
@@ -33,86 +25,6 @@ impl Organization {
     #[inline]
     pub fn reason(&self) -> &str {
         &*self.reason
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<Organization> for BuilderStage2 {
-    #[inline]
-    fn from(value: Organization) -> Self {
-        BuilderStage2 {
-            id: value.id,
-            reason: value.reason,
-        }
-    }
-}
-///The stage 0 builder for the [`Organization`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///Organization RID. Not exposed to downstream consumers.
-    #[inline]
-    pub fn id<T>(self, id: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 { id: id.into() }
-    }
-}
-///The stage 1 builder for the [`Organization`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    id: String,
-}
-impl BuilderStage1 {
-    ///Explanation of why this organization was attributed to this log.
-    #[inline]
-    pub fn reason<T>(self, reason: T) -> BuilderStage2
-    where
-        T: Into<String>,
-    {
-        BuilderStage2 {
-            id: self.id,
-            reason: reason.into(),
-        }
-    }
-}
-///The stage 2 builder for the [`Organization`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    id: String,
-    reason: String,
-}
-impl BuilderStage2 {
-    ///Organization RID. Not exposed to downstream consumers.
-    #[inline]
-    pub fn id<T>(mut self, id: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.id = id.into();
-        self
-    }
-    ///Explanation of why this organization was attributed to this log.
-    #[inline]
-    pub fn reason<T>(mut self, reason: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.reason = reason.into();
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> Organization {
-        Organization {
-            id: self.id,
-            reason: self.reason,
-        }
     }
 }
 impl ser::Serialize for Organization {

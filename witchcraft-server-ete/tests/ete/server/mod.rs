@@ -1,3 +1,4 @@
+use bytes::Bytes;
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use conjure_serde::json;
-use hyper::body::HttpBody;
-use hyper::client::conn::{self, SendRequest};
+use http::Response;
+use http_body_util::Empty;
+use hyper::body::{Body, Incoming};
+use hyper::client::conn::{http1, http2};
 use hyper::Request;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use openssl::ssl::{SslConnector, SslMethod};
 use std::error::{self, Error};
 use std::fs::File;
@@ -182,7 +186,7 @@ impl Server {
 
             let request = Request::builder()
                 .uri("/witchcraft-ete/status/readiness")
-                .body(hyper::Body::empty())
+                .body(Empty::<Bytes>::new())
                 .unwrap();
 
             match client.send_request(request).await {
@@ -196,7 +200,7 @@ impl Server {
 
     pub async fn client<B>(&self) -> Result<SendRequest<B>, Box<dyn Error + Sync + Send>>
     where
-        B: HttpBody + 'static + Send,
+        B: Body + Unpin + 'static + Send,
         B::Data: Send,
         B::Error: Into<Box<dyn error::Error + Sync + Send>>,
     {
@@ -205,7 +209,7 @@ impl Server {
 
     pub async fn management_client<B>(&self) -> Result<SendRequest<B>, Box<dyn Error + Sync + Send>>
     where
-        B: HttpBody + 'static + Send,
+        B: Body + Unpin + 'static + Send,
         B::Data: Send,
         B::Error: Into<Box<dyn error::Error + Sync + Send>>,
     {
@@ -217,7 +221,7 @@ impl Server {
         port: u16,
     ) -> Result<SendRequest<B>, Box<dyn Error + Sync + Send>>
     where
-        B: HttpBody + 'static + Send,
+        B: Body + Unpin + 'static + Send,
         B::Data: Send,
         B::Error: Into<Box<dyn error::Error + Sync + Send>>,
     {
@@ -225,17 +229,28 @@ impl Server {
         let ssl = self.ctx.configure()?.into_ssl("localhost")?;
         let mut stream = SslStream::new(ssl, stream)?;
         Pin::new(&mut stream).connect().await?;
-        let (client, connection) = conn::Builder::new()
-            .http2_only(self.http2)
-            .handshake(stream)
-            .await
-            .unwrap();
 
-        task::spawn(async {
-            let _ = connection.await;
-        });
+        if self.http2 {
+            let (client, connection) = http2::Builder::new(TokioExecutor::new())
+                .handshake(TokioIo::new(stream))
+                .await
+                .unwrap();
+            task::spawn(async {
+                let _ = connection.await;
+            });
 
-        Ok(client)
+            Ok(SendRequest::Http2(client))
+        } else {
+            let (client, connection) = http1::Builder::new()
+                .handshake(TokioIo::new(stream))
+                .await
+                .unwrap();
+            task::spawn(async {
+                let _ = connection.await;
+            });
+
+            Ok(SendRequest::Http1(client))
+        }
     }
 
     pub async fn shutdown(mut self) -> ServerLogs {
@@ -329,5 +344,25 @@ impl ServerLogs {
             panic!("expected only one request log");
         }
         log
+    }
+}
+
+pub enum SendRequest<B> {
+    Http1(http1::SendRequest<B>),
+    Http2(http2::SendRequest<B>),
+}
+
+impl<B> SendRequest<B>
+where
+    B: Body + 'static,
+{
+    pub async fn send_request(
+        &mut self,
+        req: Request<B>,
+    ) -> Result<Response<Incoming>, hyper::Error> {
+        match self {
+            SendRequest::Http1(s) => s.send_request(req).await,
+            SendRequest::Http2(s) => s.send_request(req).await,
+        }
     }
 }

@@ -1,0 +1,5 @@
+type: feature
+feature:
+  description: Added support for referencing secrets in separate files in config.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/184

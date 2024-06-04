@@ -18,6 +18,12 @@ impl conjure_object::FromPlain for TokenId {
         conjure_object::FromPlain::from_plain(s).map(TokenId)
     }
 }
+impl std::convert::From<String> for TokenId {
+    #[inline]
+    fn from(v: String) -> Self {
+        TokenId(std::convert::From::from(v))
+    }
+}
 impl std::ops::Deref for TokenId {
     type Target = String;
     #[inline]

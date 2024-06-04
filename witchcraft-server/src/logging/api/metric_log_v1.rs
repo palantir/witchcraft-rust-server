@@ -3,25 +3,60 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Definition of the metric.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct MetricLogV1 {
+    #[builder(into)]
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(into)]
     metric_name: String,
+    #[builder(into)]
     metric_type: String,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     values: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(default, map(key(type = String, into), value(type = String, into)))]
     tags: std::collections::BTreeMap<String, String>,
+    #[builder(default, into)]
     uid: Option<super::UserId>,
+    #[builder(default, into)]
     sid: Option<super::SessionId>,
+    #[builder(default, into)]
     token_id: Option<super::TokenId>,
+    #[builder(default, into)]
     org_id: Option<super::OrganizationId>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl MetricLogV1 {
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
-    }
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -76,303 +111,6 @@ impl MetricLogV1 {
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<MetricLogV1> for BuilderStage4 {
-    #[inline]
-    fn from(value: MetricLogV1) -> Self {
-        BuilderStage4 {
-            type_: value.type_,
-            time: value.time,
-            metric_name: value.metric_name,
-            metric_type: value.metric_type,
-            values: value.values,
-            tags: value.tags,
-            uid: value.uid,
-            sid: value.sid,
-            token_id: value.token_id,
-            org_id: value.org_id,
-            unsafe_params: value.unsafe_params,
-        }
-    }
-}
-///The stage 0 builder for the [`MetricLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`MetricLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            time: time,
-        }
-    }
-}
-///The stage 2 builder for the [`MetricLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage2 {
-    ///Dot-delimited name of metric, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
-    #[inline]
-    pub fn metric_name<T>(self, metric_name: T) -> BuilderStage3
-    where
-        T: Into<String>,
-    {
-        BuilderStage3 {
-            type_: self.type_,
-            time: self.time,
-            metric_name: metric_name.into(),
-        }
-    }
-}
-///The stage 3 builder for the [`MetricLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    metric_name: String,
-}
-impl BuilderStage3 {
-    ///Type of metric being represented, e.g. `gauge`, `histogram`, `counter`
-    #[inline]
-    pub fn metric_type<T>(self, metric_type: T) -> BuilderStage4
-    where
-        T: Into<String>,
-    {
-        BuilderStage4 {
-            type_: self.type_,
-            time: self.time,
-            metric_name: self.metric_name,
-            metric_type: metric_type.into(),
-            values: Default::default(),
-            tags: Default::default(),
-            uid: Default::default(),
-            sid: Default::default(),
-            token_id: Default::default(),
-            org_id: Default::default(),
-            unsafe_params: Default::default(),
-        }
-    }
-}
-///The stage 4 builder for the [`MetricLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage4 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    metric_name: String,
-    metric_type: String,
-    values: std::collections::BTreeMap<String, conjure_object::Any>,
-    tags: std::collections::BTreeMap<String, String>,
-    uid: Option<super::UserId>,
-    sid: Option<super::SessionId>,
-    token_id: Option<super::TokenId>,
-    org_id: Option<super::OrganizationId>,
-    unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage4 {
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    ///Dot-delimited name of metric, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
-    #[inline]
-    pub fn metric_name<T>(mut self, metric_name: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.metric_name = metric_name.into();
-        self
-    }
-    ///Type of metric being represented, e.g. `gauge`, `histogram`, `counter`
-    #[inline]
-    pub fn metric_type<T>(mut self, metric_type: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.metric_type = metric_type.into();
-        self
-    }
-    ///Observations, measurements and context associated with the metric
-    #[inline]
-    pub fn values<T>(mut self, values: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.values = values.into_iter().collect();
-        self
-    }
-    ///Observations, measurements and context associated with the metric
-    #[inline]
-    pub fn extend_values<T>(mut self, values: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.values.extend(values);
-        self
-    }
-    ///Observations, measurements and context associated with the metric
-    #[inline]
-    pub fn insert_values<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.values
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    ///Additional dimensions that describe the instance of the metric
-    #[inline]
-    pub fn tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags = tags.into_iter().collect();
-        self
-    }
-    ///Additional dimensions that describe the instance of the metric
-    #[inline]
-    pub fn extend_tags<T>(mut self, tags: T) -> Self
-    where
-        T: IntoIterator<Item = (String, String)>,
-    {
-        self.tags.extend(tags);
-        self
-    }
-    ///Additional dimensions that describe the instance of the metric
-    #[inline]
-    pub fn insert_tags<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: Into<String>,
-    {
-        self.tags.insert(key.into(), value.into());
-        self
-    }
-    ///User id (if available)
-    #[inline]
-    pub fn uid<T>(mut self, uid: T) -> Self
-    where
-        T: Into<Option<super::UserId>>,
-    {
-        self.uid = uid.into();
-        self
-    }
-    ///Session id (if available)
-    #[inline]
-    pub fn sid<T>(mut self, sid: T) -> Self
-    where
-        T: Into<Option<super::SessionId>>,
-    {
-        self.sid = sid.into();
-        self
-    }
-    ///API token id (if available)
-    #[inline]
-    pub fn token_id<T>(mut self, token_id: T) -> Self
-    where
-        T: Into<Option<super::TokenId>>,
-    {
-        self.token_id = token_id.into();
-        self
-    }
-    ///Organization id (if available)
-    #[inline]
-    pub fn org_id<T>(mut self, org_id: T) -> Self
-    where
-        T: Into<Option<super::OrganizationId>>,
-    {
-        self.org_id = org_id.into();
-        self
-    }
-    ///Unsafe metadata describing the event
-    #[inline]
-    pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params = unsafe_params.into_iter().collect();
-        self
-    }
-    ///Unsafe metadata describing the event
-    #[inline]
-    pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params.extend(unsafe_params);
-        self
-    }
-    ///Unsafe metadata describing the event
-    #[inline]
-    pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.unsafe_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> MetricLogV1 {
-        MetricLogV1 {
-            type_: self.type_,
-            time: self.time,
-            metric_name: self.metric_name,
-            metric_type: self.metric_type,
-            values: self.values,
-            tags: self.tags,
-            uid: self.uid,
-            sid: self.sid,
-            token_id: self.token_id,
-            org_id: self.org_id,
-            unsafe_params: self.unsafe_params,
-        }
     }
 }
 impl ser::Serialize for MetricLogV1 {

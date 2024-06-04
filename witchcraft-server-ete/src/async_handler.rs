@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::conjure::AsyncTestService;
-use async_trait::async_trait;
 use conjure_error::{Error, InvalidArgument};
 use conjure_http::server::AsyncWriteBody;
 use http::{HeaderMap, HeaderValue};
@@ -24,7 +23,6 @@ use witchcraft_server::{RequestBody, ResponseWriter};
 
 pub struct TestResource;
 
-#[async_trait]
 impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
     type SlowBodyBody = SlowBodyBody;
     type TrailersBody = TrailersBody;
@@ -64,7 +62,7 @@ impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
         body.read_to_end(&mut bytes).await.unwrap();
         assert_eq!(bytes, b"expected request body");
 
-        let trailers = body.trailers().await.unwrap().unwrap();
+        let trailers = body.trailers().unwrap();
         assert_eq!(
             trailers.get("Request-Trailer").unwrap(),
             "expected request trailer value",
@@ -87,9 +85,8 @@ impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
 
 pub struct SlowBodyBody(Duration);
 
-#[async_trait]
 impl AsyncWriteBody<ResponseWriter> for SlowBodyBody {
-    async fn write_body(self: Box<Self>, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
+    async fn write_body(self, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
         w.write_all(&[0])
             .await
             .map_err(|e| Error::service_safe(e, InvalidArgument::new()))?;
@@ -107,9 +104,8 @@ impl AsyncWriteBody<ResponseWriter> for SlowBodyBody {
 
 pub struct TrailersBody;
 
-#[async_trait]
 impl AsyncWriteBody<ResponseWriter> for TrailersBody {
-    async fn write_body(self: Box<Self>, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
+    async fn write_body(self, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
         w.write_all(b"expected response body").await.unwrap();
         let mut trailers = HeaderMap::new();
         trailers.insert(
@@ -123,9 +119,8 @@ impl AsyncWriteBody<ResponseWriter> for TrailersBody {
 
 pub struct IoAfterEofBody;
 
-#[async_trait]
 impl AsyncWriteBody<ResponseWriter> for IoAfterEofBody {
-    async fn write_body(self: Box<Self>, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
+    async fn write_body(self, mut w: Pin<&mut ResponseWriter>) -> Result<(), Error> {
         let buf = [0; 1024];
         while w.write(&buf).await.unwrap() != 0 {}
 

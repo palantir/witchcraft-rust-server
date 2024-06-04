@@ -3,21 +3,48 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///Definition of the trace.1 format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct TraceLogV1 {
+    #[builder(into)]
     type_: String,
     time: conjure_object::DateTime<conjure_object::Utc>,
+    #[builder(default, into)]
     uid: Option<super::UserId>,
+    #[builder(default, into)]
     sid: Option<super::SessionId>,
+    #[builder(default, into)]
     token_id: Option<super::TokenId>,
+    #[builder(default, into)]
     org_id: Option<super::OrganizationId>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(custom(type = super::Span, convert = Box::new))]
     span: Box<super::Span>,
 }
 impl TraceLogV1 {
-    /// Returns a new builder.
+    /// Constructs a new instance of the type.
     #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(
+        type_: impl Into<String>,
+        time: conjure_object::DateTime<conjure_object::Utc>,
+        span: super::Span,
+    ) -> Self {
+        Self::builder().type_(type_).time(time).span(span).build()
     }
     #[inline]
     pub fn type_(&self) -> &str {
@@ -52,186 +79,6 @@ impl TraceLogV1 {
     #[inline]
     pub fn span(&self) -> &super::Span {
         &*self.span
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<TraceLogV1> for BuilderStage3 {
-    #[inline]
-    fn from(value: TraceLogV1) -> Self {
-        BuilderStage3 {
-            type_: value.type_,
-            time: value.time,
-            uid: value.uid,
-            sid: value.sid,
-            token_id: value.token_id,
-            org_id: value.org_id,
-            unsafe_params: value.unsafe_params,
-            span: value.span,
-        }
-    }
-}
-///The stage 0 builder for the [`TraceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    #[inline]
-    pub fn type_<T>(self, type_: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            type_: type_.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`TraceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    type_: String,
-}
-impl BuilderStage1 {
-    #[inline]
-    pub fn time(
-        self,
-        time: conjure_object::DateTime<conjure_object::Utc>,
-    ) -> BuilderStage2 {
-        BuilderStage2 {
-            type_: self.type_,
-            time: time,
-        }
-    }
-}
-///The stage 2 builder for the [`TraceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-}
-impl BuilderStage2 {
-    #[inline]
-    pub fn span(self, span: super::Span) -> BuilderStage3 {
-        BuilderStage3 {
-            type_: self.type_,
-            time: self.time,
-            span: Box::new(span),
-            uid: Default::default(),
-            sid: Default::default(),
-            token_id: Default::default(),
-            org_id: Default::default(),
-            unsafe_params: Default::default(),
-        }
-    }
-}
-///The stage 3 builder for the [`TraceLogV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    type_: String,
-    time: conjure_object::DateTime<conjure_object::Utc>,
-    span: Box<super::Span>,
-    uid: Option<super::UserId>,
-    sid: Option<super::SessionId>,
-    token_id: Option<super::TokenId>,
-    org_id: Option<super::OrganizationId>,
-    unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
-}
-impl BuilderStage3 {
-    #[inline]
-    pub fn type_<T>(mut self, type_: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.type_ = type_.into();
-        self
-    }
-    #[inline]
-    pub fn time(mut self, time: conjure_object::DateTime<conjure_object::Utc>) -> Self {
-        self.time = time;
-        self
-    }
-    #[inline]
-    pub fn span(mut self, span: super::Span) -> Self {
-        self.span = Box::new(span);
-        self
-    }
-    #[inline]
-    pub fn uid<T>(mut self, uid: T) -> Self
-    where
-        T: Into<Option<super::UserId>>,
-    {
-        self.uid = uid.into();
-        self
-    }
-    #[inline]
-    pub fn sid<T>(mut self, sid: T) -> Self
-    where
-        T: Into<Option<super::SessionId>>,
-    {
-        self.sid = sid.into();
-        self
-    }
-    #[inline]
-    pub fn token_id<T>(mut self, token_id: T) -> Self
-    where
-        T: Into<Option<super::TokenId>>,
-    {
-        self.token_id = token_id.into();
-        self
-    }
-    #[inline]
-    pub fn org_id<T>(mut self, org_id: T) -> Self
-    where
-        T: Into<Option<super::OrganizationId>>,
-    {
-        self.org_id = org_id.into();
-        self
-    }
-    #[inline]
-    pub fn unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params = unsafe_params.into_iter().collect();
-        self
-    }
-    #[inline]
-    pub fn extend_unsafe_params<T>(mut self, unsafe_params: T) -> Self
-    where
-        T: IntoIterator<Item = (String, conjure_object::Any)>,
-    {
-        self.unsafe_params.extend(unsafe_params);
-        self
-    }
-    #[inline]
-    pub fn insert_unsafe_params<K, V>(mut self, key: K, value: V) -> Self
-    where
-        K: Into<String>,
-        V: conjure_object::serde::Serialize,
-    {
-        self.unsafe_params
-            .insert(
-                key.into(),
-                conjure_object::Any::new(value).expect("value failed to serialize"),
-            );
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> TraceLogV1 {
-        TraceLogV1 {
-            type_: self.type_,
-            time: self.time,
-            uid: self.uid,
-            sid: self.sid,
-            token_id: self.token_id,
-            org_id: self.org_id,
-            unsafe_params: self.unsafe_params,
-            span: self.span,
-        }
     }
 }
 impl ser::Serialize for TraceLogV1 {

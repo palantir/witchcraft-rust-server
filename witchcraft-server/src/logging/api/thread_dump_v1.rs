@@ -2,83 +2,22 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct ThreadDumpV1 {
+    #[builder(default, list(item(type = super::ThreadInfoV1)))]
     threads: Vec<super::ThreadInfoV1>,
 }
 impl ThreadDumpV1 {
     /// Constructs a new instance of the type.
     #[inline]
-    pub fn new<T>(threads: T) -> ThreadDumpV1
-    where
-        T: IntoIterator<Item = super::ThreadInfoV1>,
-    {
-        ThreadDumpV1 {
-            threads: threads.into_iter().collect(),
-        }
-    }
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new() -> Self {
+        Self::builder().build()
     }
     ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
     #[inline]
     pub fn threads(&self) -> &[super::ThreadInfoV1] {
         &*self.threads
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {
-            threads: Default::default(),
-        }
-    }
-}
-impl From<ThreadDumpV1> for BuilderStage0 {
-    #[inline]
-    fn from(value: ThreadDumpV1) -> Self {
-        BuilderStage0 {
-            threads: value.threads,
-        }
-    }
-}
-///The stage 0 builder for the [`ThreadDumpV1`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {
-    threads: Vec<super::ThreadInfoV1>,
-}
-impl BuilderStage0 {
-    ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
-    #[inline]
-    pub fn threads<T>(mut self, threads: T) -> Self
-    where
-        T: IntoIterator<Item = super::ThreadInfoV1>,
-    {
-        self.threads = threads.into_iter().collect();
-        self
-    }
-    ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
-    #[inline]
-    pub fn extend_threads<T>(mut self, threads: T) -> Self
-    where
-        T: IntoIterator<Item = super::ThreadInfoV1>,
-    {
-        self.threads.extend(threads);
-        self
-    }
-    ///Information about each of the threads in the thread dump. "Thread" may refer to a userland thread such as a goroutine, or an OS-level thread.
-    #[inline]
-    pub fn push_threads(mut self, value: super::ThreadInfoV1) -> Self {
-        self.threads.push(value);
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> ThreadDumpV1 {
-        ThreadDumpV1 {
-            threads: self.threads,
-        }
     }
 }
 impl ser::Serialize for ThreadDumpV1 {

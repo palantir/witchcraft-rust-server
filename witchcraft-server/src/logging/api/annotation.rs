@@ -3,32 +3,24 @@ use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 ///A Zipkin-compatible Annotation object.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct Annotation {
     timestamp: conjure_object::SafeLong,
+    #[builder(into)]
     value: String,
+    #[builder(custom(type = super::Endpoint, convert = Box::new))]
     endpoint: Box<super::Endpoint>,
 }
 impl Annotation {
     /// Constructs a new instance of the type.
     #[inline]
-    pub fn new<T>(
+    pub fn new(
         timestamp: conjure_object::SafeLong,
-        value: T,
+        value: impl Into<String>,
         endpoint: super::Endpoint,
-    ) -> Annotation
-    where
-        T: Into<String>,
-    {
-        Annotation {
-            timestamp: timestamp,
-            value: value.into(),
-            endpoint: Box::new(endpoint),
-        }
-    }
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    ) -> Self {
+        Self::builder().timestamp(timestamp).value(value).endpoint(endpoint).build()
     }
     ///Time annotation was created (epoch microsecond value)
     #[inline]
@@ -43,106 +35,6 @@ impl Annotation {
     #[inline]
     pub fn endpoint(&self) -> &super::Endpoint {
         &*self.endpoint
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<Annotation> for BuilderStage3 {
-    #[inline]
-    fn from(value: Annotation) -> Self {
-        BuilderStage3 {
-            timestamp: value.timestamp,
-            value: value.value,
-            endpoint: value.endpoint,
-        }
-    }
-}
-///The stage 0 builder for the [`Annotation`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///Time annotation was created (epoch microsecond value)
-    #[inline]
-    pub fn timestamp(self, timestamp: conjure_object::SafeLong) -> BuilderStage1 {
-        BuilderStage1 {
-            timestamp: timestamp,
-        }
-    }
-}
-///The stage 1 builder for the [`Annotation`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    timestamp: conjure_object::SafeLong,
-}
-impl BuilderStage1 {
-    ///Value encapsulated by this annotation
-    #[inline]
-    pub fn value<T>(self, value: T) -> BuilderStage2
-    where
-        T: Into<String>,
-    {
-        BuilderStage2 {
-            timestamp: self.timestamp,
-            value: value.into(),
-        }
-    }
-}
-///The stage 2 builder for the [`Annotation`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    timestamp: conjure_object::SafeLong,
-    value: String,
-}
-impl BuilderStage2 {
-    #[inline]
-    pub fn endpoint(self, endpoint: super::Endpoint) -> BuilderStage3 {
-        BuilderStage3 {
-            timestamp: self.timestamp,
-            value: self.value,
-            endpoint: Box::new(endpoint),
-        }
-    }
-}
-///The stage 3 builder for the [`Annotation`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage3 {
-    timestamp: conjure_object::SafeLong,
-    value: String,
-    endpoint: Box<super::Endpoint>,
-}
-impl BuilderStage3 {
-    ///Time annotation was created (epoch microsecond value)
-    #[inline]
-    pub fn timestamp(mut self, timestamp: conjure_object::SafeLong) -> Self {
-        self.timestamp = timestamp;
-        self
-    }
-    ///Value encapsulated by this annotation
-    #[inline]
-    pub fn value<T>(mut self, value: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.value = value.into();
-        self
-    }
-    #[inline]
-    pub fn endpoint(mut self, endpoint: super::Endpoint) -> Self {
-        self.endpoint = Box::new(endpoint);
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> Annotation {
-        Annotation {
-            timestamp: self.timestamp,
-            value: self.value,
-            endpoint: self.endpoint,
-        }
     }
 }
 impl ser::Serialize for Annotation {

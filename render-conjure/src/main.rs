@@ -38,10 +38,11 @@ fn render(url: &str, prefix: &str, out_dir: &str) {
         .unwrap();
 
     // ensure the path is relative to the workspace root
-    let out_dir = Path::new(file!()).join("../../../..").join(out_dir);
+    let out_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join(out_dir);
 
     conjure_codegen::Config::new()
-        .staged_builders(true)
         .exhaustive(true)
         .strip_prefix(prefix.to_string())
         .generate_files(ir_file, out_dir)

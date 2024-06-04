@@ -2,85 +2,26 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct HealthStatus {
+    #[builder(
+        default,
+        map(key(type = super::CheckType), value(type = super::HealthCheckResult))
+    )]
     checks: std::collections::BTreeMap<super::CheckType, super::HealthCheckResult>,
 }
 impl HealthStatus {
     /// Constructs a new instance of the type.
     #[inline]
-    pub fn new<T>(checks: T) -> HealthStatus
-    where
-        T: IntoIterator<Item = (super::CheckType, super::HealthCheckResult)>,
-    {
-        HealthStatus {
-            checks: checks.into_iter().collect(),
-        }
-    }
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new() -> Self {
+        Self::builder().build()
     }
     #[inline]
     pub fn checks(
         &self,
     ) -> &std::collections::BTreeMap<super::CheckType, super::HealthCheckResult> {
         &self.checks
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {
-            checks: Default::default(),
-        }
-    }
-}
-impl From<HealthStatus> for BuilderStage0 {
-    #[inline]
-    fn from(value: HealthStatus) -> Self {
-        BuilderStage0 {
-            checks: value.checks,
-        }
-    }
-}
-///The stage 0 builder for the [`HealthStatus`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {
-    checks: std::collections::BTreeMap<super::CheckType, super::HealthCheckResult>,
-}
-impl BuilderStage0 {
-    #[inline]
-    pub fn checks<T>(mut self, checks: T) -> Self
-    where
-        T: IntoIterator<Item = (super::CheckType, super::HealthCheckResult)>,
-    {
-        self.checks = checks.into_iter().collect();
-        self
-    }
-    #[inline]
-    pub fn extend_checks<T>(mut self, checks: T) -> Self
-    where
-        T: IntoIterator<Item = (super::CheckType, super::HealthCheckResult)>,
-    {
-        self.checks.extend(checks);
-        self
-    }
-    #[inline]
-    pub fn insert_checks(
-        mut self,
-        key: super::CheckType,
-        value: super::HealthCheckResult,
-    ) -> Self {
-        self.checks.insert(key, value);
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> HealthStatus {
-        HealthStatus {
-            checks: self.checks,
-        }
     }
 }
 impl ser::Serialize for HealthStatus {

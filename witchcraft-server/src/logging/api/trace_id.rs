@@ -18,6 +18,12 @@ impl conjure_object::FromPlain for TraceId {
         conjure_object::FromPlain::from_plain(s).map(TraceId)
     }
 }
+impl std::convert::From<String> for TraceId {
+    #[inline]
+    fn from(v: String) -> Self {
+        TraceId(std::convert::From::from(v))
+    }
+}
 impl std::ops::Deref for TraceId {
     type Target = String;
     #[inline]

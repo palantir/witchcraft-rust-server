@@ -147,14 +147,17 @@ fn metric_name(id: &MetricId) -> String {
     name
 }
 
-fn builder(id: &MetricId) -> metric_log_v1::BuilderStage3 {
+fn builder(id: &MetricId) -> metric_log_v1::Builder<metric_log_v1::MetricTypeStage> {
     MetricLogV1::builder()
         .type_("metric.1")
         .time(Utc::now())
         .metric_name(id.name())
 }
 
-fn finish_log(id: &MetricId, builder: metric_log_v1::BuilderStage4) -> MetricLogV1 {
+fn finish_log(
+    id: &MetricId,
+    builder: metric_log_v1::Builder<metric_log_v1::Complete>,
+) -> MetricLogV1 {
     builder
         .tags(
             id.tags()

@@ -35,8 +35,7 @@ mod private {
 }
 
 /// A health check.
-// FIXME move 'static + Sync + Send to trait def
-pub trait HealthCheck {
+pub trait HealthCheck: 'static + Sync + Send {
     /// Returns the check's type.
     ///
     /// The type must be `SCREAMING_SNAKE_CASE`.
@@ -57,11 +56,11 @@ pub trait HealthCheck {
     }
 }
 
-impl dyn HealthCheck + Sync + Send {
+impl dyn HealthCheck {
     /// Returns `true` if the health check's type is `T`.
     pub fn is<T>(&self) -> bool
     where
-        T: HealthCheck + 'static,
+        T: HealthCheck,
     {
         self.__private_api_type_id(private::PrivacyToken) == TypeId::of::<T>()
     }
@@ -69,7 +68,7 @@ impl dyn HealthCheck + Sync + Send {
     /// Attempts to downcast the health check to the type `T` if it is that type.
     pub fn downcast_ref<T>(&self) -> Option<&T>
     where
-        T: HealthCheck + 'static,
+        T: HealthCheck,
     {
         if self.is::<T>() {
             unsafe { Some(&*(self as *const dyn HealthCheck as *const T)) }
@@ -81,7 +80,7 @@ impl dyn HealthCheck + Sync + Send {
     /// Attempts to downcast the health check to the type `T` if it is that type.
     pub fn downcast_arc<T>(self: Arc<Self>) -> Result<Arc<T>, Arc<Self>>
     where
-        T: HealthCheck + 'static,
+        T: HealthCheck,
     {
         if self.is::<T>() {
             unsafe { Ok(Arc::from_raw(Arc::into_raw(self).cast::<T>())) }

@@ -18,6 +18,12 @@ impl conjure_object::FromPlain for CheckType {
         conjure_object::FromPlain::from_plain(s).map(CheckType)
     }
 }
+impl std::convert::From<String> for CheckType {
+    #[inline]
+    fn from(v: String) -> Self {
+        CheckType(std::convert::From::from(v))
+    }
+}
 impl std::ops::Deref for CheckType {
     type Target = String;
     #[inline]

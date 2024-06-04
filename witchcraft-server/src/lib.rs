@@ -92,8 +92,11 @@
 //!
 //! ## Sensitive values
 //!
-//! The server's configuration deserializer uses [`serde_encrypted_value`] to transparently decrypt values in
-//! in the configuration files using the key stored in `var/conf/encrypted-config-value.key`.
+//! The server's configuration deserializer supports two methods to handle sensitive values:
+//!
+//! * `${enc:5BBfGvf90H6bApwfx...}` - inline in an encrypted form using [`serde_encrypted_value`] with the
+//!     key stored in `var/conf/encrypted-config-value.key`.
+//! * `${file:/mnt/secrets/foo}` - as a reference to a file containing the value using [`serde_file_value`].
 //!
 //! ## Refreshable runtime configuration
 //!
@@ -108,8 +111,7 @@
 //! traits. These implementations can be generated from a [Conjure] YML [definition] with the [`conjure-codegen`] crate.
 //!
 //! While we strongly encourage the use of Conjure-generated APIs, some services may need to expose endpoints that can't
-//! be defined in Conjure. The [`Service`] and [`AsyncService`] traits provide enough flexibility to support arbitrary
-//! HTTP APIs and can be implemented manually if necessary.
+//! be defined in Conjure. The [`conjure_http::conjure_endpoints`] macro can be used to define arbitrary HTTP endpoints.
 //!
 //! API endpoints should normally be registered with the [`Witchcraft::api`] and [`Witchcraft::blocking_api`] methods,
 //! which will place the endpoints under the `/api` route. If necessary, the [`Witchcraft::app`] and
@@ -289,7 +291,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use conjure_error::Error;
-use conjure_http::server::AsyncService;
+use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
@@ -330,10 +332,6 @@ use crate::server::Listener;
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::status::StatusEndpoints;
 
-// FIXME remove in next breaking release
-#[doc(hidden)]
-#[deprecated(note = "Use `logging::api` instead", since = "3.2.0")]
-pub mod audit;
 pub mod blocking;
 mod body;
 mod configs;
@@ -463,9 +461,8 @@ where
     #[cfg(target_os = "linux")]
     diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
-    let mut client_factory =
-        ClientFactory::new(runtime_config.map(|c| c.as_ref().service_discovery().clone()));
-    client_factory
+    let client_factory = ClientFactory::builder()
+        .config(runtime_config.map(|c| c.as_ref().service_discovery().clone()))
         .user_agent(UserAgent::new(Agent::new(
             install_config.as_ref().product_name(),
             install_config.as_ref().product_version(),
@@ -485,6 +482,7 @@ where
         thread_pool: None,
         endpoints: vec![],
         shutdown_hooks: ShutdownHooks::new(),
+        conjure_runtime: Arc::new(ConjureRuntime::new()),
     };
 
     let status_endpoints = StatusEndpoints::new(
@@ -492,7 +490,11 @@ where
         &witchcraft.health_checks,
         &witchcraft.readiness_checks,
     );
-    witchcraft.endpoints(None, status_endpoints.endpoints(), false);
+    witchcraft.endpoints(
+        None,
+        status_endpoints.endpoints(&witchcraft.conjure_runtime),
+        false,
+    );
 
     let debug_endpoints = DebugEndpoints::new(&runtime_config, diagnostics);
     witchcraft.app(debug_endpoints);

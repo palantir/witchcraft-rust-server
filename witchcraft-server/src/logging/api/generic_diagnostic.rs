@@ -2,27 +2,28 @@ use conjure_object::serde::{ser, de};
 use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
 use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[conjure_object::private::staged_builder::staged_builder]
+#[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct GenericDiagnostic {
+    #[builder(into)]
     diagnostic_type: String,
+    #[builder(
+        custom(
+            type = impl
+            conjure_object::serde::Serialize,
+            convert = |v|conjure_object::Any::new(v).expect("value failed to serialize")
+        )
+    )]
     value: conjure_object::Any,
 }
 impl GenericDiagnostic {
     /// Constructs a new instance of the type.
     #[inline]
-    pub fn new<T, U>(diagnostic_type: T, value: U) -> GenericDiagnostic
-    where
-        T: Into<String>,
-        U: conjure_object::serde::Serialize,
-    {
-        GenericDiagnostic {
-            diagnostic_type: diagnostic_type.into(),
-            value: conjure_object::Any::new(value).expect("value failed to serialize"),
-        }
-    }
-    /// Returns a new builder.
-    #[inline]
-    pub fn builder() -> BuilderStage0 {
-        Default::default()
+    pub fn new(
+        diagnostic_type: impl Into<String>,
+        value: impl conjure_object::serde::Serialize,
+    ) -> Self {
+        Self::builder().diagnostic_type(diagnostic_type).value(value).build()
     }
     ///An identifier for the type of diagnostic represented.
     #[inline]
@@ -33,88 +34,6 @@ impl GenericDiagnostic {
     #[inline]
     pub fn value(&self) -> &conjure_object::Any {
         &self.value
-    }
-}
-impl Default for BuilderStage0 {
-    #[inline]
-    fn default() -> Self {
-        BuilderStage0 {}
-    }
-}
-impl From<GenericDiagnostic> for BuilderStage2 {
-    #[inline]
-    fn from(value: GenericDiagnostic) -> Self {
-        BuilderStage2 {
-            diagnostic_type: value.diagnostic_type,
-            value: value.value,
-        }
-    }
-}
-///The stage 0 builder for the [`GenericDiagnostic`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage0 {}
-impl BuilderStage0 {
-    ///An identifier for the type of diagnostic represented.
-    #[inline]
-    pub fn diagnostic_type<T>(self, diagnostic_type: T) -> BuilderStage1
-    where
-        T: Into<String>,
-    {
-        BuilderStage1 {
-            diagnostic_type: diagnostic_type.into(),
-        }
-    }
-}
-///The stage 1 builder for the [`GenericDiagnostic`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage1 {
-    diagnostic_type: String,
-}
-impl BuilderStage1 {
-    ///Observations, measurements and context associated with the diagnostic.
-    #[inline]
-    pub fn value<T>(self, value: T) -> BuilderStage2
-    where
-        T: conjure_object::serde::Serialize,
-    {
-        BuilderStage2 {
-            diagnostic_type: self.diagnostic_type,
-            value: conjure_object::Any::new(value).expect("value failed to serialize"),
-        }
-    }
-}
-///The stage 2 builder for the [`GenericDiagnostic`] type
-#[derive(Debug, Clone)]
-pub struct BuilderStage2 {
-    diagnostic_type: String,
-    value: conjure_object::Any,
-}
-impl BuilderStage2 {
-    ///An identifier for the type of diagnostic represented.
-    #[inline]
-    pub fn diagnostic_type<T>(mut self, diagnostic_type: T) -> Self
-    where
-        T: Into<String>,
-    {
-        self.diagnostic_type = diagnostic_type.into();
-        self
-    }
-    ///Observations, measurements and context associated with the diagnostic.
-    #[inline]
-    pub fn value<T>(mut self, value: T) -> Self
-    where
-        T: conjure_object::serde::Serialize,
-    {
-        self.value = conjure_object::Any::new(value).expect("value failed to serialize");
-        self
-    }
-    /// Consumes the builder, constructing a new instance of the type.
-    #[inline]
-    pub fn build(self) -> GenericDiagnostic {
-        GenericDiagnostic {
-            diagnostic_type: self.diagnostic_type,
-            value: self.value,
-        }
     }
 }
 impl ser::Serialize for GenericDiagnostic {

@@ -1,9 +1,5 @@
 use addr2line::fallible_iterator::FallibleIterator;
 use addr2line::gimli::{Dwarf, EndianSlice, NativeEndian};
-use addr2line::object::{
-    File, Object as _, ObjectSection, ObjectSymbol, ObjectSymbolTable, SymbolKind, SymbolMap,
-    SymbolMapName,
-};
 use addr2line::Context;
 use async_trait::async_trait;
 use cachemap2::CacheMap;
@@ -11,6 +7,10 @@ use conjure_error::Error;
 use minidump::Module;
 use minidump_unwind::{
     FileError, FileKind, FillSymbolError, FrameSymbolizer, FrameWalker, SymbolFile, SymbolProvider,
+};
+use object::{
+    File, Object as _, ObjectSection, ObjectSymbol, ObjectSymbolTable, SymbolKind, SymbolMap,
+    SymbolMapName,
 };
 use std::borrow::Cow;
 use std::collections::btree_map::Entry;

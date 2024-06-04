@@ -16,9 +16,10 @@ use crate::service::routing::Route;
 use crate::service::Service;
 use bytes::Bytes;
 use http::header::ALLOW;
-use http::{HeaderMap, HeaderValue, Method, Request, Response, StatusCode};
-use http_body::combinators::BoxBody;
-use http_body::{Body, SizeHint};
+use http::{HeaderValue, Method, Request, Response, StatusCode};
+use http_body::{Body, Frame, SizeHint};
+use http_body_util::combinators::BoxBody;
+use http_body_util::BodyExt;
 use itertools::Itertools;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -89,18 +90,11 @@ impl Body for EmptyBody {
 
     type Error = BodyWriteAborted;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         _: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         Poll::Ready(None)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        _: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
     }
 
     fn is_end_stream(&self) -> bool {
