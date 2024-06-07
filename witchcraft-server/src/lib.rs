@@ -293,9 +293,13 @@ use std::time::Duration;
 use conjure_error::Error;
 use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
+use debug::endpoint::DebugResource;
+use debug::endpoint::DebugServiceEndpoints;
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
+use status::StatusResource;
+use status::StatusServiceEndpoints;
 use tokio::runtime::{Handle, Runtime};
 use tokio::signal::unix::{self, SignalKind};
 use tokio::{pin, runtime, select, time};
@@ -312,7 +316,6 @@ pub use witchcraft_server_config as config;
 pub use witchcraft_server_macros::main;
 
 use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
-use crate::debug::endpoint::DebugEndpoints;
 #[cfg(feature = "jemalloc")]
 use crate::debug::heap_stats::HeapStatsDiagnostic;
 use crate::debug::metric_names::MetricNamesDiagnostic;
@@ -330,7 +333,6 @@ use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
 use crate::server::Listener;
 use crate::shutdown_hooks::ShutdownHooks;
-use crate::status::StatusEndpoints;
 
 pub mod blocking;
 mod body;
@@ -485,18 +487,19 @@ where
         conjure_runtime: Arc::new(ConjureRuntime::new()),
     };
 
-    let status_endpoints = StatusEndpoints::new(
+    let status_endpoints = StatusServiceEndpoints::new(StatusResource::new(
         &runtime_config,
         &witchcraft.health_checks,
         &witchcraft.readiness_checks,
-    );
+    ));
     witchcraft.endpoints(
         None,
         status_endpoints.endpoints(&witchcraft.conjure_runtime),
         false,
     );
 
-    let debug_endpoints = DebugEndpoints::new(&runtime_config, diagnostics);
+    let debug_endpoints =
+        DebugServiceEndpoints::new(DebugResource::new(&runtime_config, &diagnostics));
     witchcraft.app(debug_endpoints);
 
     // server::start clears out the previously-registered endpoints so the existing Witchcraft

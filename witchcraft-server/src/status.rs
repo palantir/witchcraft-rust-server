@@ -11,40 +11,42 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::health::api::HealthStatus;
 use crate::health::HealthCheckRegistry;
-use crate::readiness::ReadinessCheckRegistry;
-use crate::{RequestBody, ResponseWriter};
-use bytes::Bytes;
+use crate::readiness::{ReadinessCheckMetadata, ReadinessCheckRegistry};
 use conjure_error::{Error, PermissionDenied};
 use conjure_http::server::{
-    AsyncEndpoint, AsyncResponseBody, AsyncService, BoxAsyncEndpoint, ConjureRuntime,
-    EndpointMetadata, PathSegment,
+    AsyncResponseBody, AsyncSerializeResponse, ConjureRuntime, StdResponseSerializer,
 };
-use conjure_serde::json;
-use http::header::{AUTHORIZATION, CONTENT_TYPE};
-use http::{Extensions, HeaderValue, Method, Request, Response, StatusCode};
+use conjure_http::{conjure_endpoints, endpoint};
+use conjure_object::BearerToken;
+use http::{HeaderMap, Response, StatusCode};
 use refreshable::Refreshable;
-use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
 use tokio::task;
 use witchcraft_server_config::runtime::RuntimeConfig;
 
-#[allow(clippy::declare_interior_mutable_const)]
-const APPLICATION_JSON: HeaderValue = HeaderValue::from_static("application/json");
+#[conjure_endpoints]
+pub trait StatusService {
+    #[endpoint(path = "/status/liveness", method = GET)]
+    async fn liveness(&self) -> Result<(), Error>;
 
-struct State {
-    health_check_auth: Refreshable<String, Error>,
+    #[endpoint(path = "/status/readiness", method = GET, produces = LivenessResponseSerializer)]
+    async fn readiness(&self) -> Result<BTreeMap<String, ReadinessCheckMetadata>, Error>;
+
+    #[endpoint(path = "/status/health", method = GET, produces = StdResponseSerializer)]
+    async fn health(&self, #[auth] token: BearerToken) -> Result<HealthStatus, Error>;
+}
+
+pub struct StatusResource {
+    health_check_secret: Refreshable<String, Error>,
     health_checks: Arc<HealthCheckRegistry>,
     readiness_checks: Arc<ReadinessCheckRegistry>,
 }
 
-// Manually implemented because readiness isn't fully definable in Conjure.
-pub struct StatusEndpoints {
-    state: Arc<State>,
-}
-
-impl StatusEndpoints {
+impl StatusResource {
     pub fn new<R>(
         runtime_config: &Refreshable<R, Error>,
         health_checks: &Arc<HealthCheckRegistry>,
@@ -53,203 +55,62 @@ impl StatusEndpoints {
     where
         R: AsRef<RuntimeConfig> + PartialEq + 'static + Sync + Send,
     {
-        StatusEndpoints {
-            state: Arc::new(State {
-                health_check_auth: runtime_config
-                    .map(|c| format!("Bearer {}", c.as_ref().health_checks().shared_secret())),
-                health_checks: health_checks.clone(),
-                readiness_checks: readiness_checks.clone(),
-            }),
+        StatusResource {
+            health_check_secret: runtime_config
+                .map(|c| c.as_ref().health_checks().shared_secret().to_string()),
+            health_checks: health_checks.clone(),
+            readiness_checks: readiness_checks.clone(),
         }
     }
 }
 
-impl AsyncService<RequestBody, ResponseWriter> for StatusEndpoints {
-    fn endpoints(
-        &self,
-        _: &Arc<ConjureRuntime>,
-    ) -> Vec<BoxAsyncEndpoint<'static, RequestBody, ResponseWriter>> {
-        vec![
-            BoxAsyncEndpoint::new(LivenessEndpoint),
-            BoxAsyncEndpoint::new(HealthEndpoint {
-                state: self.state.clone(),
-            }),
-            BoxAsyncEndpoint::new(ReadinessEndpoint {
-                state: self.state.clone(),
-            }),
-        ]
-    }
-}
-
-struct LivenessEndpoint;
-
-impl EndpointMetadata for LivenessEndpoint {
-    fn method(&self) -> Method {
-        Method::GET
+impl StatusService for StatusResource {
+    async fn liveness(&self) -> Result<(), Error> {
+        Ok(())
     }
 
-    fn path(&self) -> &[PathSegment] {
-        &[
-            PathSegment::Literal(Cow::Borrowed("status")),
-            PathSegment::Literal(Cow::Borrowed("liveness")),
-        ]
+    async fn readiness(&self) -> Result<BTreeMap<String, ReadinessCheckMetadata>, Error> {
+        let readiness_checks = task::spawn_blocking({
+            let readiness_checks = self.readiness_checks.clone();
+            move || readiness_checks.run_checks()
+        })
+        .await
+        .unwrap();
+
+        Ok(readiness_checks)
     }
 
-    fn template(&self) -> &str {
-        "/status/liveness"
-    }
-
-    fn service_name(&self) -> &str {
-        "StatusService"
-    }
-
-    fn name(&self) -> &str {
-        "liveness"
-    }
-
-    fn deprecated(&self) -> Option<&str> {
-        None
-    }
-}
-
-impl AsyncEndpoint<RequestBody, ResponseWriter> for LivenessEndpoint {
-    async fn handle(
-        &self,
-        _: Request<RequestBody>,
-        _: &mut Extensions,
-    ) -> Result<Response<AsyncResponseBody<ResponseWriter>>, Error> {
-        let mut response = Response::new(AsyncResponseBody::Empty);
-        *response.status_mut() = StatusCode::NO_CONTENT;
-        Ok(response)
-    }
-}
-
-struct HealthEndpoint {
-    state: Arc<State>,
-}
-
-impl EndpointMetadata for HealthEndpoint {
-    fn method(&self) -> Method {
-        Method::GET
-    }
-
-    fn path(&self) -> &[PathSegment] {
-        &[
-            PathSegment::Literal(Cow::Borrowed("status")),
-            PathSegment::Literal(Cow::Borrowed("health")),
-        ]
-    }
-
-    fn template(&self) -> &str {
-        "/status/health"
-    }
-
-    fn service_name(&self) -> &str {
-        "StatusService"
-    }
-
-    fn name(&self) -> &str {
-        "health"
-    }
-
-    fn deprecated(&self) -> Option<&str> {
-        None
-    }
-}
-
-impl AsyncEndpoint<RequestBody, ResponseWriter> for HealthEndpoint {
-    async fn handle(
-        &self,
-        req: Request<RequestBody>,
-        _: &mut Extensions,
-    ) -> Result<Response<AsyncResponseBody<ResponseWriter>>, Error> {
-        let authorization = match req.headers().get(AUTHORIZATION) {
-            Some(authorization) => authorization,
-            None => {
-                return Err(Error::service_safe(
-                    "health check secret missing",
-                    PermissionDenied::new(),
-                ))
-            }
-        };
-
-        let expected = self.state.health_check_auth.get();
-        if !bool::from(authorization.as_bytes().ct_eq(expected.as_bytes())) {
+    async fn health(&self, token: BearerToken) -> Result<HealthStatus, Error> {
+        let expected = self.health_check_secret.get();
+        if !bool::from(token.as_str().as_bytes().ct_eq(expected.as_bytes())) {
             return Err(Error::service_safe(
                 "invalid health check secret",
                 PermissionDenied::new(),
             ));
         }
 
-        let health_checks = self.state.health_checks.run_checks();
-        let health_checks = json::to_vec(&health_checks).unwrap();
-        let mut response = Response::new(AsyncResponseBody::Fixed(Bytes::from(health_checks)));
-        response
-            .headers_mut()
-            .insert(CONTENT_TYPE, APPLICATION_JSON);
-
-        Ok(response)
+        Ok(self.health_checks.run_checks())
     }
 }
 
-struct ReadinessEndpoint {
-    state: Arc<State>,
-}
+enum LivenessResponseSerializer {}
 
-impl EndpointMetadata for ReadinessEndpoint {
-    fn method(&self) -> Method {
-        Method::GET
-    }
-
-    fn path(&self) -> &[PathSegment] {
-        &[
-            PathSegment::Literal(Cow::Borrowed("status")),
-            PathSegment::Literal(Cow::Borrowed("readiness")),
-        ]
-    }
-
-    fn template(&self) -> &str {
-        "/status/readiness"
-    }
-
-    fn service_name(&self) -> &str {
-        "StatusService"
-    }
-
-    fn name(&self) -> &str {
-        "readiness"
-    }
-
-    fn deprecated(&self) -> Option<&str> {
-        None
-    }
-}
-
-impl AsyncEndpoint<RequestBody, ResponseWriter> for ReadinessEndpoint {
-    async fn handle(
-        &self,
-        _: Request<RequestBody>,
-        _: &mut Extensions,
-    ) -> Result<Response<AsyncResponseBody<ResponseWriter>>, Error> {
-        let readiness_checks = task::spawn_blocking({
-            let readiness_checks = self.state.readiness_checks.clone();
-            move || readiness_checks.run_checks()
-        })
-        .await
-        .unwrap();
-
-        let status = if readiness_checks.values().all(|r| r.successful) {
+impl<W> AsyncSerializeResponse<BTreeMap<String, ReadinessCheckMetadata>, W>
+    for LivenessResponseSerializer
+{
+    fn serialize(
+        runtime: &ConjureRuntime,
+        request_headers: &HeaderMap,
+        value: BTreeMap<String, ReadinessCheckMetadata>,
+    ) -> Result<Response<AsyncResponseBody<W>>, Error> {
+        let status = if value.values().all(|r| r.successful) {
             StatusCode::OK
         } else {
             StatusCode::SERVICE_UNAVAILABLE
         };
 
-        let readiness_checks = json::to_vec(&readiness_checks).unwrap();
-        let mut response = Response::new(AsyncResponseBody::Fixed(Bytes::from(readiness_checks)));
+        let mut response = StdResponseSerializer::serialize(runtime, request_headers, value)?;
         *response.status_mut() = status;
-        response
-            .headers_mut()
-            .insert(CONTENT_TYPE, APPLICATION_JSON);
 
         Ok(response)
     }
