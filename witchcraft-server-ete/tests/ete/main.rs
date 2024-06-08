@@ -180,6 +180,79 @@ async fn graceful_shutdown() {
 }
 
 #[tokio::test]
+async fn health_check_bad_auth() {
+    Server::with(|server| async move {
+        let request = Request::builder()
+            .uri("/witchcraft-ete/status/health")
+            .header("Authorization", "Bearer hunter2")
+            .body(Empty::<Bytes>::new())
+            .unwrap();
+        let response = server
+            .client()
+            .await
+            .unwrap()
+            .send_request(request)
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        server.shutdown().await;
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn health_check() {
+    Server::with(|server| async move {
+        let request = Request::builder()
+            .uri("/witchcraft-ete/status/health")
+            .header("Authorization", "Bearer health-check")
+            .body(Empty::<Bytes>::new())
+            .unwrap();
+        let response = server
+            .client()
+            .await
+            .unwrap()
+            .send_request(request)
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body = str::from_utf8(&body).unwrap();
+        assert!(body.contains("HEALTH_CHECK_COMPUTATION_STALENESS"));
+
+        server.shutdown().await;
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn diagnostic_types_bad_auth() {
+    Server::with(|server| async move {
+        let request = Request::builder()
+            .uri("/witchcraft-ete/debug/diagnostic/diagnostic.types.v1")
+            .header("Authorization", "Bearer hunter2")
+            .body(Empty::<Bytes>::new())
+            .unwrap();
+        let response = server
+            .client()
+            .await
+            .unwrap()
+            .send_request(request)
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        server.shutdown().await;
+    })
+    .await;
+}
+
+#[tokio::test]
 async fn diagnostic_types_diagnostic() {
     Server::with(|server| async move {
         let request = Request::builder()
