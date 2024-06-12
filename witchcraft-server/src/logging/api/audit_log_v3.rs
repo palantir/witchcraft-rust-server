@@ -57,9 +57,41 @@ pub struct AuditLogV3 {
     request_params: std::collections::BTreeMap<String, super::SensitivityTaggedValue>,
     #[builder(
         default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
+    request_fields: std::collections::BTreeMap<String, conjure_object::Any>,
+    #[builder(
+        default,
         map(key(type = String, into), value(type = super::SensitivityTaggedValue))
     )]
     result_params: std::collections::BTreeMap<String, super::SensitivityTaggedValue>,
+    #[builder(
+        default,
+        map(
+            key(type = String, into),
+            value(
+                custom(
+                    type = impl
+                    conjure_object::serde::Serialize,
+                    convert = |v|conjure_object::Any::new(
+                        v
+                    ).expect("value failed to serialize")
+                )
+            )
+        )
+    )]
+    result_fields: std::collections::BTreeMap<String, conjure_object::Any>,
     time: conjure_object::DateTime<conjure_object::Utc>,
     #[builder(default, into)]
     uid: Option<super::UserId>,
@@ -176,25 +208,47 @@ impl AuditLogV3 {
     pub fn source_origin(&self) -> Option<&str> {
         self.source_origin.as_ref().map(|o| &**o)
     }
-    ///The parameters known at method invocation time.
-    ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
+    #[deprecated(
+        note = "Use requestFields instead.\n\nShould be translated to requestFields during emitting if requestFields is missing, by dropping the level\nfrom the SensitivityTaggedValue and directly using the payload as the value for the map.\n"
+    )]
     #[inline]
     pub fn request_params(
         &self,
     ) -> &std::collections::BTreeMap<String, super::SensitivityTaggedValue> {
         &self.request_params
     }
-    ///Information derived within a method, commonly parts of the return value.
+    ///The fields known at method invocation time.
     ///
-    ///Note that all keys must be known to the audit library. Typically, entries in the request and response
-    ///params will be dependent on the `categories` field defined above.
+    ///Note that all keys must be known to the audit library. Typically, entries in the request and result
+    ///fields will be dependent on the `categories` field defined above.
+    ///
+    ///This replaces requestParams and will take priority if present.
+    #[inline]
+    pub fn request_fields(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+        &self.request_fields
+    }
+    #[deprecated(
+        note = "Use resultFields instead.\n\nShould be translated to resultFields during emitting if resultFields is missing, by dropping the level\nfrom the SensitivityTaggedValue and directly using the payload as the value for the map.\n"
+    )]
     #[inline]
     pub fn result_params(
         &self,
     ) -> &std::collections::BTreeMap<String, super::SensitivityTaggedValue> {
         &self.result_params
+    }
+    ///Information derived within a method, commonly parts of the return value.
+    ///
+    ///Note that all keys must be known to the audit library. Typically, entries in the request and result
+    ///fields will be dependent on the `categories` field defined above.
+    ///
+    ///This replaces resultParams and will take priority if present.
+    #[inline]
+    pub fn result_fields(
+        &self,
+    ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
+        &self.result_fields
     }
     #[inline]
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
@@ -294,8 +348,16 @@ impl ser::Serialize for AuditLogV3 {
         if !skip_request_params {
             size += 1;
         }
+        let skip_request_fields = self.request_fields.is_empty();
+        if !skip_request_fields {
+            size += 1;
+        }
         let skip_result_params = self.result_params.is_empty();
         if !skip_result_params {
+            size += 1;
+        }
+        let skip_result_fields = self.result_fields.is_empty();
+        if !skip_result_fields {
             size += 1;
         }
         let skip_uid = self.uid.is_none();
@@ -385,10 +447,20 @@ impl ser::Serialize for AuditLogV3 {
         } else {
             s.serialize_field("requestParams", &self.request_params)?;
         }
+        if skip_request_fields {
+            s.skip_field("requestFields")?;
+        } else {
+            s.serialize_field("requestFields", &self.request_fields)?;
+        }
         if skip_result_params {
             s.skip_field("resultParams")?;
         } else {
             s.serialize_field("resultParams", &self.result_params)?;
+        }
+        if skip_result_fields {
+            s.skip_field("resultFields")?;
+        } else {
+            s.serialize_field("resultFields", &self.result_fields)?;
         }
         s.serialize_field("time", &self.time)?;
         if skip_uid {
@@ -452,7 +524,9 @@ impl<'de> de::Deserialize<'de> for AuditLogV3 {
                 "origins",
                 "sourceOrigin",
                 "requestParams",
+                "requestFields",
                 "resultParams",
+                "resultFields",
                 "time",
                 "uid",
                 "sid",
@@ -495,7 +569,9 @@ impl<'de> de::Visitor<'de> for Visitor_ {
         let mut origins = None;
         let mut source_origin = None;
         let mut request_params = None;
+        let mut request_fields = None;
         let mut result_params = None;
+        let mut result_fields = None;
         let mut time = None;
         let mut uid = None;
         let mut sid = None;
@@ -525,7 +601,9 @@ impl<'de> de::Visitor<'de> for Visitor_ {
                 Field_::Origins => origins = Some(map_.next_value()?),
                 Field_::SourceOrigin => source_origin = Some(map_.next_value()?),
                 Field_::RequestParams => request_params = Some(map_.next_value()?),
+                Field_::RequestFields => request_fields = Some(map_.next_value()?),
                 Field_::ResultParams => result_params = Some(map_.next_value()?),
+                Field_::ResultFields => result_fields = Some(map_.next_value()?),
                 Field_::Time => time = Some(map_.next_value()?),
                 Field_::Uid => uid = Some(map_.next_value()?),
                 Field_::Sid => sid = Some(map_.next_value()?),
@@ -612,7 +690,15 @@ impl<'de> de::Visitor<'de> for Visitor_ {
             Some(v) => v,
             None => Default::default(),
         };
+        let request_fields = match request_fields {
+            Some(v) => v,
+            None => Default::default(),
+        };
         let result_params = match result_params {
+            Some(v) => v,
+            None => Default::default(),
+        };
+        let result_fields = match result_fields {
             Some(v) => v,
             None => Default::default(),
         };
@@ -671,7 +757,9 @@ impl<'de> de::Visitor<'de> for Visitor_ {
             origins,
             source_origin,
             request_params,
+            request_fields,
             result_params,
+            result_fields,
             time,
             uid,
             sid,
@@ -703,7 +791,9 @@ enum Field_ {
     Origins,
     SourceOrigin,
     RequestParams,
+    RequestFields,
     ResultParams,
+    ResultFields,
     Time,
     Uid,
     Sid,
@@ -752,7 +842,9 @@ impl<'de> de::Visitor<'de> for FieldVisitor_ {
             "origins" => Field_::Origins,
             "sourceOrigin" => Field_::SourceOrigin,
             "requestParams" => Field_::RequestParams,
+            "requestFields" => Field_::RequestFields,
             "resultParams" => Field_::ResultParams,
+            "resultFields" => Field_::ResultFields,
             "time" => Field_::Time,
             "uid" => Field_::Uid,
             "sid" => Field_::Sid,

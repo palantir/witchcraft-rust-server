@@ -1,13 +1,13 @@
 use std::fs::File;
 use std::path::Path;
 
-const API_VERSION: &str = "2.3.0";
+const API_VERSION: &str = "2.4.0";
 
 fn main() {
     let logging_api_url = format!(
-        "https://repo1.maven.org/maven2/com/palantir/witchcraft/api/witchcraft-logging-api/{0}/witchcraft-logging-api-{0}.conjure.json",
+        "https://oss.sonatype.org/service/local/repositories/releases/content/com/palantir/witchcraft/api/witchcraft-logging-api/{0}/witchcraft-logging-api-{0}.conjure.json",
         API_VERSION,
-   );
+    );
     render(
         &logging_api_url,
         "com.palantir.witchcraft.api.logging",
@@ -15,7 +15,7 @@ fn main() {
     );
 
     let health_api_url = format!(
-        "https://repo1.maven.org/maven2/com/palantir/witchcraft/api/witchcraft-health-api/{0}/witchcraft-health-api-{0}.conjure.json",
+        "https://oss.sonatype.org/service/local/repositories/releases/content/com/palantir/witchcraft/api/witchcraft-health-api/{0}/witchcraft-health-api-{0}.conjure.json",
         API_VERSION,
    );
     render(
