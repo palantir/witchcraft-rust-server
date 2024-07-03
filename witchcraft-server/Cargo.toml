@@ -60,7 +60,7 @@ log = "0.4"
 minidump-processor = { version = "0.21", default-features = false }
 minidump-unwind = "0.21"
 minidump-writer = "0.8"
-minidump = "0.21"
+minidump = "0.22"
 minidumper = "0.8"
 num_cpus = "1"
 object = "0.36"
