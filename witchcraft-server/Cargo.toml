@@ -57,10 +57,10 @@ itertools = "0.13"
 lazycell = "1.3"
 libc = "0.2"
 log = "0.4"
-minidump-processor = { version = "0.21", default-features = false }
-minidump-unwind = "0.21"
+minidump-processor = { version = "0.22", default-features = false }
+minidump-unwind = "0.22"
 minidump-writer = "0.8"
-minidump = "0.21"
+minidump = "0.22"
 minidumper = "0.8"
 num_cpus = "1"
 object = "0.36"
@@ -86,7 +86,7 @@ symbolic = { version = "12", features = ["cfi", "debuginfo"] }
 sync_wrapper = "1.0"
 tempfile = "3.10.1"
 tikv-jemalloc-ctl = { version = "0.6", features = ["use_std"], optional = true }
-tikv-jemallocator = { version = "0.5", features = ["unprefixed_malloc_on_supported_platforms", "background_threads", "profiling"], optional = true }
+tikv-jemallocator = { version = "0.6", features = ["unprefixed_malloc_on_supported_platforms", "background_threads", "profiling"], optional = true }
 tokio-rustls = "0.26"
 tokio-util = "0.7"
 tokio = { version = "1.37", features = ["fs", "macros", "rt-multi-thread", "signal", "time"] }
