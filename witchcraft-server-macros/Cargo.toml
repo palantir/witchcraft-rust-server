@@ -18,4 +18,4 @@ syn = { version = "2", features = ["full"] }
 [dev-dependencies]
 conjure-error = "4"
 refreshable = "2"
-witchcraft-server = { version = "4.2.0", path = "../witchcraft-server" }
+witchcraft-server = { version = "4.3.0", path = "../witchcraft-server" }
