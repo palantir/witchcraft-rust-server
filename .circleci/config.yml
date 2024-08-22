@@ -22,7 +22,7 @@ version: 2
 jobs:
   circle-all:
     docker:
-      - image: rust:1.78.0
+      - image: rust:1.80.1
     environment:
       RUSTFLAGS: -D warnings
     steps:
