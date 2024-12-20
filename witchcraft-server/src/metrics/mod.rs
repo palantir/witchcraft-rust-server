@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::metrics::rusage::Rusage;
-use std::panic;
 use std::time::Instant;
+use std::{panic, thread};
 use witchcraft_metrics::MetricRegistry;
 
 #[cfg(feature = "jemalloc")]
@@ -52,7 +52,8 @@ fn register_rusage_metrics(metrics: &MetricRegistry) {
     });
     metrics.gauge("process.user-time.norm", || {
         Rusage::get_self().map_or(0, |r| {
-            r.user_time().as_micros() as u64 / num_cpus::get() as u64
+            r.user_time().as_micros() as u64
+                / thread::available_parallelism().map_or(1, |v| v.get()) as u64
         })
     });
     metrics.gauge("process.system-time", || {
@@ -60,7 +61,8 @@ fn register_rusage_metrics(metrics: &MetricRegistry) {
     });
     metrics.gauge("process.system-time.norm", || {
         Rusage::get_self().map_or(0, |r| {
-            r.system_time().as_micros() as u64 / num_cpus::get() as u64
+            r.system_time().as_micros() as u64
+                / thread::available_parallelism().map_or(1, |v| v.get()) as u64
         })
     });
     metrics.gauge("process.blocks-read", || {

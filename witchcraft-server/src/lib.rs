@@ -285,6 +285,7 @@
 #![warn(missing_docs)]
 
 use std::env;
+use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -303,7 +304,7 @@ use status::StatusResource;
 use status::StatusServiceEndpoints;
 use tokio::runtime::{Handle, Runtime};
 use tokio::signal::unix::{self, SignalKind};
-use tokio::{pin, runtime, select, time};
+use tokio::{runtime, select, time};
 use witchcraft_log::{error, fatal, info};
 use witchcraft_metrics::MetricRegistry;
 
@@ -546,9 +547,7 @@ where
 }
 
 async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<(), Error> {
-    pin! {
-        let signals = signals()?;
-    }
+    let mut signals = pin!(signals()?);
 
     signals.next().await;
     info!("server shutting down");
