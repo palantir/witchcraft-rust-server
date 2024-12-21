@@ -107,7 +107,10 @@ impl<'de> Deserialize<'de> for DiagnosticsConfig {
         D: Deserializer<'de>,
     {
         let raw = de::DiagnosticsConfig::deserialize(deserializer)?;
-        let builder = DiagnosticsConfig::builder().debug_shared_secret(raw.debug_shared_secret);
+        let mut builder = DiagnosticsConfig::builder().debug_shared_secret(raw.debug_shared_secret);
+        if let Some(jemalloc) = raw.jemalloc {
+            builder = builder.jemalloc(jemalloc);
+        }
 
         Ok(builder.build())
     }

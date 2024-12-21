@@ -28,7 +28,7 @@ pub struct RuntimeConfig {
 #[serde(rename_all = "kebab-case")]
 pub struct DiagnosticsConfig {
     pub debug_shared_secret: String,
-    pub jemalloc: Option<JemallocConfig>,
+    pub jemalloc: Option<super::JemallocConfig>,
 }
 
 #[derive(Deserialize)]
