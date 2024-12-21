@@ -171,6 +171,8 @@
 //! * `diagnostic.types.v1` - Returns a JSON-encoded list of all valid diagnostic types.
 //! * `rust.heap.status.v1` - Returns detailed statistics about the state of the heap. Requires the `jemalloc` feature
 //!     (enabled by default).
+//! * `rust.heap.profile.v1` - Returns a profile of the source of a sample of live allocations. Use the `jeprof` tool
+//!     to analyze the profile. Requires the `jemalloc` feature (enabled by default).
 //! * `metric.names.v1` - Returns a JSON-encoded list of the names of all metrics registered with the server.
 //! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process. Only supported when running on
 //!     Linux.
