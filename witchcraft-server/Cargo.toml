@@ -20,6 +20,10 @@ type = "rust.heap.stats.v1"
 docs = "Statistics about the memory allocator, in jemalloc's default text format."
 
 [[package.metadata.sls.diagnostics]]
+type = "rust.heap.profile.v1"
+docs = "A sample of live allocations, in the jemalloc profile format."
+
+[[package.metadata.sls.diagnostics]]
 type = "rust.thread.dump.v1"
 docs = "A recording of running threads and their respective stacktraces."
 
