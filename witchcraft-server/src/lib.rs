@@ -296,6 +296,7 @@ use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use debug::endpoint::DebugResource;
 use debug::endpoint::DebugServiceEndpoints;
+use debug::heap_profile::{self, HeapProfileDiagnostic};
 use futures::FutureExt;
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
@@ -470,7 +471,11 @@ where
     let diagnostics = Arc::new(DiagnosticRegistry::new());
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
-    diagnostics.register(HeapStatsDiagnostic);
+    {
+        diagnostics.register(HeapStatsDiagnostic);
+        heap_profile::init(&runtime_config);
+        diagnostics.register(HeapProfileDiagnostic);
+    }
     #[cfg(target_os = "linux")]
     diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));

@@ -28,6 +28,14 @@ pub struct RuntimeConfig {
 #[serde(rename_all = "kebab-case")]
 pub struct DiagnosticsConfig {
     pub debug_shared_secret: String,
+    pub jemalloc: Option<JemallocConfig>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct JemallocConfig {
+    pub prof_active: Option<bool>,
+    pub lg_prof_sample: Option<usize>,
 }
 
 #[derive(Deserialize)]
