@@ -97,6 +97,8 @@ impl RuntimeConfig {
 pub struct DiagnosticsConfig {
     #[builder(into)]
     debug_shared_secret: String,
+    #[builder(default)]
+    jemalloc: JemallocConfig,
 }
 
 impl<'de> Deserialize<'de> for DiagnosticsConfig {
@@ -105,7 +107,10 @@ impl<'de> Deserialize<'de> for DiagnosticsConfig {
         D: Deserializer<'de>,
     {
         let raw = de::DiagnosticsConfig::deserialize(deserializer)?;
-        let builder = DiagnosticsConfig::builder().debug_shared_secret(raw.debug_shared_secret);
+        let mut builder = DiagnosticsConfig::builder().debug_shared_secret(raw.debug_shared_secret);
+        if let Some(jemalloc) = raw.jemalloc {
+            builder = builder.jemalloc(jemalloc);
+        }
 
         Ok(builder.build())
     }
@@ -118,6 +123,71 @@ impl DiagnosticsConfig {
     #[inline]
     pub fn debug_shared_secret(&self) -> &str {
         &self.debug_shared_secret
+    }
+
+    /// Returns configuration for jemalloc heap profile diagnostics.
+    #[inline]
+    pub fn jemalloc(&self) -> &JemallocConfig {
+        &self.jemalloc
+    }
+}
+
+/// jemalloc diagnostics configuration.
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
+pub struct JemallocConfig {
+    #[builder(default = false)]
+    prof_active: bool,
+    #[builder(default = 19)]
+    lg_prof_sample: usize,
+}
+
+impl Default for JemallocConfig {
+    #[inline]
+    fn default() -> Self {
+        JemallocConfig::builder().build()
+    }
+}
+
+impl<'de> Deserialize<'de> for JemallocConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::JemallocConfig::deserialize(deserializer)?;
+        let mut builder = JemallocConfig::builder();
+
+        if let Some(prof_active) = raw.prof_active {
+            builder = builder.prof_active(prof_active);
+        }
+        if let Some(lg_prof_sample) = raw.lg_prof_sample {
+            builder = builder.lg_prof_sample(lg_prof_sample);
+        }
+
+        Ok(builder.build())
+    }
+}
+
+impl JemallocConfig {
+    /// Controls whether jemalloc heap allocation sampling is enabled.
+    ///
+    /// See [jemalloc's documentation](https://jemalloc.net/jemalloc.3.html) for details.
+    ///
+    /// Defaults to false.
+    #[inline]
+    pub fn prof_active(&self) -> bool {
+        self.prof_active
+    }
+
+    /// The base 2 log of the average interval in allocated bytes between allocation samples.
+    ///
+    /// Sampled allocations will be reset whenever this value is changed. See
+    /// [jemalloc's documentation](https://jemalloc.net/jemalloc.3.html) for details.
+    ///
+    /// Defaults to 19 (aka a 512 KiB interval).
+    #[inline]
+    pub fn lg_prof_sample(&self) -> usize {
+        self.lg_prof_sample
     }
 }
 

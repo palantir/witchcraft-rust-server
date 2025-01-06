@@ -171,6 +171,8 @@
 //! * `diagnostic.types.v1` - Returns a JSON-encoded list of all valid diagnostic types.
 //! * `rust.heap.status.v1` - Returns detailed statistics about the state of the heap. Requires the `jemalloc` feature
 //!     (enabled by default).
+//! * `rust.heap.profile.v1` - Returns a profile of the source of a sample of live allocations. Use the `jeprof` tool
+//!     to analyze the profile. Requires the `jemalloc` feature (enabled by default).
 //! * `metric.names.v1` - Returns a JSON-encoded list of the names of all metrics registered with the server.
 //! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process. Only supported when running on
 //!     Linux.
@@ -285,6 +287,7 @@
 #![warn(missing_docs)]
 
 use std::env;
+use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -295,6 +298,7 @@ use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use debug::endpoint::DebugResource;
 use debug::endpoint::DebugServiceEndpoints;
+use debug::heap_profile::{self, HeapProfileDiagnostic};
 use futures::FutureExt;
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
@@ -303,7 +307,7 @@ use status::StatusResource;
 use status::StatusServiceEndpoints;
 use tokio::runtime::{Handle, Runtime};
 use tokio::signal::unix::{self, SignalKind};
-use tokio::{pin, runtime, select, time};
+use tokio::{runtime, select, time};
 use witchcraft_log::{error, fatal, info};
 use witchcraft_metrics::MetricRegistry;
 
@@ -469,7 +473,11 @@ where
     let diagnostics = Arc::new(DiagnosticRegistry::new());
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
-    diagnostics.register(HeapStatsDiagnostic);
+    {
+        diagnostics.register(HeapStatsDiagnostic);
+        heap_profile::init(&runtime_config);
+        diagnostics.register(HeapProfileDiagnostic);
+    }
     #[cfg(target_os = "linux")]
     diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
@@ -546,9 +554,7 @@ where
 }
 
 async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<(), Error> {
-    pin! {
-        let signals = signals()?;
-    }
+    let mut signals = pin!(signals()?);
 
     signals.next().await;
     info!("server shutting down");

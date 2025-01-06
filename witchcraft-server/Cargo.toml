@@ -20,6 +20,10 @@ type = "rust.heap.stats.v1"
 docs = "Statistics about the memory allocator, in jemalloc's default text format."
 
 [[package.metadata.sls.diagnostics]]
+type = "rust.heap.profile.v1"
+docs = "A sample of live allocations, in the jemalloc profile format."
+
+[[package.metadata.sls.diagnostics]]
 type = "rust.thread.dump.v1"
 docs = "A recording of running threads and their respective stacktraces."
 
@@ -62,7 +66,6 @@ minidump-unwind = "0.23"
 minidump-writer = "0.10"
 minidump = "0.23"
 minidumper = "0.8"
-num_cpus = "1"
 object = "0.36"
 once_cell = "1"
 parking_lot = "0.12"

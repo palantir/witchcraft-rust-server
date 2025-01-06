@@ -1,0 +1,6 @@
+type: feature
+feature:
+  description: Added a diagnostic which takes a jemalloc heap profile. Profiling is
+    disabled by default but can be enabled in runtime config.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/213

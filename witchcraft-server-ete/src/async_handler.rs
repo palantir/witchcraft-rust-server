@@ -15,10 +15,10 @@ use crate::conjure::AsyncTestService;
 use conjure_error::{Error, InvalidArgument};
 use conjure_http::server::AsyncWriteBody;
 use http::{HeaderMap, HeaderValue};
-use std::pin::Pin;
+use std::pin::{pin, Pin};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::{pin, time};
+use tokio::time;
 use witchcraft_server::{RequestBody, ResponseWriter};
 
 pub struct TestResource;
@@ -57,7 +57,7 @@ impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
     }
 
     async fn trailers(&self, body: RequestBody) -> Result<TrailersBody, Error> {
-        pin!(body);
+        let mut body = pin!(body);
         let mut bytes = vec![];
         body.read_to_end(&mut bytes).await.unwrap();
         assert_eq!(bytes, b"expected request body");
@@ -72,7 +72,7 @@ impl AsyncTestService<RequestBody, ResponseWriter> for TestResource {
     }
 
     async fn io_after_eof(&self, body: RequestBody) -> Result<IoAfterEofBody, Error> {
-        pin!(body);
+        let mut body = pin!(body);
         let mut buf = [0; 1024];
         while body.read(&mut buf).await.unwrap() != 0 {}
 
