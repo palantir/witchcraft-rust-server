@@ -19,6 +19,7 @@ use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
 use conjure_serde::json;
 use futures::executor::block_on;
+use futures::SinkExt;
 use lazycell::AtomicLazyCell;
 pub(crate) use logger::Appender;
 use once_cell::sync::OnceCell;
@@ -94,6 +95,7 @@ pub(crate) async fn init(
 }
 
 /// Write the provided v3 audit log entry to the audit log using the global audit logger.
+///
 /// Returns an error if the global audit logger is not initialized.
 ///
 /// The returned future completes once the audit log has been successfully queued.
@@ -105,14 +107,14 @@ pub async fn audit_log(entry: AuditLogEntry) -> Result<(), Error> {
     audit_logger
         .lock()
         .await
-        .try_send(entry.0)
+        .feed(entry.0)
+        .await
         .map_err(|_| Error::internal_safe("Audit logger is closed or not ready"))?;
 
     Ok(())
 }
 
-/// Blocking variant of [audit_log] that only returns once the audit log has been
-/// successfully written or if the audit log has failed.
+/// Blocking variant of [audit_log].
 pub fn audit_log_blocking(entry: AuditLogEntry) -> Result<(), Error> {
     block_on(audit_log(entry))
 }
