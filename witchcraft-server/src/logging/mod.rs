@@ -19,9 +19,8 @@ use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
 use conjure_serde::json;
 use futures::executor::block_on;
-use futures_channel::oneshot;
 use lazycell::AtomicLazyCell;
-pub(crate) use logger::{Appender, Payload};
+pub(crate) use logger::Appender;
 use once_cell::sync::OnceCell;
 use refreshable::Refreshable;
 use std::io;
@@ -97,28 +96,19 @@ pub(crate) async fn init(
 /// Write the provided v3 audit log entry to the audit log using the global audit logger.
 /// Returns an error if the global audit logger is not initialized.
 ///
-/// The returned future completes once the audit log has been successfully written.
+/// The returned future completes once the audit log has been successfully queued.
 pub async fn audit_log(entry: AuditLogEntry) -> Result<(), Error> {
     let audit_logger = AUDIT_LOGGER
         .borrow()
         .ok_or_else(|| Error::internal_safe("Audit logger not initialized"))?;
 
-    let (tx, rx) = oneshot::channel();
-
     audit_logger
         .lock()
         .await
-        .try_send(Payload {
-            value: entry.0,
-            cb: Some(tx),
-        })
+        .try_send(entry.0)
         .map_err(|_| Error::internal_safe("Audit logger is closed or not ready"))?;
 
-    match rx.await {
-        Ok(true) => Ok(()),
-        Ok(false) => Err(Error::internal_safe("Error writing audit log")),
-        Err(error) => Err(Error::internal_safe(error)),
-    }
+    Ok(())
 }
 
 /// Blocking variant of [audit_log] that only returns once the audit log has been
@@ -128,14 +118,12 @@ pub fn audit_log_blocking(entry: AuditLogEntry) -> Result<(), Error> {
 }
 
 /// Writes the provided V2 event log entry using the standard logging appender without blocking.
+///
 /// If the logging appender is not initialized, this instead writes out to stdout.
 pub fn event_log(entry: EventLogV2) {
     match EVENT_LOGGER.get() {
         Some(event_logger) => {
-            let _ = event_logger.try_send(Payload {
-                value: entry,
-                cb: None,
-            });
+            let _ = event_logger.try_send(entry);
         }
         None => {
             let mut buf = json::to_vec(&entry).unwrap();

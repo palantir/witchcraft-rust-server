@@ -109,7 +109,7 @@ where
 {
     struct V;
 
-    impl<'de2> Visitor<'de2> for V {
+    impl Visitor<'_> for V {
         type Value = Uuid;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

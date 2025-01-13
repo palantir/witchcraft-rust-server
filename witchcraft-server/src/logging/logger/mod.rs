@@ -20,7 +20,6 @@ use crate::logging::logger::stdout::StdoutAppender;
 use crate::shutdown_hooks::ShutdownHooks;
 use bytes::Bytes;
 use conjure_error::Error;
-use futures_channel::oneshot;
 use futures_sink::Sink;
 use serde::Serialize;
 use std::io;
@@ -37,11 +36,6 @@ pub mod stdout;
 
 pub type Appender<T> = AsyncAppender<T>;
 
-pub struct Payload<T> {
-    pub value: T,
-    pub cb: Option<oneshot::Sender<bool>>,
-}
-
 pub async fn appender<T>(
     config: &InstallConfig,
     metrics: &MetricRegistry,
@@ -51,7 +45,7 @@ where
     T: Serialize + LogFormat + 'static + Send,
     T::Reporter: 'static + Send,
 {
-    let appender: Pin<Box<dyn Sink<Payload<Bytes>, Error = io::Error> + Sync + Send>> = if config
+    let appender: Pin<Box<dyn Sink<Bytes, Error = io::Error> + Sync + Send>> = if config
         .use_console_log()
     {
         Box::pin(StdoutAppender::new())

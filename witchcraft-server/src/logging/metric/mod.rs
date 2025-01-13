@@ -13,7 +13,7 @@
 // limitations under the License.
 use crate::logging::api::{metric_log_v1, MetricLogV1};
 use crate::logging::logger::r#async::Closed;
-use crate::logging::logger::{self, Appender, Payload};
+use crate::logging::logger::{self, Appender};
 use crate::logging::metric::gauge_reporter::GaugeReporter;
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
@@ -111,13 +111,7 @@ async fn log_metrics(mut appender: Appender<MetricLogV1>, metrics: Arc<MetricReg
             };
 
             let metric = finish_log(id, builder);
-            if let Err(Closed) = Pin::new(&mut appender)
-                .feed(Payload {
-                    value: metric,
-                    cb: None,
-                })
-                .await
-            {
+            if let Err(Closed) = Pin::new(&mut appender).feed(metric).await {
                 break;
             }
         }
@@ -209,10 +203,7 @@ impl Future for IdleFuture<'_> {
             };
 
             if let Ok(log) = result {
-                if let Err(Closed) = Pin::new(&mut **this.appender).start_send(Payload {
-                    value: log,
-                    cb: None,
-                }) {
+                if let Err(Closed) = Pin::new(&mut **this.appender).start_send(log) {
                     break;
                 }
             }
