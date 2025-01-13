@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::format::{LogFormat, ReportLog};
-use crate::logging::logger::Payload;
 use futures_sink::Sink;
 use pin_project::pin_project;
 use std::pin::Pin;
@@ -41,9 +40,9 @@ where
     }
 }
 
-impl<S, T> Sink<Payload<T>> for MetricsAppender<S, T>
+impl<S, T> Sink<T> for MetricsAppender<S, T>
 where
-    S: Sink<Payload<T>>,
+    S: Sink<T>,
     T: LogFormat,
 {
     type Error = S::Error;
@@ -52,9 +51,9 @@ where
         self.project().inner.poll_ready(cx)
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Payload<T>) -> Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
         let this = self.project();
-        this.reporter.report(&item.value);
+        this.reporter.report(&item);
         this.inner.start_send(item)
     }
 

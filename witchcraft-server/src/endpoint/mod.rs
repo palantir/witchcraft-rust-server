@@ -52,7 +52,7 @@ where
     fn handle<'life0, 'async_trait>(
         &'life0 self,
         req: Request<RawBody>,
-    ) -> BoxFuture<Response<BoxBody<Bytes, BodyWriteAborted>>>
+    ) -> BoxFuture<'life0, Response<BoxBody<Bytes, BodyWriteAborted>>>
     where
         'life0: 'async_trait,
         Self: 'async_trait,

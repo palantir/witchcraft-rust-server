@@ -14,10 +14,8 @@
 
 use crate::extensions::AuditLogEntry;
 use crate::logging::api::AuditLogV3;
-use crate::logging::Payload;
 use crate::service::{Layer, Service};
 use conjure_error::Error;
-use futures_channel::oneshot;
 use futures_sink::Sink;
 use futures_util::SinkExt;
 use http::{Response, StatusCode};
@@ -66,7 +64,7 @@ pub struct AuditLogService<S, T> {
 impl<S, T, R, B> Service<R> for AuditLogService<S, T>
 where
     S: Service<R, Response = Response<B>> + Sync,
-    T: Sink<Payload<AuditLogV3>> + Unpin + 'static + Send,
+    T: Sink<AuditLogV3> + Unpin + 'static + Send,
     T::Error: Into<Box<dyn error::Error + Sync + Send>>,
     R: Send,
     B: Send,
@@ -77,24 +75,14 @@ where
         let mut response = self.inner.call(req).await;
 
         if let Some(audit_log_entry) = response.extensions_mut().remove::<AuditLogEntry>() {
-            let (tx, rx) = oneshot::channel();
-
-            let payload = Payload {
-                value: audit_log_entry.0,
-                cb: Some(tx),
-            };
-
             // NB: This assumes our sink doesn't need to be driven manually by flushes
             let send = async {
                 self.logger
                     .lock()
                     .await
-                    .feed(payload)
+                    .feed(audit_log_entry.0)
                     .await
                     .map_err(Error::internal_safe)?;
-                if rx.await != Ok(true) {
-                    return Err(Error::internal_safe("failed to flush audit log entry"));
-                }
 
                 Ok(())
             };
@@ -172,21 +160,15 @@ mod test {
         events: Vec<TestSinkEvent>,
     }
 
-    impl Sink<Payload<AuditLogV3>> for TestSink {
+    impl Sink<AuditLogV3> for TestSink {
         type Error = &'static str;
 
         fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
         }
 
-        fn start_send(
-            mut self: Pin<&mut Self>,
-            item: Payload<AuditLogV3>,
-        ) -> Result<(), Self::Error> {
-            self.events.push(TestSinkEvent::Item(item.value));
-            if let Some(cb) = item.cb {
-                let _ = cb.send(true);
-            }
+        fn start_send(mut self: Pin<&mut Self>, item: AuditLogV3) -> Result<(), Self::Error> {
+            self.events.push(TestSinkEvent::Item(item));
             Ok(())
         }
 
@@ -250,58 +232,5 @@ mod test {
             service.logger.lock().await.events,
             vec![TestSinkEvent::Item(log.clone())]
         );
-    }
-
-    struct FailingSink;
-
-    impl Sink<Payload<AuditLogV3>> for FailingSink {
-        type Error = &'static str;
-
-        fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            Poll::Ready(Ok(()))
-        }
-
-        fn start_send(self: Pin<&mut Self>, value: Payload<AuditLogV3>) -> Result<(), Self::Error> {
-            if let Some(cb) = value.cb {
-                let _ = cb.send(false);
-            }
-            Ok(())
-        }
-
-        fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            unimplemented!()
-        }
-
-        fn poll_close(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            unimplemented!()
-        }
-    }
-
-    #[tokio::test]
-    async fn failed_log_returns_500() {
-        let service =
-            AuditLogLayer::new(Arc::new(Mutex::new(FailingSink))).layer(service_fn(|_| async {
-                let log = AuditLogV3::builder()
-                    .type_("audit.3")
-                    .deployment("foo")
-                    .host("bar")
-                    .product("baz")
-                    .product_version("1")
-                    .producer_type(AuditProducer::Server)
-                    .event_id(Uuid::new_v4())
-                    .time(Utc::now())
-                    .name("PUT_FILE")
-                    .result(AuditResult::Success)
-                    .build();
-
-                let mut response = Response::new(());
-                response.extensions_mut().insert(AuditLogEntry::v3(log));
-                response
-            }));
-
-        let response = service.call(()).await;
-
-        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(response.body().inner.is_none());
     }
 }

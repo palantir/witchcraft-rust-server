@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::format::LogFormat;
-use crate::logging::logger::Payload;
 use crate::shutdown_hooks::ShutdownHooks;
 use core::fmt;
 use futures_sink::Sink;
@@ -42,7 +41,7 @@ impl error::Error for Closed {}
 const QUEUE_LIMIT: usize = 10_000;
 
 struct State<T> {
-    queue: VecDeque<Payload<T>>,
+    queue: VecDeque<T>,
     write_waker: Option<Waker>,
     read_waker: Option<Waker>,
     flushed: bool,
@@ -54,7 +53,7 @@ impl<T> State<T> {
         self.queue.len() < QUEUE_LIMIT
     }
 
-    fn start_send(&mut self, item: Payload<T>) {
+    fn start_send(&mut self, item: T) {
         debug_assert!(self.queue.len() < QUEUE_LIMIT);
 
         self.queue.push_back(item);
@@ -93,7 +92,7 @@ impl<T> Drop for AsyncAppender<T> {
 impl<T> AsyncAppender<T> {
     pub fn new<S>(inner: S, metrics: &MetricRegistry, hooks: &mut ShutdownHooks) -> Self
     where
-        S: Sink<Payload<T>> + 'static + Send,
+        S: Sink<T> + 'static + Send,
         T: LogFormat + 'static + Send,
     {
         let state = Arc::new(Mutex::new(State {
@@ -122,7 +121,7 @@ impl<T> AsyncAppender<T> {
         AsyncAppender { state }
     }
 
-    pub fn try_send(&self, item: Payload<T>) -> Result<(), Payload<T>> {
+    pub fn try_send(&self, item: T) -> Result<(), T> {
         let mut state = self.state.lock();
 
         if state.closed || !state.ready() {
@@ -133,7 +132,7 @@ impl<T> AsyncAppender<T> {
     }
 }
 
-impl<T> Sink<Payload<T>> for AsyncAppender<T> {
+impl<T> Sink<T> for AsyncAppender<T> {
     type Error = Closed;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -158,7 +157,7 @@ impl<T> Sink<Payload<T>> for AsyncAppender<T> {
         Poll::Pending
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Payload<T>) -> Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
         let mut state = self.state.lock();
 
         if state.closed {
@@ -223,7 +222,7 @@ struct WorkerFuture<T, S> {
 
 impl<T, S> Future for WorkerFuture<T, S>
 where
-    S: Sink<Payload<T>>,
+    S: Sink<T>,
 {
     type Output = ();
 
