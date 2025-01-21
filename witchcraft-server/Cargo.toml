@@ -99,6 +99,8 @@ tikv-jemallocator = { version = "0.6", features = [
 ], optional = true }
 tokio-rustls = { version = "0.26", default-features = false, features = [
     "ring",
+    "logging",
+    "tls12",
 ] }
 tokio-util = "0.7"
 tokio = { version = "1.37", features = [
