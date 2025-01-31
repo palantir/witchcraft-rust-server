@@ -115,7 +115,7 @@ witchcraft-log = "4"
 witchcraft-metrics = "1"
 witchcraft-server-config = { version = "4.7.0", path = "../witchcraft-server-config" }
 witchcraft-server-macros = { version = "4.7.0", path = "../witchcraft-server-macros" }
-zipkin = "0.4"
+zipkin = "1.0"
 
 [dev-dependencies]
 tempfile = "3"
