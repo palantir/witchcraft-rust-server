@@ -53,7 +53,7 @@ futures-util = "0.3"
 futures = { version = "0.3.30", features = ["executor"] }
 http-body-util = "0.1"
 http-body = "1"
-http-zipkin = "0.4"
+http-zipkin = "1.0"
 http = "1"
 hyper-util = { version = "0.1", features = ["tokio"] }
 hyper = { version = "1", features = ["http1", "http2", "server"] }
