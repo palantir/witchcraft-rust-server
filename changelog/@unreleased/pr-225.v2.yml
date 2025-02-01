@@ -1,0 +1,5 @@
+type: break
+break:
+  description: Update zipkin requirement from 0.4 to 1.0
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/225
