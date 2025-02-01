@@ -1,0 +1,5 @@
+type: break
+break:
+  description: Update conjure-runtime requirement from 5 to 6
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/227
