@@ -113,8 +113,8 @@ tokio = { version = "1.37", features = [
 tracing = { version = "0.1", features = ["log"] }
 witchcraft-log = "4"
 witchcraft-metrics = "1"
-witchcraft-server-config = { version = "5.0.0", path = "../witchcraft-server-config" }
-witchcraft-server-macros = { version = "5.0.0", path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "5.1.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "5.1.0", path = "../witchcraft-server-macros" }
 zipkin = "1.0"
 
 [dev-dependencies]
