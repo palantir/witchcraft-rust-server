@@ -1,14 +1,25 @@
-use conjure_object::serde::{ser, de};
-use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use std::fmt;
 ///Metadata describing the status of a service.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    conjure_object::serde::Serialize,
+    conjure_object::serde::Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash
+)]
+#[serde(crate = "conjure_object::serde")]
 #[conjure_object::private::staged_builder::staged_builder]
 #[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct HealthCheckResult {
+    #[serde(rename = "type")]
     type_: super::CheckType,
+    #[serde(rename = "state")]
     state: super::HealthState,
     #[builder(default, into)]
+    #[serde(rename = "message", skip_serializing_if = "Option::is_none", default)]
     message: Option<String>,
     #[builder(
         default,
@@ -24,6 +35,11 @@ pub struct HealthCheckResult {
                 )
             )
         )
+    )]
+    #[serde(
+        rename = "params",
+        skip_serializing_if = "std::collections::BTreeMap::is_empty",
+        default
     )]
     params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
@@ -52,131 +68,5 @@ impl HealthCheckResult {
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params
-    }
-}
-impl ser::Serialize for HealthCheckResult {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        let mut size = 2usize;
-        let skip_message = self.message.is_none();
-        if !skip_message {
-            size += 1;
-        }
-        let skip_params = self.params.is_empty();
-        if !skip_params {
-            size += 1;
-        }
-        let mut s = s.serialize_struct("HealthCheckResult", size)?;
-        s.serialize_field("type", &self.type_)?;
-        s.serialize_field("state", &self.state)?;
-        if skip_message {
-            s.skip_field("message")?;
-        } else {
-            s.serialize_field("message", &self.message)?;
-        }
-        if skip_params {
-            s.skip_field("params")?;
-        } else {
-            s.serialize_field("params", &self.params)?;
-        }
-        s.end()
-    }
-}
-impl<'de> de::Deserialize<'de> for HealthCheckResult {
-    fn deserialize<D>(d: D) -> Result<HealthCheckResult, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_struct(
-            "HealthCheckResult",
-            &["type", "state", "message", "params"],
-            Visitor_,
-        )
-    }
-}
-struct Visitor_;
-impl<'de> de::Visitor<'de> for Visitor_ {
-    type Value = HealthCheckResult;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("map")
-    }
-    fn visit_map<A>(self, mut map_: A) -> Result<HealthCheckResult, A::Error>
-    where
-        A: de::MapAccess<'de>,
-    {
-        let mut type_ = None;
-        let mut state = None;
-        let mut message = None;
-        let mut params = None;
-        while let Some(field_) = map_.next_key()? {
-            match field_ {
-                Field_::Type => type_ = Some(map_.next_value()?),
-                Field_::State => state = Some(map_.next_value()?),
-                Field_::Message => message = Some(map_.next_value()?),
-                Field_::Params => params = Some(map_.next_value()?),
-                Field_::Unknown_ => {
-                    map_.next_value::<de::IgnoredAny>()?;
-                }
-            }
-        }
-        let type_ = match type_ {
-            Some(v) => v,
-            None => return Err(de::Error::missing_field("type")),
-        };
-        let state = match state {
-            Some(v) => v,
-            None => return Err(de::Error::missing_field("state")),
-        };
-        let message = match message {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let params = match params {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        Ok(HealthCheckResult {
-            type_,
-            state,
-            message,
-            params,
-        })
-    }
-}
-enum Field_ {
-    Type,
-    State,
-    Message,
-    Params,
-    Unknown_,
-}
-impl<'de> de::Deserialize<'de> for Field_ {
-    fn deserialize<D>(d: D) -> Result<Field_, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_str(FieldVisitor_)
-    }
-}
-struct FieldVisitor_;
-impl<'de> de::Visitor<'de> for FieldVisitor_ {
-    type Value = Field_;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("string")
-    }
-    fn visit_str<E>(self, value: &str) -> Result<Field_, E>
-    where
-        E: de::Error,
-    {
-        let v = match value {
-            "type" => Field_::Type,
-            "state" => Field_::State,
-            "message" => Field_::Message,
-            "params" => Field_::Params,
-            _ => Field_::Unknown_,
-        };
-        Ok(v)
     }
 }
