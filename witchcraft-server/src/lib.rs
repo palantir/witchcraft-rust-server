@@ -298,6 +298,7 @@ use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use debug::endpoint::DebugResource;
 use debug::endpoint::DebugServiceEndpoints;
+#[cfg(feature = "jemalloc")]
 use debug::heap_profile::{self, HeapProfileDiagnostic};
 use futures::FutureExt;
 use futures_util::{stream, Stream, StreamExt};
