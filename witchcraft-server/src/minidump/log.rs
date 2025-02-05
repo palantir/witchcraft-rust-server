@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::minidump::symbol_provider::{Arena, WitchcraftSymbolProvider};
 use conjure_error::Error;
-use minidump::Minidump;
+use minidump::{Minidump, MinidumpModuleList, MinidumpSystemInfo};
 use minidump_processor::ProcessState;
+use minidump_unwind::debuginfo::DebugInfoSymbolProvider;
 use minidump_unwind::{CallStack, StackFrame};
 use std::fmt::Write;
 use std::path::Path;
@@ -38,8 +38,14 @@ pub async fn log_minidump(p: &Path) -> Result<(), Error> {
 pub async fn process_minidump(p: &Path) -> Result<String, Error> {
     let dump = Minidump::read_path(p).map_err(Error::internal_safe)?;
 
-    let arena = Arena::new();
-    let symbol_provider = WitchcraftSymbolProvider::new(&arena);
+    let system_info = dump
+        .get_stream::<MinidumpSystemInfo>()
+        .map_err(Error::internal_safe)?;
+    let module_list = dump
+        .get_stream::<MinidumpModuleList>()
+        .map_err(Error::internal_safe)?;
+
+    let symbol_provider = DebugInfoSymbolProvider::new(&system_info, &module_list).await;
 
     let state = minidump_processor::process_minidump(&dump, &symbol_provider)
         .await

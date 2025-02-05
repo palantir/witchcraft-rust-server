@@ -174,8 +174,7 @@
 //! * `rust.heap.profile.v1` - Returns a profile of the source of a sample of live allocations. Use the `jeprof` tool
 //!     to analyze the profile. Requires the `jemalloc` feature (enabled by default).
 //! * `metric.names.v1` - Returns a JSON-encoded list of the names of all metrics registered with the server.
-//! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process. Only supported when running on
-//!     Linux.
+//! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process.
 //!
 //! # Logging
 //!
@@ -325,10 +324,6 @@ use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
 #[cfg(feature = "jemalloc")]
 use crate::debug::heap_stats::HeapStatsDiagnostic;
 use crate::debug::metric_names::MetricNamesDiagnostic;
-#[cfg(all(
-    target_os = "linux",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))]
 use crate::debug::thread_dump::ThreadDumpDiagnostic;
 use crate::debug::DiagnosticRegistry;
 use crate::health::config_reload::ConfigReloadHealthCheck;
@@ -479,7 +474,6 @@ where
         heap_profile::init(&runtime_config);
         diagnostics.register(HeapProfileDiagnostic);
     }
-    #[cfg(target_os = "linux")]
     diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
     let client_factory = ClientFactory::builder()
