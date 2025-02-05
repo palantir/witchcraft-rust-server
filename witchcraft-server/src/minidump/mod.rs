@@ -42,17 +42,16 @@ pub async fn init() -> Result<(), Error> {
         .stdin(Stdio::piped())
         .spawn()
         .map_err(Error::internal_safe)?;
-    let child_pid = child.id();
-
-    // Ensure that the child's stdin says open until this process exits since that's how it detects the parent exiting.
-    mem::forget(child.stdin);
 
     let client = connect().await?;
 
-    // Enable the child to trace us in restricted ptrace environments
-    let ret = unsafe { libc::prctl(libc::PR_SET_PTRACER, child_pid as libc::c_long) };
-    if ret != 0 {
-        return Err(Error::internal_safe(io::Error::last_os_error()));
+    // Enable the child to trace us in restricted ptrace linux environments
+    #[cfg(target_os = "linux")]
+    {
+        let ret = unsafe { libc::prctl(libc::PR_SET_PTRACER, child.id() as libc::c_long) };
+        if ret != 0 {
+            return Err(Error::internal_safe(io::Error::last_os_error()));
+        }
     }
 
     let guard = CrashHandler::attach(unsafe {
@@ -63,6 +62,9 @@ pub async fn init() -> Result<(), Error> {
     })
     .map_err(Error::internal_safe)?;
     mem::forget(guard);
+
+    // Ensure that the child's stdin says open until this process exits since that's how it detects the parent exiting.
+    mem::forget(child.stdin);
 
     Ok(())
 }
