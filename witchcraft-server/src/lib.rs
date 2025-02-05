@@ -412,11 +412,11 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
+    logging::early_init();
+
     if env::args_os().nth(1).map_or(false, |a| a == "minidump") {
         return minidump::server();
     }
-
-    logging::early_init();
 
     let install_config = load_install()?;
 

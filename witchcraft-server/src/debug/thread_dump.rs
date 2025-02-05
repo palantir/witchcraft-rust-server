@@ -26,6 +26,7 @@ use std::os::unix::process;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
 use tokio::runtime::Handle;
+use witchcraft_log::error;
 
 /// A diagnostic which returns a stack trace of every thread in the server.
 ///
@@ -65,10 +66,12 @@ impl Diagnostic for ThreadDumpDiagnostic {
 pub fn handle_request(buf: Vec<u8>) {
     let target_file = PathBuf::from(OsString::from_vec(buf));
     let ppid = process::parent_id();
-    let Ok(minidump) = MinidumpWriter::new(ppid as _, ppid as _).dump(&mut Cursor::new(vec![]))
-    else {
-        // We are in the child process so we unfortunately can't really log
-        return;
+    let minidump = match MinidumpWriter::new(ppid as _, ppid as _).dump(&mut Cursor::new(vec![])) {
+        Ok(minidump) => minidump,
+        Err(e) => {
+            error!("error creating minidump", error: Error::internal_safe(e));
+            return;
+        }
     };
     let _ = fs::write(target_file, minidump);
 }
