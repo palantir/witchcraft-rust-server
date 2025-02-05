@@ -287,11 +287,6 @@ async fn diagnostic_types_diagnostic() {
 #[tokio::test]
 #[cfg(target_os = "linux")]
 async fn thread_dump_diagnostic() {
-    // FIXME https://github.com/palantir/witchcraft-rust-server/issues/74
-    if std::env::var_os("CI").is_some() {
-        return;
-    }
-
     Server::with(|server| async move {
         let request = Request::builder()
             .uri("/witchcraft-ete/debug/diagnostic/rust.thread.dump.v1")
@@ -315,6 +310,7 @@ async fn thread_dump_diagnostic() {
 
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let body = str::from_utf8(&body).unwrap();
+        println!("{body}");
         // We know there should be one thread in the thread dump diagnostic code, so this is an
         // easy way to infer if we were able to symbolicate the stack traces.
         assert!(body.contains("ThreadDumpDiagnostic"));
