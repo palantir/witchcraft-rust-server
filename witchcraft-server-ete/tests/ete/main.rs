@@ -287,11 +287,6 @@ async fn diagnostic_types_diagnostic() {
 #[tokio::test]
 #[cfg(target_os = "linux")]
 async fn thread_dump_diagnostic() {
-    // FIXME https://github.com/palantir/witchcraft-rust-server/issues/74
-    if std::env::var_os("CI").is_some() {
-        return;
-    }
-
     Server::with(|server| async move {
         let request = Request::builder()
             .uri("/witchcraft-ete/debug/diagnostic/rust.thread.dump.v1")
