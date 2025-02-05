@@ -1,13 +1,30 @@
-use conjure_object::serde::{ser, de};
+#![allow(deprecated)]
 use std::fmt;
 use std::str;
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LogLevel {
-    Fatal,
-    Error,
-    Warn,
-    Info,
+#[derive(
     Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    conjure_object::serde::Deserialize,
+    conjure_object::serde::Serialize,
+)]
+#[serde(crate = "conjure_object::serde")]
+pub enum LogLevel {
+    #[serde(rename = "FATAL")]
+    Fatal,
+    #[serde(rename = "ERROR")]
+    Error,
+    #[serde(rename = "WARN")]
+    Warn,
+    #[serde(rename = "INFO")]
+    Info,
+    #[serde(rename = "DEBUG")]
+    Debug,
+    #[serde(rename = "TRACE")]
     Trace,
 }
 impl LogLevel {
@@ -54,44 +71,5 @@ impl conjure_object::FromPlain for LogLevel {
     #[inline]
     fn from_plain(v: &str) -> Result<LogLevel, conjure_object::plain::ParseEnumError> {
         v.parse()
-    }
-}
-impl ser::Serialize for LogLevel {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        s.serialize_str(self.as_str())
-    }
-}
-impl<'de> de::Deserialize<'de> for LogLevel {
-    fn deserialize<D>(d: D) -> Result<LogLevel, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_str(Visitor_)
-    }
-}
-struct Visitor_;
-impl<'de> de::Visitor<'de> for Visitor_ {
-    type Value = LogLevel;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("a string")
-    }
-    fn visit_str<E>(self, v: &str) -> Result<LogLevel, E>
-    where
-        E: de::Error,
-    {
-        match v.parse() {
-            Ok(e) => Ok(e),
-            Err(_) => {
-                Err(
-                    de::Error::unknown_variant(
-                        v,
-                        &["FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
-                    ),
-                )
-            }
-        }
     }
 }

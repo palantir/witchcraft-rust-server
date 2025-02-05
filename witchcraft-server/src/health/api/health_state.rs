@@ -1,21 +1,39 @@
-use conjure_object::serde::{ser, de};
+#![allow(deprecated)]
 use std::fmt;
 use std::str;
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    conjure_object::serde::Deserialize,
+    conjure_object::serde::Serialize,
+)]
+#[serde(crate = "conjure_object::serde")]
 pub enum HealthState {
     ///The service node is fully operational with no issues.
+    #[serde(rename = "HEALTHY")]
     Healthy,
     ///The service node is fully operational with no issues; however, it is requesting to defer shutdown or restart. A deferring node should not accept "new" jobs but should allow polling of existing jobs.
+    #[serde(rename = "DEFERRING")]
     Deferring,
     ///The service node is no longer serving requests and is ready to be shut down. Nodes in a deferring state are expected to change to a suspended state once they have completed any pending work. A suspended node must also indicate in its readiness probe that it should not receive incoming requests.
+    #[serde(rename = "SUSPENDED")]
     Suspended,
     ///The service node is operating in a degraded state, but is capable of automatically recovering. If any of the nodes in the service were to be restarted, it may result in correctness or consistency issues with the service. Ex: When a cassandra node decides it is not up-to-date and needs to repair, the node is operating in a degraded state. Restarting the node prior to the repair being complete might result in the service being unable to correctly respond to requests.
+    #[serde(rename = "REPAIRING")]
     Repairing,
     ///The service node is in a state that is trending towards an error. If no corrective action is taken, the health is expected to become an error.
+    #[serde(rename = "WARNING")]
     Warning,
     ///The service node is operationally unhealthy.
+    #[serde(rename = "ERROR")]
     Error,
     ///The service node has entered an unrecoverable state. All nodes of the service should be stopped and no automated attempt to restart the node should be made. Ex: a service fails to migrate to a new schema and is left in an unrecoverable state.
+    #[serde(rename = "TERMINAL")]
     Terminal,
 }
 impl HealthState {
@@ -66,52 +84,5 @@ impl conjure_object::FromPlain for HealthState {
         v: &str,
     ) -> Result<HealthState, conjure_object::plain::ParseEnumError> {
         v.parse()
-    }
-}
-impl ser::Serialize for HealthState {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        s.serialize_str(self.as_str())
-    }
-}
-impl<'de> de::Deserialize<'de> for HealthState {
-    fn deserialize<D>(d: D) -> Result<HealthState, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_str(Visitor_)
-    }
-}
-struct Visitor_;
-impl<'de> de::Visitor<'de> for Visitor_ {
-    type Value = HealthState;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("a string")
-    }
-    fn visit_str<E>(self, v: &str) -> Result<HealthState, E>
-    where
-        E: de::Error,
-    {
-        match v.parse() {
-            Ok(e) => Ok(e),
-            Err(_) => {
-                Err(
-                    de::Error::unknown_variant(
-                        v,
-                        &[
-                            "HEALTHY",
-                            "DEFERRING",
-                            "SUSPENDED",
-                            "REPAIRING",
-                            "WARNING",
-                            "ERROR",
-                            "TERMINAL",
-                        ],
-                    ),
-                )
-            }
-        }
     }
 }
