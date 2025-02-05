@@ -1,22 +1,37 @@
-use conjure_object::serde::{ser, de};
-use conjure_object::serde::ser::SerializeStruct as SerializeStruct_;
-use std::fmt;
 ///Definition of the service.1 format.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    conjure_object::serde::Serialize,
+    conjure_object::serde::Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash
+)]
+#[serde(crate = "conjure_object::serde")]
 #[conjure_object::private::staged_builder::staged_builder]
 #[builder(crate = conjure_object::private::staged_builder, update, inline)]
 pub struct ServiceLogV1 {
     #[builder(into)]
+    #[serde(rename = "type")]
     type_: String,
+    #[serde(rename = "level")]
     level: super::LogLevel,
+    #[serde(rename = "time")]
     time: conjure_object::DateTime<conjure_object::Utc>,
     #[builder(default, into)]
+    #[serde(rename = "origin", skip_serializing_if = "Option::is_none", default)]
     origin: Option<String>,
     #[builder(default, into)]
+    #[serde(rename = "thread", skip_serializing_if = "Option::is_none", default)]
     thread: Option<String>,
     #[builder(into)]
+    #[serde(rename = "message")]
     message: String,
     #[builder(default, into)]
+    #[serde(rename = "safe", skip_serializing_if = "Option::is_none", default)]
     safe: Option<bool>,
     #[builder(
         default,
@@ -33,18 +48,29 @@ pub struct ServiceLogV1 {
             )
         )
     )]
+    #[serde(
+        rename = "params",
+        skip_serializing_if = "std::collections::BTreeMap::is_empty",
+        default
+    )]
     params: std::collections::BTreeMap<String, conjure_object::Any>,
     #[builder(default, into)]
+    #[serde(rename = "uid", skip_serializing_if = "Option::is_none", default)]
     uid: Option<super::UserId>,
     #[builder(default, into)]
+    #[serde(rename = "sid", skip_serializing_if = "Option::is_none", default)]
     sid: Option<super::SessionId>,
     #[builder(default, into)]
+    #[serde(rename = "tokenId", skip_serializing_if = "Option::is_none", default)]
     token_id: Option<super::TokenId>,
     #[builder(default, into)]
+    #[serde(rename = "orgId", skip_serializing_if = "Option::is_none", default)]
     org_id: Option<super::OrganizationId>,
     #[builder(default, into)]
+    #[serde(rename = "traceId", skip_serializing_if = "Option::is_none", default)]
     trace_id: Option<super::TraceId>,
     #[builder(default, into)]
+    #[serde(rename = "stacktrace", skip_serializing_if = "Option::is_none", default)]
     stacktrace: Option<String>,
     #[builder(
         default,
@@ -61,8 +87,18 @@ pub struct ServiceLogV1 {
             )
         )
     )]
+    #[serde(
+        rename = "unsafeParams",
+        skip_serializing_if = "std::collections::BTreeMap::is_empty",
+        default
+    )]
     unsafe_params: std::collections::BTreeMap<String, conjure_object::Any>,
     #[builder(default, map(key(type = String, into), value(type = String, into)))]
+    #[serde(
+        rename = "tags",
+        skip_serializing_if = "std::collections::BTreeMap::is_empty",
+        default
+    )]
     tags: std::collections::BTreeMap<String, String>,
 }
 impl ServiceLogV1 {
@@ -147,348 +183,5 @@ impl ServiceLogV1 {
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
-    }
-}
-impl ser::Serialize for ServiceLogV1 {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        let mut size = 4usize;
-        let skip_origin = self.origin.is_none();
-        if !skip_origin {
-            size += 1;
-        }
-        let skip_thread = self.thread.is_none();
-        if !skip_thread {
-            size += 1;
-        }
-        let skip_safe = self.safe.is_none();
-        if !skip_safe {
-            size += 1;
-        }
-        let skip_params = self.params.is_empty();
-        if !skip_params {
-            size += 1;
-        }
-        let skip_uid = self.uid.is_none();
-        if !skip_uid {
-            size += 1;
-        }
-        let skip_sid = self.sid.is_none();
-        if !skip_sid {
-            size += 1;
-        }
-        let skip_token_id = self.token_id.is_none();
-        if !skip_token_id {
-            size += 1;
-        }
-        let skip_org_id = self.org_id.is_none();
-        if !skip_org_id {
-            size += 1;
-        }
-        let skip_trace_id = self.trace_id.is_none();
-        if !skip_trace_id {
-            size += 1;
-        }
-        let skip_stacktrace = self.stacktrace.is_none();
-        if !skip_stacktrace {
-            size += 1;
-        }
-        let skip_unsafe_params = self.unsafe_params.is_empty();
-        if !skip_unsafe_params {
-            size += 1;
-        }
-        let skip_tags = self.tags.is_empty();
-        if !skip_tags {
-            size += 1;
-        }
-        let mut s = s.serialize_struct("ServiceLogV1", size)?;
-        s.serialize_field("type", &self.type_)?;
-        s.serialize_field("level", &self.level)?;
-        s.serialize_field("time", &self.time)?;
-        if skip_origin {
-            s.skip_field("origin")?;
-        } else {
-            s.serialize_field("origin", &self.origin)?;
-        }
-        if skip_thread {
-            s.skip_field("thread")?;
-        } else {
-            s.serialize_field("thread", &self.thread)?;
-        }
-        s.serialize_field("message", &self.message)?;
-        if skip_safe {
-            s.skip_field("safe")?;
-        } else {
-            s.serialize_field("safe", &self.safe)?;
-        }
-        if skip_params {
-            s.skip_field("params")?;
-        } else {
-            s.serialize_field("params", &self.params)?;
-        }
-        if skip_uid {
-            s.skip_field("uid")?;
-        } else {
-            s.serialize_field("uid", &self.uid)?;
-        }
-        if skip_sid {
-            s.skip_field("sid")?;
-        } else {
-            s.serialize_field("sid", &self.sid)?;
-        }
-        if skip_token_id {
-            s.skip_field("tokenId")?;
-        } else {
-            s.serialize_field("tokenId", &self.token_id)?;
-        }
-        if skip_org_id {
-            s.skip_field("orgId")?;
-        } else {
-            s.serialize_field("orgId", &self.org_id)?;
-        }
-        if skip_trace_id {
-            s.skip_field("traceId")?;
-        } else {
-            s.serialize_field("traceId", &self.trace_id)?;
-        }
-        if skip_stacktrace {
-            s.skip_field("stacktrace")?;
-        } else {
-            s.serialize_field("stacktrace", &self.stacktrace)?;
-        }
-        if skip_unsafe_params {
-            s.skip_field("unsafeParams")?;
-        } else {
-            s.serialize_field("unsafeParams", &self.unsafe_params)?;
-        }
-        if skip_tags {
-            s.skip_field("tags")?;
-        } else {
-            s.serialize_field("tags", &self.tags)?;
-        }
-        s.end()
-    }
-}
-impl<'de> de::Deserialize<'de> for ServiceLogV1 {
-    fn deserialize<D>(d: D) -> Result<ServiceLogV1, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_struct(
-            "ServiceLogV1",
-            &[
-                "type",
-                "level",
-                "time",
-                "origin",
-                "thread",
-                "message",
-                "safe",
-                "params",
-                "uid",
-                "sid",
-                "tokenId",
-                "orgId",
-                "traceId",
-                "stacktrace",
-                "unsafeParams",
-                "tags",
-            ],
-            Visitor_,
-        )
-    }
-}
-struct Visitor_;
-impl<'de> de::Visitor<'de> for Visitor_ {
-    type Value = ServiceLogV1;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("map")
-    }
-    fn visit_map<A>(self, mut map_: A) -> Result<ServiceLogV1, A::Error>
-    where
-        A: de::MapAccess<'de>,
-    {
-        let mut type_ = None;
-        let mut level = None;
-        let mut time = None;
-        let mut origin = None;
-        let mut thread = None;
-        let mut message = None;
-        let mut safe = None;
-        let mut params = None;
-        let mut uid = None;
-        let mut sid = None;
-        let mut token_id = None;
-        let mut org_id = None;
-        let mut trace_id = None;
-        let mut stacktrace = None;
-        let mut unsafe_params = None;
-        let mut tags = None;
-        while let Some(field_) = map_.next_key()? {
-            match field_ {
-                Field_::Type => type_ = Some(map_.next_value()?),
-                Field_::Level => level = Some(map_.next_value()?),
-                Field_::Time => time = Some(map_.next_value()?),
-                Field_::Origin => origin = Some(map_.next_value()?),
-                Field_::Thread => thread = Some(map_.next_value()?),
-                Field_::Message => message = Some(map_.next_value()?),
-                Field_::Safe => safe = Some(map_.next_value()?),
-                Field_::Params => params = Some(map_.next_value()?),
-                Field_::Uid => uid = Some(map_.next_value()?),
-                Field_::Sid => sid = Some(map_.next_value()?),
-                Field_::TokenId => token_id = Some(map_.next_value()?),
-                Field_::OrgId => org_id = Some(map_.next_value()?),
-                Field_::TraceId => trace_id = Some(map_.next_value()?),
-                Field_::Stacktrace => stacktrace = Some(map_.next_value()?),
-                Field_::UnsafeParams => unsafe_params = Some(map_.next_value()?),
-                Field_::Tags => tags = Some(map_.next_value()?),
-                Field_::Unknown_ => {
-                    map_.next_value::<de::IgnoredAny>()?;
-                }
-            }
-        }
-        let type_ = match type_ {
-            Some(v) => v,
-            None => return Err(de::Error::missing_field("type")),
-        };
-        let level = match level {
-            Some(v) => v,
-            None => return Err(de::Error::missing_field("level")),
-        };
-        let time = match time {
-            Some(v) => v,
-            None => return Err(de::Error::missing_field("time")),
-        };
-        let origin = match origin {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let thread = match thread {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let message = match message {
-            Some(v) => v,
-            None => return Err(de::Error::missing_field("message")),
-        };
-        let safe = match safe {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let params = match params {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let uid = match uid {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let sid = match sid {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let token_id = match token_id {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let org_id = match org_id {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let trace_id = match trace_id {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let stacktrace = match stacktrace {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let unsafe_params = match unsafe_params {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        let tags = match tags {
-            Some(v) => v,
-            None => Default::default(),
-        };
-        Ok(ServiceLogV1 {
-            type_,
-            level,
-            time,
-            origin,
-            thread,
-            message,
-            safe,
-            params,
-            uid,
-            sid,
-            token_id,
-            org_id,
-            trace_id,
-            stacktrace,
-            unsafe_params,
-            tags,
-        })
-    }
-}
-enum Field_ {
-    Type,
-    Level,
-    Time,
-    Origin,
-    Thread,
-    Message,
-    Safe,
-    Params,
-    Uid,
-    Sid,
-    TokenId,
-    OrgId,
-    TraceId,
-    Stacktrace,
-    UnsafeParams,
-    Tags,
-    Unknown_,
-}
-impl<'de> de::Deserialize<'de> for Field_ {
-    fn deserialize<D>(d: D) -> Result<Field_, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_str(FieldVisitor_)
-    }
-}
-struct FieldVisitor_;
-impl<'de> de::Visitor<'de> for FieldVisitor_ {
-    type Value = Field_;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("string")
-    }
-    fn visit_str<E>(self, value: &str) -> Result<Field_, E>
-    where
-        E: de::Error,
-    {
-        let v = match value {
-            "type" => Field_::Type,
-            "level" => Field_::Level,
-            "time" => Field_::Time,
-            "origin" => Field_::Origin,
-            "thread" => Field_::Thread,
-            "message" => Field_::Message,
-            "safe" => Field_::Safe,
-            "params" => Field_::Params,
-            "uid" => Field_::Uid,
-            "sid" => Field_::Sid,
-            "tokenId" => Field_::TokenId,
-            "orgId" => Field_::OrgId,
-            "traceId" => Field_::TraceId,
-            "stacktrace" => Field_::Stacktrace,
-            "unsafeParams" => Field_::UnsafeParams,
-            "tags" => Field_::Tags,
-            _ => Field_::Unknown_,
-        };
-        Ok(v)
     }
 }

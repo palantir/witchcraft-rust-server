@@ -1,12 +1,27 @@
-use conjure_object::serde::{ser, de};
+#![allow(deprecated)]
 use std::fmt;
 use std::str;
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    conjure_object::serde::Deserialize,
+    conjure_object::serde::Serialize,
+)]
+#[serde(crate = "conjure_object::serde")]
 pub enum AuditResult {
+    #[serde(rename = "SUCCESS")]
     Success,
+    #[serde(rename = "ERROR")]
     Error,
+    #[serde(rename = "UNAUTHORIZED")]
     Unauthorized,
     ///A result that has not yet been finalized. It may be missing fields from resultParams, and it is expected that a non-partial log should occur in the future with the same event ID.
+    #[serde(rename = "PARTIAL")]
     Partial,
 }
 impl AuditResult {
@@ -51,44 +66,5 @@ impl conjure_object::FromPlain for AuditResult {
         v: &str,
     ) -> Result<AuditResult, conjure_object::plain::ParseEnumError> {
         v.parse()
-    }
-}
-impl ser::Serialize for AuditResult {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        s.serialize_str(self.as_str())
-    }
-}
-impl<'de> de::Deserialize<'de> for AuditResult {
-    fn deserialize<D>(d: D) -> Result<AuditResult, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_str(Visitor_)
-    }
-}
-struct Visitor_;
-impl<'de> de::Visitor<'de> for Visitor_ {
-    type Value = AuditResult;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("a string")
-    }
-    fn visit_str<E>(self, v: &str) -> Result<AuditResult, E>
-    where
-        E: de::Error,
-    {
-        match v.parse() {
-            Ok(e) => Ok(e),
-            Err(_) => {
-                Err(
-                    de::Error::unknown_variant(
-                        v,
-                        &["SUCCESS", "ERROR", "UNAUTHORIZED", "PARTIAL"],
-                    ),
-                )
-            }
-        }
     }
 }

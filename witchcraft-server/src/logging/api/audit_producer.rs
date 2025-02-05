@@ -1,9 +1,22 @@
-use conjure_object::serde::{ser, de};
+#![allow(deprecated)]
 use std::fmt;
 use std::str;
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    conjure_object::serde::Deserialize,
+    conjure_object::serde::Serialize,
+)]
+#[serde(crate = "conjure_object::serde")]
 pub enum AuditProducer {
+    #[serde(rename = "SERVER")]
     Server,
+    #[serde(rename = "CLIENT")]
     Client,
 }
 impl AuditProducer {
@@ -46,37 +59,5 @@ impl conjure_object::FromPlain for AuditProducer {
         v: &str,
     ) -> Result<AuditProducer, conjure_object::plain::ParseEnumError> {
         v.parse()
-    }
-}
-impl ser::Serialize for AuditProducer {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        s.serialize_str(self.as_str())
-    }
-}
-impl<'de> de::Deserialize<'de> for AuditProducer {
-    fn deserialize<D>(d: D) -> Result<AuditProducer, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        d.deserialize_str(Visitor_)
-    }
-}
-struct Visitor_;
-impl<'de> de::Visitor<'de> for Visitor_ {
-    type Value = AuditProducer;
-    fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("a string")
-    }
-    fn visit_str<E>(self, v: &str) -> Result<AuditProducer, E>
-    where
-        E: de::Error,
-    {
-        match v.parse() {
-            Ok(e) => Ok(e),
-            Err(_) => Err(de::Error::unknown_variant(v, &["SERVER", "CLIENT"])),
-        }
     }
 }
