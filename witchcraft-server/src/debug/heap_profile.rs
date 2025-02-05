@@ -22,12 +22,18 @@ use std::{
     fs,
 };
 use tempfile::NamedTempFile;
-use witchcraft_log::info;
+use witchcraft_log::{info, warn};
 use witchcraft_server_config::runtime::RuntimeConfig;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
+#[cfg(target_os = "linux")]
 static malloc_conf: &c_char = unsafe { &*c"prof:true,prof_active:false".as_ptr() };
+
+#[no_mangle]
+#[allow(non_upper_case_globals)]
+#[cfg(target_os = "macos")]
+static _rjem_malloc_conf: &c_char = unsafe { &*c"prof:true,prof_active:false".as_ptr() };
 
 pub fn init<R>(runtime: &Refreshable<R, Error>)
 where
@@ -37,9 +43,10 @@ where
         .map(|r| r.as_ref().diagnostics().jemalloc().prof_active())
         .subscribe(|active| {
             info!("setting prof.active", safe: { value: active });
-            unsafe {
+            if let Err(e) = unsafe {
                 tikv_jemalloc_ctl::raw::write::<bool>(c"prof.active".to_bytes_with_nul(), *active)
-                    .unwrap();
+            } {
+                warn!("error setting prof.active", error: Error::internal_safe(e));
             }
         })
         .leak();
@@ -48,12 +55,13 @@ where
         .map(|r| r.as_ref().diagnostics().jemalloc().lg_prof_sample())
         .subscribe(|lg_prof_sample| {
             info!("setting prof.reset", safe: { value: lg_prof_sample });
-            unsafe {
+            if let Err(e) = unsafe {
                 tikv_jemalloc_ctl::raw::write::<usize>(
                     c"prof.reset".to_bytes_with_nul(),
                     *lg_prof_sample,
                 )
-                .unwrap();
+            } {
+                warn!("error setting prof.reset", error: Error::internal_safe(e));
             }
         })
         .leak();
