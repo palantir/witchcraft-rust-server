@@ -47,12 +47,7 @@ pub async fn init() -> Result<(), Error> {
 
     // Enable the child to trace us in restricted ptrace linux environments
     #[cfg(target_os = "linux")]
-    {
-        let ret = unsafe { libc::prctl(libc::PR_SET_PTRACER, child.id() as libc::c_long) };
-        if ret != 0 {
-            return Err(Error::internal_safe(io::Error::last_os_error()));
-        }
-    }
+    handle_restricted_ptrace(child.id())?;
 
     let guard = CrashHandler::attach(unsafe {
         crash_handler::make_crash_event(move |context| {
@@ -65,6 +60,34 @@ pub async fn init() -> Result<(), Error> {
 
     // Ensure that the child's stdin says open until this process exits since that's how it detects the parent exiting.
     mem::forget(child.stdin);
+
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn handle_restricted_ptrace(child: u32) -> Result<(), Error> {
+    let ptrace_scope = match fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope") {
+        Ok(buf) => buf,
+        Err(e) => {
+            debug!("error reading ptrace_scope", error: Error::internal_safe(e));
+            return Ok(());
+        }
+    };
+
+    if ptrace_scope != "1" {
+        debug!(
+            "ptrace scope not restricted, skipping PR_SET_PTRACER",
+            safe: {
+                scope: ptrace_scope
+            }
+        );
+        return Ok(());
+    }
+
+    let ret = unsafe { libc::prctl(libc::PR_SET_PTRACER, child as libc::c_ulong) };
+    if ret != 0 {
+        return Err(Error::internal_safe(io::Error::last_os_error()));
+    }
 
     Ok(())
 }
