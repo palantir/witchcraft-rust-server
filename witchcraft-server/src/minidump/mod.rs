@@ -74,7 +74,7 @@ fn handle_restricted_ptrace(child: u32) -> Result<(), Error> {
         }
     };
 
-    if ptrace_scope != "1" {
+    if ptrace_scope.trim() != "1" {
         debug!(
             "ptrace scope not restricted, skipping PR_SET_PTRACER",
             safe: {
