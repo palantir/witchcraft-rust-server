@@ -285,7 +285,6 @@ async fn diagnostic_types_diagnostic() {
 }
 
 #[tokio::test]
-#[cfg(target_os = "linux")]
 async fn thread_dump_diagnostic() {
     Server::with(|server| async move {
         let request = Request::builder()
