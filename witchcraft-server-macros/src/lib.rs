@@ -25,7 +25,7 @@ use syn::{Error, ItemFn};
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```ignore
 /// use conjure_error::Error;
 /// use witchcraft_server::config::install::InstallConfig;
 /// use witchcraft_server::config::runtime::RuntimeConfig;
@@ -45,7 +45,7 @@ use syn::{Error, ItemFn};
 ///
 /// Expands to:
 ///
-/// ```no_run
+/// ```ignore
 /// use conjure_error::Error;
 /// use witchcraft_server::config::install::InstallConfig;
 /// use witchcraft_server::config::runtime::RuntimeConfig;
