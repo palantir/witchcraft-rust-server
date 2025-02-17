@@ -30,6 +30,7 @@ pub(crate) mod heap_profile;
 #[cfg(feature = "jemalloc")]
 pub(crate) mod heap_stats;
 pub(crate) mod metric_names;
+#[cfg(target_os = "linux")]
 pub(crate) mod thread_dump;
 
 static TYPE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z0-9]+\.)+v[0-9]+").unwrap());

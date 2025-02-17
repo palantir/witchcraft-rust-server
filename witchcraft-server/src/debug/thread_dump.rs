@@ -28,6 +28,8 @@ use tempfile::NamedTempFile;
 use tokio::runtime::Handle;
 
 /// A diagnostic which returns a stack trace of every thread in the server.
+///
+/// It is only supported on Linux.
 pub struct ThreadDumpDiagnostic;
 
 impl Diagnostic for ThreadDumpDiagnostic {
