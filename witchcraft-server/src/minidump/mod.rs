@@ -64,12 +64,17 @@ pub async fn init() -> Result<(), Error> {
     Ok(())
 }
 
+/// If the server is running in a Linux environment with the Yama security module enabled and configured with the
+/// ptrace scope set to restricted (i.e. 1), we need to explicitly tell the kernel that the child process is allowed
+/// to trace us.
+///
+/// https://man7.org/linux/man-pages/man2/pr_set_ptracer.2const.html
 #[cfg(target_os = "linux")]
 fn handle_restricted_ptrace(child: u32) -> Result<(), Error> {
     let ptrace_scope = match fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope") {
         Ok(buf) => buf,
         Err(e) => {
-            debug!("error reading ptrace_scope", error: Error::internal_safe(e));
+            debug!("error reading ptrace_scope, assuming yama not enabled", error: Error::internal_safe(e));
             return Ok(());
         }
     };
