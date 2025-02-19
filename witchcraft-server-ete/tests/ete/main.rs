@@ -310,6 +310,7 @@ async fn thread_dump_diagnostic() {
 
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let body = str::from_utf8(&body).unwrap();
+        println!("{body}");
         // We know there should be one thread in the thread dump diagnostic code, so this is an
         // easy way to infer if we were able to symbolicate the stack traces.
         assert!(body.contains("ThreadDumpDiagnostic"));
