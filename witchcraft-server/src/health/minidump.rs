@@ -1,4 +1,7 @@
-use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 use std::time::{Duration, Instant};
 
 use super::{HealthCheck, HealthCheckResult, HealthState};
@@ -11,8 +14,10 @@ pub struct MinidumpHealthCheck {
 
 impl MinidumpHealthCheck {
     pub fn new(minidump_ok: Arc<AtomicBool>) -> Self {
-        MinidumpHealthCheck { minidump_ok,
-        first_unhealthy_time: Arc::new(Mutex::new(None)) }
+        MinidumpHealthCheck {
+            minidump_ok,
+            first_unhealthy_time: Arc::new(Mutex::new(None)),
+        }
     }
 }
 
@@ -25,7 +30,9 @@ impl HealthCheck for MinidumpHealthCheck {
         if self.minidump_ok.load(Ordering::Relaxed) {
             let mut start_time = self.first_unhealthy_time.lock().unwrap();
             *start_time = None;
-            return HealthCheckResult::builder().state(HealthState::Healthy).build();
+            return HealthCheckResult::builder()
+                .state(HealthState::Healthy)
+                .build();
         }
 
         let mut start_time = self.first_unhealthy_time.lock().unwrap();
@@ -35,7 +42,9 @@ impl HealthCheck for MinidumpHealthCheck {
         if elapsed > Duration::from_secs(300) {
             HealthCheckResult::builder()
                 .state(HealthState::Error)
-                .message("minidump client could not connect to server for over 5 minutes".to_string())
+                .message(
+                    "minidump client could not connect to server for over 5 minutes".to_string(),
+                )
                 .build()
         } else {
             HealthCheckResult::builder()
