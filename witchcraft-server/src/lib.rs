@@ -447,7 +447,7 @@ where
 
     info!("server starting");
 
-    let minidump_ok = Arc::new(AtomicBool::new(false));
+    let minidump_ok = Arc::new(AtomicBool::new(true));
     let minidump_ok_cloned = minidump_ok.clone();
     handle.spawn(minidump::init().then(|result| async move {
         minidump_ok_cloned.store(result.is_ok(), Ordering::Relaxed);
