@@ -39,11 +39,11 @@ impl HealthCheck for MinidumpHealthCheck {
 
         let elapsed = start_time.get_or_insert_with(Instant::now).elapsed();
 
-        if elapsed > Duration::from_secs(300) {
+        if elapsed > Duration::from_secs(600) {
             HealthCheckResult::builder()
                 .state(HealthState::Error)
                 .message(
-                    "minidump client could not connect to server for over 5 minutes".to_string(),
+                    "minidump client could not connect to server for over 10 minutes".to_string(),
                 )
                 .build()
         } else {
