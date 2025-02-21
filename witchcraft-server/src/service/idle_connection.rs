@@ -260,7 +260,7 @@ impl Shared {
         if state
             .waker
             .as_ref()
-            .map_or(true, |waker| !cx.waker().will_wake(waker))
+            .is_none_or(|waker| !cx.waker().will_wake(waker))
         {
             state.waker = Some(cx.waker().clone());
         }

@@ -52,7 +52,7 @@ impl GracefulShutdownLayer {
                     if state
                         .waker
                         .as_ref()
-                        .map_or(true, |w| !cx.waker().will_wake(w))
+                        .is_none_or(|w| !cx.waker().will_wake(w))
                     {
                         state.waker = Some(cx.waker().clone());
                     }
