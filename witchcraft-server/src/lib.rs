@@ -251,6 +251,10 @@
 //! * `process.filedescriptor` (gauge) - The number of file descriptors held open by the process divided by the maximum
 //!     number of files the server may hold open.
 //!
+//! ## Tokio
+//!
+//! * `tokio.tasks` (gauge) - The number of tasks in the Tokio runtime.
+//!
 //! ## Connection
 //!
 //! * `server.connection.active` (counter) - The number of TCP sockets currently connected to the HTTP server.
@@ -456,7 +460,7 @@ where
         }
     }));
 
-    metrics::init(&metrics);
+    metrics::init(&metrics, &handle);
 
     let host_metrics = Arc::new(HostMetricsRegistry::new());
 

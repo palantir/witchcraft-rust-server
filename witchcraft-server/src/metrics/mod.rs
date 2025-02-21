@@ -14,6 +14,7 @@
 use crate::metrics::rusage::Rusage;
 use std::time::Instant;
 use std::{panic, thread};
+use tokio::runtime::Handle;
 use witchcraft_metrics::MetricRegistry;
 
 #[cfg(feature = "jemalloc")]
@@ -22,10 +23,11 @@ mod jemalloc;
 mod proc;
 mod rusage;
 
-pub fn init(metrics: &MetricRegistry) {
+pub fn init(metrics: &MetricRegistry, handle: &Handle) {
     register_uptime_metric(metrics);
     register_panic_metric(metrics);
     register_rusage_metrics(metrics);
+    register_tokio_metrics(metrics, handle);
     #[cfg(target_os = "linux")]
     proc::register_metrics(metrics);
     #[cfg(feature = "jemalloc")]
@@ -71,4 +73,10 @@ fn register_rusage_metrics(metrics: &MetricRegistry) {
     metrics.gauge("process.blocks-written", || {
         Rusage::get_self().map_or(0, |r| r.blocks_written())
     });
+}
+
+fn register_tokio_metrics(metrics: &MetricRegistry, handle: &Handle) {
+    let tokio_metrics = handle.metrics();
+
+    metrics.gauge("tokio.tasks", move || tokio_metrics.num_alive_tasks());
 }

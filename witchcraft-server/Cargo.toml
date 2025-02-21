@@ -101,7 +101,7 @@ tokio-rustls = { version = "0.26", default-features = false, features = [
     "tls12",
 ] }
 tokio-util = "0.7"
-tokio = { version = "1.37", features = [
+tokio = { version = "1.43", features = [
     "fs",
     "macros",
     "rt-multi-thread",
