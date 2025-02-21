@@ -42,7 +42,6 @@ mod unstable {
 
         for bucket in 0..tokio_metrics.poll_time_histogram_num_buckets() {
             let range = tokio_metrics.poll_time_histogram_bucket_range(bucket);
-            println!("{range:?}");
             metrics.gauge(
                 MetricId::new("tokio.tasks.poll-count")
                     .with_tag("bucket", bucket.to_string())
