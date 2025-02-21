@@ -35,6 +35,10 @@ jobs:
       - *RESTORE_DEPS
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all --all-targets
+      - run:
+          command: cargo clippy -p witchcraft-server --features tokio_unstable
+          environment:
+            RUSTFLAGS: --cfg=tokio_unstable 
       - run: cargo clippy -p witchcraft-server --no-default-features
       - run: cargo test --all
       - run: cargo run -p render-conjure

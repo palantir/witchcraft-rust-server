@@ -30,6 +30,7 @@ docs = "A recording of running threads and their respective stacktraces."
 [features]
 default = ["jemalloc"]
 jemalloc = ["dep:tikv-jemalloc-ctl", "dep:tikv-jemallocator"]
+tokio_unstable = []
 
 [dependencies]
 addr2line = "0.24"
@@ -118,3 +119,6 @@ zipkin = "1.0"
 [dev-dependencies]
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
