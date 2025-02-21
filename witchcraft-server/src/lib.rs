@@ -262,8 +262,8 @@
 //!
 //! * `tokio.blocking.threads` (gauge) - The number of threads in Tokio's blocking pool.
 //! * `tokio.blocking.threads.idle` (gauge) - The number of threads in Tokio's blocking pool that are idle.
-//! * `tokio.tasks.poll-time (idx: <bucket>`, start: <start_micros>, end: <end_micros>)` - The number of times a task
-//!     poll call has taken between `start_micros` and `end_micros` microseconds to return.
+//! * `tokio.tasks.poll-duration-bucket (ge: <ge_micros>, lt: <lt_micros>)` - Histogram buckets of the duration of
+//!     individual poll calls to tasks, tagged by the bounds of the bucket in microseconds.
 //!
 //! [`tokio_unstable` cfg]:(https://docs.rs/tokio/latest/tokio/index.html#unstable-features)
 //!

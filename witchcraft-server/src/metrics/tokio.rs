@@ -43,10 +43,9 @@ mod unstable {
         for bucket in 0..tokio_metrics.poll_time_histogram_num_buckets() {
             let range = tokio_metrics.poll_time_histogram_bucket_range(bucket);
             metrics.gauge(
-                MetricId::new("tokio.tasks.poll-count")
-                    .with_tag("bucket", bucket.to_string())
-                    .with_tag("start", range.start.as_micros().to_string())
-                    .with_tag("end", range.end.as_micros().to_string()),
+                MetricId::new("tokio.tasks.poll-duration-bucket")
+                    .with_tag("ge", range.start.as_micros().to_string())
+                    .with_tag("lt", range.end.as_micros().to_string()),
                 {
                     let tokio_metrics = tokio_metrics.clone();
                     move || {
