@@ -356,6 +356,10 @@ mod status;
 pub mod tls;
 mod witchcraft;
 
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 /// Initializes a Witchcraft server.
 ///
 /// `init` is invoked with the parsed install and runtime configs as well as the [`Witchcraft`] context object. It
