@@ -1,0 +1,5 @@
+type: feature
+feature:
+  description: Added metrics tracking the state of the Tokio runtime.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/236
