@@ -1,0 +1,5 @@
+type: improvement
+improvement:
+  description: Jemalloc is now registered as the Rust global allocator.
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/237

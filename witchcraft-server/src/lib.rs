@@ -325,10 +325,7 @@ use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
 #[cfg(feature = "jemalloc")]
 use crate::debug::heap_stats::HeapStatsDiagnostic;
 use crate::debug::metric_names::MetricNamesDiagnostic;
-#[cfg(all(
-    target_os = "linux",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))]
+#[cfg(target_os = "linux")]
 use crate::debug::thread_dump::ThreadDumpDiagnostic;
 use crate::debug::DiagnosticRegistry;
 use crate::health::config_reload::ConfigReloadHealthCheck;
@@ -358,6 +355,10 @@ mod shutdown_hooks;
 mod status;
 pub mod tls;
 mod witchcraft;
+
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 /// Initializes a Witchcraft server.
 ///
@@ -450,7 +451,7 @@ where
 
     info!("server starting");
 
-    let minidump_ok = Arc::new(AtomicBool::new(false));
+    let minidump_ok = Arc::new(AtomicBool::new(true));
     let minidump_ok_cloned = minidump_ok.clone();
     handle.spawn(minidump::init().then(|result| async move {
         minidump_ok_cloned.store(result.is_ok(), Ordering::Relaxed);
