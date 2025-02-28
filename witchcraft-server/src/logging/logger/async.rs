@@ -149,7 +149,7 @@ impl<T> Sink<T> for AsyncAppender<T> {
         if state
             .write_waker
             .as_ref()
-            .map_or(true, |w| !w.will_wake(cx.waker()))
+            .is_none_or(|w| !w.will_wake(cx.waker()))
         {
             state.write_waker = Some(cx.waker().clone());
         }
@@ -178,7 +178,7 @@ impl<T> Sink<T> for AsyncAppender<T> {
         if state
             .write_waker
             .as_ref()
-            .map_or(true, |w| !w.will_wake(cx.waker()))
+            .is_none_or(|w| !w.will_wake(cx.waker()))
         {
             state.write_waker = Some(cx.waker().clone());
         }
@@ -254,7 +254,7 @@ where
         if state
             .read_waker
             .as_ref()
-            .map_or(true, |w| !w.will_wake(cx.waker()))
+            .is_none_or(|w| !w.will_wake(cx.waker()))
         {
             state.read_waker = Some(cx.waker().clone());
         }
