@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use webpki::types::CertificateDer;
+use rustls_pki_types::CertificateDer;
 
 /// A client's identity provided during the TLS handshake.
 ///

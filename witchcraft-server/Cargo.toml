@@ -114,6 +114,7 @@ witchcraft-metrics = "1"
 witchcraft-server-config = { version = "5.3.0", path = "../witchcraft-server-config" }
 witchcraft-server-macros = { version = "5.3.0", path = "../witchcraft-server-macros" }
 zipkin = "1.0"
+rustls-pki-types = "1.11.0"
 
 [dev-dependencies]
 tempfile = "3"
