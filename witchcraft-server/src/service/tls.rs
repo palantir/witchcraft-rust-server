@@ -15,6 +15,7 @@ use crate::service::hyper::NewConnection;
 use crate::service::{Layer, Service};
 use conjure_error::Error;
 use rustls_pemfile::Item;
+use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -35,7 +36,6 @@ use tokio_rustls::rustls::{
 };
 use tokio_rustls::server::TlsStream;
 use tokio_rustls::TlsAcceptor;
-use webpki::types::{CertificateDer, PrivateKeyDer};
 use witchcraft_server_config::install::InstallConfig;
 
 static CIPHER_SUITES: [SupportedCipherSuite; 9] = [

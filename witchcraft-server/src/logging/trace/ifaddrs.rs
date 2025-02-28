@@ -130,10 +130,7 @@ impl<'a> Iterator for Iter<'a> {
     type Item = &'a IfAddrsRef;
 
     fn next(&mut self) -> Option<&'a IfAddrsRef> {
-        let cur = match self.0 {
-            Some(cur) => cur,
-            None => return None,
-        };
+        let cur = self.0?;
 
         self.0 = cur.next();
         Some(cur)
