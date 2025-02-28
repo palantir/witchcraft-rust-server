@@ -140,7 +140,7 @@ where
         .body()
         .size_hint()
         .upper()
-        .map_or(false, |s| s < MIN_SIZE)
+        .is_some_and(|s| s < MIN_SIZE)
     {
         return false;
     }

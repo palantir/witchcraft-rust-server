@@ -416,7 +416,7 @@ where
 {
     logging::early_init();
 
-    if env::args_os().nth(1).map_or(false, |a| a == "minidump") {
+    if env::args_os().nth(1).is_some_and(|a| a == "minidump") {
         return minidump::server();
     }
 

@@ -73,7 +73,7 @@ rand = "0.9"
 refreshable = "2"
 regex = "1"
 rustls-pemfile = "2"
-rustls-webpki = "0.102"
+rustls-webpki = "0.103"
 sequence_trie = "0.3"
 serde-encrypted-value = "1.0"
 serde-file-value = "0.1"
@@ -114,6 +114,7 @@ witchcraft-metrics = "1"
 witchcraft-server-config = { version = "5.3.0", path = "../witchcraft-server-config" }
 witchcraft-server-macros = { version = "5.3.0", path = "../witchcraft-server-macros" }
 zipkin = "1.0"
+rustls-pki-types = "1.11.0"
 
 [dev-dependencies]
 tempfile = "3"

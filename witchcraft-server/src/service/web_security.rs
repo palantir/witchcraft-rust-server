@@ -65,9 +65,7 @@ where
             .headers()
             .get(USER_AGENT)
             .and_then(|h| h.to_str().ok())
-            .map_or(false, |s| {
-                s.contains(USER_AGENT_IE_10) || s.contains(USER_AGENT_IE_11)
-            });
+            .is_some_and(|s| s.contains(USER_AGENT_IE_10) || s.contains(USER_AGENT_IE_11));
 
         let mut response = self.inner.call(req).await;
         response

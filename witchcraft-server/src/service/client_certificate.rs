@@ -15,8 +15,8 @@ use crate::service::hyper::NewConnection;
 use crate::service::{Layer, Service, Stack};
 use crate::tls::ClientCertificate;
 use http::Request;
+use rustls_pki_types::CertificateDer;
 use tokio_rustls::server::TlsStream;
-use webpki::types::CertificateDer;
 
 /// A layer which injects a [`ClientCertificate`] extension into all requests made over the connection.
 pub struct ClientCertificateLayer;

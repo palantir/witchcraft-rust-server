@@ -96,7 +96,7 @@ where
     }
 
     fn is_end_stream(&self) -> bool {
-        self.inner.as_ref().map_or(true, Body::is_end_stream)
+        self.inner.as_ref().is_none_or(Body::is_end_stream)
     }
 
     fn size_hint(&self) -> SizeHint {
