@@ -40,6 +40,15 @@ mod unstable {
             move || tokio_metrics.num_idle_blocking_threads()
         });
 
+        metrics.gauge("tokio.tasks.polls", {
+            let tokio_metrics = tokio_metrics.clone();
+            move || {
+                (0..tokio_metrics.num_workers())
+                    .map(|worker| tokio_metrics.worker_poll_count(worker))
+                    .sum::<u64>()
+            }
+        });
+
         for bucket in 0..tokio_metrics.poll_time_histogram_num_buckets() {
             let range = tokio_metrics.poll_time_histogram_bucket_range(bucket);
             metrics.gauge(
