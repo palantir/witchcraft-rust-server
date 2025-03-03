@@ -179,7 +179,7 @@ fn symbolize_profile(raw: &str) -> String {
                 .flat_map(|raw_addr| {
                     raw_addr
                         .strip_prefix("0x")
-                        .and_then(|s| i64::from_str_radix(s, 16).ok())
+                        .and_then(|s| usize::from_str_radix(s, 16).ok())
                 })
                 .map(|addr| addr - 1),
         );
