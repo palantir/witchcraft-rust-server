@@ -328,7 +328,14 @@ impl ServerLogs {
         for line in &self.service {
             match line.level() {
                 LogLevel::Trace | LogLevel::Debug | LogLevel::Info => {}
-                _ => panic!("service error: {:#?}", line),
+                _ => {
+                    // Filter out warnings from the minidump crate that we don't care about
+                    if line.origin().is_some_and(|s| s.starts_with("minidump")) {
+                        continue;
+                    }
+
+                    panic!("service error: {:#?}", line)
+                }
             }
         }
     }

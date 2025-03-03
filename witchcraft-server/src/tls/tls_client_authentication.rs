@@ -19,10 +19,10 @@ use conjure_http::server::{
 };
 use http::{Extensions, Method, Request, Response};
 use refreshable::Refreshable;
+use rustls_pki_types::ServerName;
 use std::collections::HashSet;
 use std::str;
 use std::sync::Arc;
-use webpki::types::ServerName;
 use webpki::EndEntityCert;
 
 /// A service adapter which validates a client's certificate against a collection of allowed subject names.

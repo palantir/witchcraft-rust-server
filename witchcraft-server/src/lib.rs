@@ -375,6 +375,10 @@ mod status;
 pub mod tls;
 mod witchcraft;
 
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 /// Initializes a Witchcraft server.
 ///
 /// `init` is invoked with the parsed install and runtime configs as well as the [`Witchcraft`] context object. It
@@ -429,11 +433,11 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
+    logging::early_init();
+
     if env::args_os().nth(1).is_some_and(|a| a == "minidump") {
         return minidump::server();
     }
-
-    logging::early_init();
 
     let install_config = load_install()?;
 
