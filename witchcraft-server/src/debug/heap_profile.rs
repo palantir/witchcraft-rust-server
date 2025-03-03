@@ -18,7 +18,10 @@ use conjure_error::Error;
 use http::HeaderValue;
 use refreshable::Refreshable;
 use std::{
+    collections::BTreeSet,
+    env,
     ffi::{c_char, CString},
+    fmt::Write,
     fs,
 };
 use tempfile::NamedTempFile;
@@ -99,6 +102,113 @@ impl Diagnostic for HeapProfileDiagnostic {
         }
 
         let profile = fs::read_to_string(file.path()).map_err(Error::internal_safe)?;
-        Ok(Bytes::from(profile))
+        let symbolized_profile = symbolize_profile(&profile);
+        Ok(Bytes::from(symbolized_profile))
     }
+}
+
+/// Adds symbol mappings to a jeprof profile.
+///
+/// The raw profile looks like:
+///
+/// ```raw
+/// heap_v2/524288
+///   t*: 28106: 56637512 [0: 0]
+///   [...]
+///   t3: 352: 16777344 [0: 0]
+///   [...]
+///   t99: 17754: 29341640 [0: 0]
+///   [...]
+/// @ 0x5f86da8 0x5f5a1dc [...] 0x29e4d4e 0xa200316 0xabb2988 [...]
+///   t*: 13: 6688 [0: 0]
+///   t3: 12: 6496 [0: 0]
+///   t99: 1: 192 [0: 0]
+/// [...]
+///
+/// MAPPED_LIBRARIES:
+/// [...]
+/// ```
+///
+/// Where the lines starting with `@` correspond to a call chain represented as a sequence of addresses.
+///
+/// We parse out the call chain addresses and resolve them to symbols (including inlined functions separated by `--`).
+/// They are added to a special `symbols` section at the start of the file along with the binary name:
+///
+/// ```raw
+/// --- symbol
+/// binary=/usr/local/bin/my_binary
+/// 0x000000000029e4d4e someMethod
+/// 0x00000000005f86da8 function1--function2
+/// [...]
+/// ---
+/// --- heap
+/// heap_v2/524288
+///   t*: 28106: 56637512 [0: 0]
+///   [...]
+///   t3: 352: 16777344 [0: 0]
+///   [...]
+///   t99: 17754: 29341640 [0: 0]
+///   [...]
+/// @ 0x5f86da8 0x5f5a1dc [...] 0x29e4d4e 0xa200316 0xabb2988 [...]
+///   t*: 13: 6688 [0: 0]
+///   t3: 12: 6496 [0: 0]
+///   t99: 1: 192 [0: 0]
+/// [...]
+///
+/// MAPPED_LIBRARIES:
+/// [...]
+/// ```
+///
+/// This enables jeprof to work with the profile file directly instead of having to resolve the symbols against a local
+/// copy of the binaries. Once symbolized, the `MAPPED_LIBRARIES` section is no longer neccessary but we keep it around
+/// since some workflows (e.g. resolving call chains to specific lines in source files) require re-resolution.
+///
+/// Since we only currently care about handling profile output produced by the same process, we just directly resolve
+/// the addresses with the `backtrace` crate rather than parsing the `MAPPED_LIBRARIES` section.
+fn symbolize_profile(raw: &str) -> String {
+    let mut addrs = BTreeSet::new();
+
+    for line in raw.lines() {
+        let Some(raw_addrs) = line.strip_prefix("@ ") else {
+            continue;
+        };
+
+        addrs.extend(
+            raw_addrs
+                .split(" ")
+                .flat_map(|raw_addr| {
+                    raw_addr
+                        .strip_prefix("0x")
+                        .and_then(|s| i64::from_str_radix(s, 16).ok())
+                })
+                .map(|addr| addr - 1),
+        );
+    }
+
+    let mut out = String::new();
+
+    writeln!(out, "--- symbol").unwrap();
+    if let Ok(binary) = env::current_exe() {
+        writeln!(out, "binary={}", binary.display()).unwrap();
+    }
+
+    for addr in addrs {
+        let mut symbols = vec![];
+        backtrace::resolve(addr as *mut _, |symbol| {
+            if let Some(name) = symbol.name() {
+                symbols.push(name.to_string());
+            }
+        });
+
+        if !symbols.is_empty() {
+            symbols.reverse();
+            writeln!(out, "{addr:#016x} {}", symbols.join("--")).unwrap();
+        }
+    }
+
+    writeln!(out, "---").unwrap();
+    writeln!(out, "--- heap").unwrap();
+    out.push_str(raw);
+
+    out
 }
