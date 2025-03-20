@@ -61,7 +61,7 @@ lazycell = "1.3"
 libc = "0.2"
 log = "0.4"
 minidump-processor = "0.24"
-minidump-unwind = { version = "0.24.1", features = ["debuginfo-symbols"] }
+minidump-unwind = { version = "0.25.0", features = ["debuginfo-symbols"] }
 minidump-writer = "0.10"
 minidump = "0.24"
 minidumper = "0.8"
