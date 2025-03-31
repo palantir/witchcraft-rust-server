@@ -1,4 +1,4 @@
-///Definition of the audit.2 format.
+/// Definition of the audit.2 format.
 #[derive(
     Debug,
     Clone,
@@ -89,7 +89,7 @@ pub struct AuditLogV2 {
     result_params: std::collections::BTreeMap<String, conjure_object::Any>,
 }
 impl AuditLogV2 {
-    ///"audit.2"
+    /// "audit.2"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -98,60 +98,60 @@ impl AuditLogV2 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    ///User id (if available). This is the most downstream caller.
+    /// User id (if available). This is the most downstream caller.
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    ///Session id (if available)
+    /// Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    ///API token id (if available)
+    /// API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    ///Organization id (if available)
+    /// Organization id (if available)
     #[inline]
     pub fn org_id(&self) -> Option<&super::OrganizationId> {
         self.org_id.as_ref().map(|o| &*o)
     }
-    ///Zipkin trace id (if available)
+    /// Zipkin trace id (if available)
     #[inline]
     pub fn trace_id(&self) -> Option<&super::TraceId> {
         self.trace_id.as_ref().map(|o| &*o)
     }
-    ///All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
+    /// All users upstream of the user currently taking an action. The first element in this list is the uid of the most upstream caller. This list does not include the `uid`.
     #[inline]
     pub fn other_uids(&self) -> &[super::UserId] {
         &*self.other_uids
     }
-    ///Best-effort identifier of the originating machine, e.g. an IP address, a Kubernetes node identifier,
-    ///or similar
+    /// Best-effort identifier of the originating machine, e.g. an IP address, a Kubernetes node identifier,
+    /// or similar
     #[inline]
     pub fn origin(&self) -> Option<&str> {
         self.origin.as_ref().map(|o| &**o)
     }
-    ///Name of the audit event, e.g. PUT_FILE
+    /// Name of the audit event, e.g. PUT_FILE
     #[inline]
     pub fn name(&self) -> &str {
         &*self.name
     }
-    ///Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
+    /// Indicates whether the request was successful or the type of failure, e.g. ERROR or UNAUTHORIZED
     #[inline]
     pub fn result(&self) -> &super::AuditResult {
         &self.result
     }
-    ///The parameters known at method invocation time.
+    /// The parameters known at method invocation time.
     #[inline]
     pub fn request_params(
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.request_params
     }
-    ///Information derived within a method, commonly parts of the return value.
+    /// Information derived within a method, commonly parts of the return value.
     #[inline]
     pub fn result_params(
         &self,

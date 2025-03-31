@@ -1,4 +1,4 @@
-///Definition of the diagnostic.1 format.
+/// Definition of the diagnostic.1 format.
 #[derive(
     Debug,
     Clone,
@@ -54,7 +54,7 @@ impl DiagnosticLogV1 {
     ) -> Self {
         Self::builder().type_(type_).time(time).diagnostic(diagnostic).build()
     }
-    ///"diagnostic.1"
+    /// "diagnostic.1"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -63,12 +63,12 @@ impl DiagnosticLogV1 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    ///The diagnostic being logged.
+    /// The diagnostic being logged.
     #[inline]
     pub fn diagnostic(&self) -> &super::Diagnostic {
         &*self.diagnostic
     }
-    ///Unredacted parameters
+    /// Unredacted parameters
     #[inline]
     pub fn unsafe_params(
         &self,

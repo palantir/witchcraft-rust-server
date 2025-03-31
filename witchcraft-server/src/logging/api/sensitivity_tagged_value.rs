@@ -32,7 +32,7 @@ impl SensitivityTaggedValue {
     pub fn new(payload: impl conjure_object::serde::Serialize) -> Self {
         Self::builder().payload(payload).build()
     }
-    ///Sensitivity level of this value; must be a known level in sls-spec.
+    /// Sensitivity level of this value; must be a known level in sls-spec.
     #[inline]
     pub fn level(&self) -> &[String] {
         &*self.level

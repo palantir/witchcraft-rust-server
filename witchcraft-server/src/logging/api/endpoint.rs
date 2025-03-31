@@ -29,17 +29,17 @@ impl Endpoint {
     pub fn new(service_name: impl Into<String>) -> Self {
         Self::builder().service_name(service_name).build()
     }
-    ///Name of the service that generated the annotation
+    /// Name of the service that generated the annotation
     #[inline]
     pub fn service_name(&self) -> &str {
         &*self.service_name
     }
-    ///IPv4 address of the machine that generated this annotation (`xxx.xxx.xxx.xxx`)
+    /// IPv4 address of the machine that generated this annotation (`xxx.xxx.xxx.xxx`)
     #[inline]
     pub fn ipv4(&self) -> Option<&str> {
         self.ipv4.as_ref().map(|o| &**o)
     }
-    ///IPv6 address of the machine that generated this annotation (standard hextet form)
+    /// IPv6 address of the machine that generated this annotation (standard hextet form)
     #[inline]
     pub fn ipv6(&self) -> Option<&str> {
         self.ipv6.as_ref().map(|o| &**o)

@@ -1,4 +1,4 @@
-///Definition of the trace.1 format.
+/// Definition of the trace.1 format.
 #[derive(
     Debug,
     Clone,

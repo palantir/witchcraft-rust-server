@@ -1,4 +1,4 @@
-///Definition of the event.2 format.
+/// Definition of the event.2 format.
 #[derive(
     Debug,
     Clone,
@@ -105,49 +105,49 @@ impl EventLogV2 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    ///Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
+    /// Dot-delimited name of event, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
     #[inline]
     pub fn event_name(&self) -> &str {
         &*self.event_name
     }
-    ///Observations, measurements and context associated with the event
+    /// Observations, measurements and context associated with the event
     #[inline]
     pub fn values(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.values
     }
-    ///User id (if available)
+    /// User id (if available)
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    ///Session id (if available)
+    /// Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    ///API token id (if available)
+    /// API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    ///Organization id (if available)
+    /// Organization id (if available)
     #[inline]
     pub fn org_id(&self) -> Option<&super::OrganizationId> {
         self.org_id.as_ref().map(|o| &*o)
     }
-    ///Zipkin trace id (if available)
+    /// Zipkin trace id (if available)
     #[inline]
     pub fn trace_id(&self) -> Option<&super::TraceId> {
         self.trace_id.as_ref().map(|o| &*o)
     }
-    ///Unsafe metadata describing the event
+    /// Unsafe metadata describing the event
     #[inline]
     pub fn unsafe_params(
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.unsafe_params
     }
-    ///Additional dimensions that describe the instance of the log event
+    /// Additional dimensions that describe the instance of the log event
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags

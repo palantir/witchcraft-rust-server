@@ -1,4 +1,4 @@
-///A Zipkin-compatible Span object.
+/// A Zipkin-compatible Span object.
 #[derive(
     Debug,
     Clone,
@@ -42,32 +42,32 @@ pub struct Span {
     tags: std::collections::BTreeMap<String, String>,
 }
 impl Span {
-    ///16-digit hex trace identifier
+    /// 16-digit hex trace identifier
     #[inline]
     pub fn trace_id(&self) -> &str {
         &*self.trace_id
     }
-    ///16-digit hex span identifier
+    /// 16-digit hex span identifier
     #[inline]
     pub fn id(&self) -> &str {
         &*self.id
     }
-    ///Name of the span (typically the operation/RPC/method name for corresponding to this span)
+    /// Name of the span (typically the operation/RPC/method name for corresponding to this span)
     #[inline]
     pub fn name(&self) -> &str {
         &*self.name
     }
-    ///16-digit hex identifer of the parent span
+    /// 16-digit hex identifer of the parent span
     #[inline]
     pub fn parent_id(&self) -> Option<&str> {
         self.parent_id.as_ref().map(|o| &**o)
     }
-    ///Timestamp of the start of this span (epoch microsecond value)
+    /// Timestamp of the start of this span (epoch microsecond value)
     #[inline]
     pub fn timestamp(&self) -> conjure_object::SafeLong {
         self.timestamp
     }
-    ///Duration of this span (microseconds)
+    /// Duration of this span (microseconds)
     #[inline]
     pub fn duration(&self) -> conjure_object::SafeLong {
         self.duration
@@ -76,7 +76,7 @@ impl Span {
     pub fn annotations(&self) -> &[super::Annotation] {
         &*self.annotations
     }
-    ///Additional dimensions that describe the instance of the trace span
+    /// Additional dimensions that describe the instance of the trace span
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags

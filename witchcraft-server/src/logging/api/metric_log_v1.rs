@@ -1,4 +1,4 @@
-///Definition of the metric.1 format.
+/// Definition of the metric.1 format.
 #[derive(
     Debug,
     Clone,
@@ -96,47 +96,47 @@ impl MetricLogV1 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    ///Dot-delimited name of metric, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
+    /// Dot-delimited name of metric, e.g. `com.foundry.compass.api.Compass.http.ping.failures`
     #[inline]
     pub fn metric_name(&self) -> &str {
         &*self.metric_name
     }
-    ///Type of metric being represented, e.g. `gauge`, `histogram`, `counter`
+    /// Type of metric being represented, e.g. `gauge`, `histogram`, `counter`
     #[inline]
     pub fn metric_type(&self) -> &str {
         &*self.metric_type
     }
-    ///Observations, measurements and context associated with the metric
+    /// Observations, measurements and context associated with the metric
     #[inline]
     pub fn values(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.values
     }
-    ///Additional dimensions that describe the instance of the metric
+    /// Additional dimensions that describe the instance of the metric
     #[inline]
     pub fn tags(&self) -> &std::collections::BTreeMap<String, String> {
         &self.tags
     }
-    ///User id (if available)
+    /// User id (if available)
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    ///Session id (if available)
+    /// Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    ///API token id (if available)
+    /// API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    ///Organization id (if available)
+    /// Organization id (if available)
     #[inline]
     pub fn org_id(&self) -> Option<&super::OrganizationId> {
         self.org_id.as_ref().map(|o| &*o)
     }
-    ///Unsafe metadata describing the event
+    /// Unsafe metadata describing the event
     #[inline]
     pub fn unsafe_params(
         &self,
