@@ -26,12 +26,12 @@ impl Organization {
     pub fn new(id: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::builder().id(id).reason(reason).build()
     }
-    ///Organization RID. Not exposed to downstream consumers.
+    /// Organization RID. Not exposed to downstream consumers.
     #[inline]
     pub fn id(&self) -> &str {
         &*self.id
     }
-    ///Explanation of why this organization was attributed to this log.
+    /// Explanation of why this organization was attributed to this log.
     #[inline]
     pub fn reason(&self) -> &str {
         &*self.reason

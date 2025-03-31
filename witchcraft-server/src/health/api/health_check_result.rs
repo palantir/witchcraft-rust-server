@@ -1,4 +1,4 @@
-///Metadata describing the status of a service.
+/// Metadata describing the status of a service.
 #[derive(
     Debug,
     Clone,
@@ -49,22 +49,22 @@ impl HealthCheckResult {
     pub fn new(type_: super::CheckType, state: super::HealthState) -> Self {
         Self::builder().type_(type_).state(state).build()
     }
-    ///A constant representing the type of health check. Values should be uppercase, underscore delimited, ascii letters with no spaces, ([A-Z_]).
+    /// A constant representing the type of health check. Values should be uppercase, underscore delimited, ascii letters with no spaces, ([A-Z_]).
     #[inline]
     pub fn type_(&self) -> &super::CheckType {
         &self.type_
     }
-    ///Health state of the check.
+    /// Health state of the check.
     #[inline]
     pub fn state(&self) -> &super::HealthState {
         &self.state
     }
-    ///Text describing the state of the check which should provide enough information for the check to be actionable when included in an alert.
+    /// Text describing the state of the check which should provide enough information for the check to be actionable when included in an alert.
     #[inline]
     pub fn message(&self) -> Option<&str> {
         self.message.as_ref().map(|o| &**o)
     }
-    ///Additional redacted information on the nature of the health check.
+    /// Additional redacted information on the nature of the health check.
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params

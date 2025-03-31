@@ -50,22 +50,22 @@ impl ThreadInfoV1 {
     pub fn new() -> Self {
         Self::builder().build()
     }
-    ///The ID of the thread.
+    /// The ID of the thread.
     #[inline]
     pub fn id(&self) -> Option<conjure_object::SafeLong> {
         self.id.as_ref().map(|o| *o)
     }
-    ///The name of the thread. Note that thread names may include unsafe information such as the path of the HTTP request being processed. It must be safely redacted.
+    /// The name of the thread. Note that thread names may include unsafe information such as the path of the HTTP request being processed. It must be safely redacted.
     #[inline]
     pub fn name(&self) -> Option<&str> {
         self.name.as_ref().map(|o| &**o)
     }
-    ///A list of stack frames for the thread, ordered with the current frame first.
+    /// A list of stack frames for the thread, ordered with the current frame first.
     #[inline]
     pub fn stack_trace(&self) -> &[super::StackFrameV1] {
         &*self.stack_trace
     }
-    ///Other thread-level information.
+    /// Other thread-level information.
     #[inline]
     pub fn params(&self) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.params

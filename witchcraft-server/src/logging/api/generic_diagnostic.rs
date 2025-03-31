@@ -35,12 +35,12 @@ impl GenericDiagnostic {
     ) -> Self {
         Self::builder().diagnostic_type(diagnostic_type).value(value).build()
     }
-    ///An identifier for the type of diagnostic represented.
+    /// An identifier for the type of diagnostic represented.
     #[inline]
     pub fn diagnostic_type(&self) -> &str {
         &*self.diagnostic_type
     }
-    ///Observations, measurements and context associated with the diagnostic.
+    /// Observations, measurements and context associated with the diagnostic.
     #[inline]
     pub fn value(&self) -> &conjure_object::Any {
         &self.value

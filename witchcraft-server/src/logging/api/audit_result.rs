@@ -20,7 +20,7 @@ pub enum AuditResult {
     Error,
     #[serde(rename = "UNAUTHORIZED")]
     Unauthorized,
-    ///A result that has not yet been finalized. It may be missing fields from resultParams, and it is expected that a non-partial log should occur in the future with the same event ID.
+    /// A result that has not yet been finalized. It may be missing fields from resultParams, and it is expected that a non-partial log should occur in the future with the same event ID.
     #[serde(rename = "PARTIAL")]
     Partial,
 }

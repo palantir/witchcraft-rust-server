@@ -1,4 +1,4 @@
-///Definition of the request.1 format.
+/// Definition of the request.1 format.
 #[derive(
     Debug,
     Clone,
@@ -168,95 +168,95 @@ impl RequestLogV1 {
     pub fn time(&self) -> conjure_object::DateTime<conjure_object::Utc> {
         self.time
     }
-    ///HTTP method of request
+    /// HTTP method of request
     #[inline]
     pub fn method(&self) -> Option<&str> {
         self.method.as_ref().map(|o| &**o)
     }
-    ///Protocol, e.g. `HTTP/1.1`, `HTTP/2`
+    /// Protocol, e.g. `HTTP/1.1`, `HTTP/2`
     #[inline]
     pub fn protocol(&self) -> &str {
         &*self.protocol
     }
-    ///Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`.
+    /// Path of request. If templated, the unrendered path, e.g.: `/catalog/dataset/{datasetId}`, `/{rid}/paths/contents/{path:.*}`.
     #[inline]
     pub fn path(&self) -> &str {
         &*self.path
     }
-    ///Known-safe path parameters
+    /// Known-safe path parameters
     #[inline]
     pub fn path_params(
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.path_params
     }
-    ///Known-safe query parameters
+    /// Known-safe query parameters
     #[inline]
     pub fn query_params(
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.query_params
     }
-    ///Known-safe header parameters
+    /// Known-safe header parameters
     #[inline]
     pub fn header_params(
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.header_params
     }
-    ///Known-safe body parameters
+    /// Known-safe body parameters
     #[inline]
     pub fn body_params(
         &self,
     ) -> &std::collections::BTreeMap<String, conjure_object::Any> {
         &self.body_params
     }
-    ///HTTP status code of response
+    /// HTTP status code of response
     #[inline]
     pub fn status(&self) -> i32 {
         self.status
     }
-    ///Size of request (bytes). string to allow large numbers.
+    /// Size of request (bytes). string to allow large numbers.
     #[inline]
     pub fn request_size(&self) -> &str {
         &*self.request_size
     }
-    ///Size of response (bytes). string to allow large numbers.
+    /// Size of response (bytes). string to allow large numbers.
     #[inline]
     pub fn response_size(&self) -> &str {
         &*self.response_size
     }
-    ///Amount of time spent handling request (microseconds)
+    /// Amount of time spent handling request (microseconds)
     #[inline]
     pub fn duration(&self) -> i32 {
         self.duration
     }
-    ///User id (if available)
+    /// User id (if available)
     #[inline]
     pub fn uid(&self) -> Option<&super::UserId> {
         self.uid.as_ref().map(|o| &*o)
     }
-    ///Session id (if available)
+    /// Session id (if available)
     #[inline]
     pub fn sid(&self) -> Option<&super::SessionId> {
         self.sid.as_ref().map(|o| &*o)
     }
-    ///API token id (if available)
+    /// API token id (if available)
     #[inline]
     pub fn token_id(&self) -> Option<&super::TokenId> {
         self.token_id.as_ref().map(|o| &*o)
     }
-    ///Organization id (if available)
+    /// Organization id (if available)
     #[inline]
     pub fn org_id(&self) -> Option<&super::OrganizationId> {
         self.org_id.as_ref().map(|o| &*o)
     }
-    ///Zipkin trace id (if available)
+    /// Zipkin trace id (if available)
     #[inline]
     pub fn trace_id(&self) -> Option<&super::TraceId> {
         self.trace_id.as_ref().map(|o| &*o)
     }
-    ///Unredacted parameters such as path, query and header parameters
+    /// Unredacted parameters such as path, query and header parameters
     #[inline]
     pub fn unsafe_params(
         &self,

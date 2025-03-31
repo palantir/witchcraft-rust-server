@@ -1,4 +1,4 @@
-///A Zipkin-compatible Annotation object.
+/// A Zipkin-compatible Annotation object.
 #[derive(
     Debug,
     Clone,
@@ -33,12 +33,12 @@ impl Annotation {
     ) -> Self {
         Self::builder().timestamp(timestamp).value(value).endpoint(endpoint).build()
     }
-    ///Time annotation was created (epoch microsecond value)
+    /// Time annotation was created (epoch microsecond value)
     #[inline]
     pub fn timestamp(&self) -> conjure_object::SafeLong {
         self.timestamp
     }
-    ///Value encapsulated by this annotation
+    /// Value encapsulated by this annotation
     #[inline]
     pub fn value(&self) -> &str {
         &*self.value

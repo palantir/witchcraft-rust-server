@@ -1,4 +1,4 @@
-///Wraps a log entry with entity information.
+/// Wraps a log entry with entity information.
 #[derive(
     Debug,
     Clone,
@@ -40,7 +40,7 @@ pub struct WrappedLogV1 {
     stack_id: Option<String>,
 }
 impl WrappedLogV1 {
-    ///"wrapped.1"
+    /// "wrapped.1"
     #[inline]
     pub fn type_(&self) -> &str {
         &*self.type_
@@ -49,7 +49,7 @@ impl WrappedLogV1 {
     pub fn payload(&self) -> &super::WrappedLogV1Payload {
         &*self.payload
     }
-    ///Artifact part of entity's maven coordinate
+    /// Artifact part of entity's maven coordinate
     #[inline]
     pub fn entity_name(&self) -> &str {
         &*self.entity_name
@@ -58,22 +58,22 @@ impl WrappedLogV1 {
     pub fn entity_version(&self) -> &str {
         &*self.entity_version
     }
-    ///Defaults to the wrapped log producer's Skylab service name.
+    /// Defaults to the wrapped log producer's Skylab service name.
     #[inline]
     pub fn service(&self) -> Option<&str> {
         self.service.as_ref().map(|o| &**o)
     }
-    ///Defaults to the wrapped log producer's Skylab service ID.
+    /// Defaults to the wrapped log producer's Skylab service ID.
     #[inline]
     pub fn service_id(&self) -> Option<&str> {
         self.service_id.as_ref().map(|o| &**o)
     }
-    ///Defaults to the wrapped log producer's Skylab stack name.
+    /// Defaults to the wrapped log producer's Skylab stack name.
     #[inline]
     pub fn stack(&self) -> Option<&str> {
         self.stack.as_ref().map(|o| &**o)
     }
-    ///Defaults to the wrapped log producer's Skylab stack ID.
+    /// Defaults to the wrapped log producer's Skylab stack ID.
     #[inline]
     pub fn stack_id(&self) -> Option<&str> {
         self.stack_id.as_ref().map(|o| &**o)
