@@ -11,27 +11,22 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::logging;
-use crate::logging::api::{
-    LogLevel, OrganizationId, ServiceLogV1, SessionId, TokenId, TraceId, UserId,
-};
+use crate::logging::api::ServiceLogV1;
 use crate::logging::logger::{self, Appender};
 use crate::shutdown_hooks::ShutdownHooks;
 use arc_swap::ArcSwap;
-use conjure_error::{Error, ErrorKind};
-use conjure_object::Utc;
+use conjure_error::Error;
 use conjure_serde::json;
 use once_cell::sync::OnceCell;
 use refreshable::{Refreshable, Subscription};
-use sequence_trie::SequenceTrie;
-use serde::Deserialize;
-use std::fmt::Write as _;
 use std::io::Write as _;
 use std::sync::Arc;
-use std::{error, io, panic, thread};
+use std::{io, panic};
 use witchcraft_log::bridge::{self, BridgedLogger};
-use witchcraft_log::{error, mdc};
-use witchcraft_log::{Level, LevelFilter, Log, Metadata, Record};
+use witchcraft_log::error;
+use witchcraft_log::{LevelFilter, Log, Metadata, Record};
+use witchcraft_log_util::filter::Filter;
+use witchcraft_log_util::service;
 use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
@@ -53,21 +48,21 @@ pub async fn init(
     hooks: &mut ShutdownHooks,
 ) -> Result<(), Error> {
     let appender = logger::appender(install, metrics, hooks).await?;
-    let levels = Arc::new(ArcSwap::new(Arc::new(Levels::empty())));
+    let filter = Arc::new(ArcSwap::new(Arc::new(Filter::builder().build())));
     let subscription = runtime.subscribe({
-        let levels = levels.clone();
+        let filter = filter.clone();
         move |config| {
-            let new_levels = Levels::new(config);
-            let max_level = new_levels.max_level();
+            let new_filter = make_filter(config);
+            let max_level = new_filter.max_level();
             witchcraft_log::set_max_level(max_level);
             bridge::set_max_level(max_level);
-            levels.store(Arc::new(new_levels));
+            filter.store(Arc::new(new_filter));
         }
     });
 
     let logger = LoggerState {
         appender,
-        levels,
+        filter,
         _subscription: subscription,
     };
     STATE.set(logger).ok().expect("logger already initialized");
@@ -75,9 +70,18 @@ pub async fn init(
     Ok(())
 }
 
+fn make_filter(config: &LoggingConfig) -> Filter {
+    let mut builder = Filter::builder().level(config.level());
+    for (target, level) in config.loggers() {
+        builder = builder.target_level(target, *level);
+    }
+
+    builder.build()
+}
+
 struct LoggerState {
     appender: Appender<ServiceLogV1>,
-    levels: Arc<ArcSwap<Levels>>,
+    filter: Arc<ArcSwap<Filter>>,
     _subscription: Subscription<LoggingConfig, Error>,
 }
 
@@ -86,7 +90,7 @@ struct ServiceLogger;
 impl Log for ServiceLogger {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         match STATE.get() {
-            Some(state) => state.levels.load().enabled(metadata),
+            Some(state) => state.filter.load().enabled(metadata),
             None => true,
         }
     }
@@ -96,106 +100,7 @@ impl Log for ServiceLogger {
             return;
         }
 
-        let level = match record.level() {
-            Level::Fatal => LogLevel::Fatal,
-            Level::Error => LogLevel::Error,
-            Level::Warn => LogLevel::Warn,
-            Level::Info => LogLevel::Info,
-            Level::Debug => LogLevel::Debug,
-            Level::Trace => LogLevel::Trace,
-        };
-
-        let mut message = ServiceLogV1::builder()
-            .type_("service.1")
-            .level(level)
-            .time(Utc::now())
-            .message(record.message())
-            .safe(true)
-            .origin(record.target().to_string())
-            .thread(thread::current().name().map(ToString::to_string));
-
-        let mdc = mdc::snapshot();
-        for (key, value) in mdc.safe().iter() {
-            match key {
-                logging::mdc::UID_KEY => {
-                    if let Ok(uid) = UserId::deserialize(value.clone()) {
-                        message = message.uid(uid);
-                    }
-                }
-                logging::mdc::SID_KEY => {
-                    if let Ok(sid) = SessionId::deserialize(value.clone()) {
-                        message = message.sid(sid);
-                    }
-                }
-                logging::mdc::TOKEN_ID_KEY => {
-                    if let Ok(token_id) = TokenId::deserialize(value.clone()) {
-                        message = message.token_id(token_id);
-                    }
-                }
-                logging::mdc::ORG_ID_KEY => {
-                    if let Ok(org_id) = OrganizationId::deserialize(value.clone()) {
-                        message = message.org_id(org_id);
-                    }
-                }
-                logging::mdc::TRACE_ID_KEY => {
-                    if let Ok(trace_id) = TraceId::deserialize(value.clone()) {
-                        message = message.trace_id(trace_id);
-                    }
-                }
-                key => message = message.insert_params(key, value),
-            }
-        }
-        message = message.extend_unsafe_params(
-            mdc.unsafe_()
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.clone())),
-        );
-
-        if let Some(file) = record.file() {
-            message = message.insert_params("file", file);
-        }
-        if let Some(line) = record.line() {
-            message = message.insert_params("line", line);
-        }
-        if let Some(error) = record.error() {
-            if let ErrorKind::Service(s) = error.kind() {
-                message = message
-                    .insert_params("errorInstanceId", s.error_instance_id())
-                    .insert_params("errorCode", s.error_code())
-                    .insert_params("errorName", s.error_name());
-            }
-
-            let mut stacktrace = String::new();
-            for trace in error.backtraces() {
-                writeln!(stacktrace, "{:?}", trace).unwrap();
-            }
-            message = message.stacktrace(stacktrace);
-
-            let mut causes = vec![];
-            let mut cause = Some(error.cause() as &dyn error::Error);
-            while let Some(e) = cause {
-                causes.push(e.to_string());
-                cause = e.source();
-            }
-            if error.cause_safe() {
-                message = message.insert_params("errorCause", causes);
-            } else {
-                message = message.insert_unsafe_params("errorCause", causes);
-            }
-            for (key, value) in &error.safe_params() {
-                message = message.insert_params(key, value);
-            }
-            for (key, value) in &error.unsafe_params() {
-                message = message.insert_unsafe_params(key, value);
-            }
-        }
-        for (key, value) in record.safe_params() {
-            message = message.insert_params(*key, value);
-        }
-        for (key, value) in record.unsafe_params() {
-            message = message.insert_unsafe_params(*key, value);
-        }
-        let message = message.build();
+        let message = service::from_record(record);
 
         match STATE.get() {
             Some(state) => {
@@ -211,40 +116,6 @@ impl Log for ServiceLogger {
 
     fn flush(&self) {
         // We flush via a different mode.
-    }
-}
-
-struct Levels {
-    trie: SequenceTrie<String, LevelFilter>,
-}
-
-impl Levels {
-    fn empty() -> Self {
-        Levels {
-            trie: SequenceTrie::new(),
-        }
-    }
-
-    fn new(config: &LoggingConfig) -> Self {
-        let mut trie = SequenceTrie::new();
-        trie.insert_owned([], config.level());
-        for (logger, level) in config.loggers() {
-            trie.insert(logger.split("::"), *level);
-        }
-
-        Levels { trie }
-    }
-
-    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        metadata.level()
-            <= *self
-                .trie
-                .get_ancestor(metadata.target().split("::"))
-                .unwrap()
-    }
-
-    fn max_level(&self) -> LevelFilter {
-        self.trie.values().cloned().max().unwrap()
     }
 }
 
@@ -287,32 +158,32 @@ mod test {
             .build()
             .unwrap();
 
-        let loggers = Levels::new(&config);
+        let filter = make_filter(&config);
 
-        assert!(loggers.enabled(&Metadata::builder().level(Level::Info).target("bar").build()));
-        assert!(!loggers.enabled(
+        assert!(filter.enabled(&Metadata::builder().level(Level::Info).target("bar").build()));
+        assert!(!filter.enabled(
             &Metadata::builder()
                 .level(Level::Debug)
                 .target("bar")
                 .build()
         ));
 
-        assert!(loggers.enabled(&Metadata::builder().level(Level::Warn).target("foo").build()));
-        assert!(!loggers.enabled(&Metadata::builder().level(Level::Info).target("foo").build()));
+        assert!(filter.enabled(&Metadata::builder().level(Level::Warn).target("foo").build()));
+        assert!(!filter.enabled(&Metadata::builder().level(Level::Info).target("foo").build()));
 
-        assert!(loggers.enabled(
+        assert!(filter.enabled(
             &Metadata::builder()
                 .level(Level::Debug)
                 .target("foo::bar::baz")
                 .build()
         ));
-        assert!(!loggers.enabled(
+        assert!(!filter.enabled(
             &Metadata::builder()
                 .level(Level::Trace)
                 .target("foo::bar::baz")
                 .build()
         ));
 
-        assert_eq!(loggers.max_level(), LevelFilter::Debug);
+        assert_eq!(filter.max_level(), LevelFilter::Debug);
     }
 }

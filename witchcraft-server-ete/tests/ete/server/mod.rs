@@ -154,7 +154,7 @@ impl Server {
         let ctx = ctx.build();
 
         let server = Server {
-            dir: dir.into_path(),
+            dir: dir.keep(),
             child,
             stdout_rx: Some(stdout_rx),
             ctx,

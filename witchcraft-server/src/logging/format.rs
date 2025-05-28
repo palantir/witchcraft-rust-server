@@ -127,6 +127,7 @@ impl ReportLog<ServiceLogV1> for ServiceLogReporter {
             LogLevel::Info => &self.info_rate,
             LogLevel::Debug => &self.debug_rate,
             LogLevel::Trace => &self.trace_rate,
+            _ => return,
         };
 
         meter.mark(1);

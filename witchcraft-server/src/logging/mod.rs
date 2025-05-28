@@ -32,10 +32,8 @@ use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
 
-/// Conjure-generated type definitions for log formats.
-#[allow(warnings)]
-#[rustfmt::skip]
-pub mod api;
+pub use witchcraft_logging_api as api;
+
 mod cleanup;
 mod format;
 mod logger;

@@ -29,5 +29,5 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 hyper = "1"
 libc = "0.2"
 openssl = "0.10"
-tempfile = "3"
+tempfile = "3.20.0"
 tokio-openssl = "0.6"
