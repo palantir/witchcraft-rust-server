@@ -52,12 +52,7 @@ pub async fn init(
     let subscription = runtime.subscribe({
         let filter = filter.clone();
         move |config| {
-            let mut builder = Filter::builder().level(config.level());
-            for (target, level) in config.loggers() {
-                builder = builder.target_level(target, *level);
-            }
-
-            let new_filter = builder.build();
+            let new_filter = make_filter(config);
             let max_level = new_filter.max_level();
             witchcraft_log::set_max_level(max_level);
             bridge::set_max_level(max_level);
@@ -73,6 +68,15 @@ pub async fn init(
     STATE.set(logger).ok().expect("logger already initialized");
 
     Ok(())
+}
+
+fn make_filter(config: &LoggingConfig) -> Filter {
+    let mut builder = Filter::builder().level(config.level());
+    for (target, level) in config.loggers() {
+        builder = builder.target_level(target, *level);
+    }
+
+    builder.build()
 }
 
 struct LoggerState {
@@ -138,4 +142,48 @@ fn log_panics() {
             None => error!("thread panicked", error: error),
         }
     }));
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use witchcraft_log::Level;
+
+    #[test]
+    fn loggers() {
+        let config = LoggingConfig::builder()
+            .level(LevelFilter::Info)
+            .insert_loggers("foo", LevelFilter::Warn)
+            .insert_loggers("foo::bar", LevelFilter::Debug)
+            .build()
+            .unwrap();
+
+        let filter = make_filter(&config);
+
+        assert!(filter.enabled(&Metadata::builder().level(Level::Info).target("bar").build()));
+        assert!(!filter.enabled(
+            &Metadata::builder()
+                .level(Level::Debug)
+                .target("bar")
+                .build()
+        ));
+
+        assert!(filter.enabled(&Metadata::builder().level(Level::Warn).target("foo").build()));
+        assert!(!filter.enabled(&Metadata::builder().level(Level::Info).target("foo").build()));
+
+        assert!(filter.enabled(
+            &Metadata::builder()
+                .level(Level::Debug)
+                .target("foo::bar::baz")
+                .build()
+        ));
+        assert!(!filter.enabled(
+            &Metadata::builder()
+                .level(Level::Trace)
+                .target("foo::bar::baz")
+                .build()
+        ));
+
+        assert_eq!(filter.max_level(), LevelFilter::Debug);
+    }
 }
