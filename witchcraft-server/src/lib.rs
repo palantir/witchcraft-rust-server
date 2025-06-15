@@ -441,6 +441,10 @@ where
     let runtime_config = load_runtime(&handle, &runtime_config_ok)?;
 
     let metrics = Arc::new(MetricRegistry::new());
+    let host_metrics = Arc::new(HostMetricsRegistry::new());
+    let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
+    let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
+    let diagnostics = Arc::new(DiagnosticRegistry::new());
 
     let loggers = handle.block_on(logging::init(
         &metrics,
@@ -451,28 +455,27 @@ where
 
     info!("server starting");
 
-    let minidump_ok = Arc::new(AtomicBool::new(true));
-    let minidump_ok_cloned = minidump_ok.clone();
-    handle.spawn(minidump::init().then(|result| async move {
-        minidump_ok_cloned.store(result.is_ok(), Ordering::Relaxed);
-        if let Err(e) = result {
-            error!("error during minidump init", error: e)
-        }
-    }));
+    if install_config.as_ref().minidump().enabled() {
+        let minidump_ok = Arc::new(AtomicBool::new(true));
+        let minidump_ok_cloned = minidump_ok.clone();
+        handle.spawn(minidump::init().then(|result| async move {
+            minidump_ok_cloned.store(result.is_ok(), Ordering::Relaxed);
+            if let Err(e) = result {
+                error!("error during minidump init", error: e)
+            }
+        }));
+
+        health_checks.register(MinidumpHealthCheck::new(minidump_ok));
+        #[cfg(target_os = "linux")]
+        diagnostics.register(ThreadDumpDiagnostic);
+    }
 
     metrics::init(&metrics);
 
-    let host_metrics = Arc::new(HostMetricsRegistry::new());
-
-    let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
     health_checks.register(ServiceDependencyHealthCheck::new(&host_metrics));
     health_checks.register(PanicsHealthCheck::new());
     health_checks.register(ConfigReloadHealthCheck::new(runtime_config_ok));
-    health_checks.register(MinidumpHealthCheck::new(minidump_ok));
 
-    let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
-
-    let diagnostics = Arc::new(DiagnosticRegistry::new());
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
     {
@@ -480,9 +483,8 @@ where
         heap_profile::init(&runtime_config);
         diagnostics.register(HeapProfileDiagnostic);
     }
-    #[cfg(target_os = "linux")]
-    diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
+
     let client_factory = ClientFactory::builder()
         .config(runtime_config.map(|c| c.as_ref().service_discovery().clone()))
         .user_agent(UserAgent::new(Agent::new(
