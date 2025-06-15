@@ -287,6 +287,7 @@
 #![warn(missing_docs)]
 
 use std::env;
+use std::path::Path;
 use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -415,8 +416,9 @@ where
 {
     logging::early_init();
 
-    if env::args_os().nth(1).is_some_and(|a| a == "minidump") {
-        return minidump::server();
+    let args = env::args_os().collect::<Vec<_>>();
+    if args.len() == 3 && args[1] == "minidump" {
+        return minidump::server(Path::new(&args[2]));
     }
 
     let install_config = load_install()?;

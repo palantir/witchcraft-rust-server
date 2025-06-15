@@ -28,21 +28,24 @@ use witchcraft_log::{debug, error};
 
 pub mod log;
 
-const SOCKET_ADDR: &str = "var/data/tmp/minidump.sock";
+const SOCKET_FILE: &str = "minidump.sock";
 
-pub async fn init(_socket_dir: &Path) -> Result<(), Error> {
+pub async fn init(socket_dir: &Path) -> Result<(), Error> {
     log_dumps().await?;
 
-    fs::create_dir_all(Path::new(SOCKET_ADDR).parent().unwrap()).map_err(Error::internal_safe)?;
+    fs::create_dir_all(socket_dir).map_err(Error::internal_safe)?;
+
+    let socket_addr = socket_dir.join(SOCKET_FILE);
 
     let exe = env::current_exe().map_err(Error::internal_safe)?;
     let child = Command::new(exe)
         .arg("minidump")
+        .arg(&socket_addr)
         .stdin(Stdio::piped())
         .spawn()
         .map_err(Error::internal_safe)?;
 
-    let client = connect(_socket_dir).await?;
+    let client = connect(socket_dir).await?;
 
     // Enable the child to trace us in restricted ptrace linux environments
     #[cfg(target_os = "linux")]
@@ -96,12 +99,18 @@ fn handle_restricted_ptrace(child: u32) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn connect(_socket_dir: &Path) -> Result<minidumper::Client, Error> {
+pub async fn connect(socket_dir: &Path) -> Result<minidumper::Client, Error> {
+    let socket_addr = socket_dir.join(SOCKET_FILE);
+
     for _ in 0..200 {
-        match tokio::task::spawn_blocking(|| minidumper::Client::with_name(Path::new(SOCKET_ADDR)))
-            .await
-            .unwrap()
-        {
+        let result = tokio::task::spawn_blocking({
+            let socket_addr = socket_addr.clone();
+            move || minidumper::Client::with_name(&*socket_addr)
+        })
+        .await
+        .unwrap();
+
+        match result {
             Ok(client) => return Ok(client),
             Err(e) => debug!(
                 "error opening minidump client",
@@ -115,7 +124,7 @@ pub async fn connect(_socket_dir: &Path) -> Result<minidumper::Client, Error> {
     Err(Error::internal_safe("unable to connect to minidump server"))
 }
 
-pub fn server() -> Result<(), Error> {
+pub fn server(socket_addr: &Path) -> Result<(), Error> {
     let shutdown = Arc::new(AtomicBool::new(false));
 
     thread::spawn({
@@ -126,7 +135,7 @@ pub fn server() -> Result<(), Error> {
         }
     });
 
-    minidumper::Server::with_name(Path::new(SOCKET_ADDR))
+    minidumper::Server::with_name(socket_addr)
         .map_err(Error::internal_safe)?
         .run(Box::new(WitchcraftServerHandler), &shutdown, None)
         .map_err(Error::internal_safe)
