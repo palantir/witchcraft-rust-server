@@ -27,6 +27,7 @@ pub struct InstallConfig {
     pub context_path: Option<String>,
     pub use_console_log: Option<bool>,
     pub server: Option<super::ServerConfig>,
+    pub minidump: Option<super::MinidumpConfig>,
 }
 
 #[derive(Deserialize)]
@@ -57,4 +58,11 @@ pub struct ServerConfig {
     pub http2: Option<bool>,
     #[serde(default, with = "humantime_serde")]
     pub idle_connection_timeout: Option<Duration>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct MinidumpConfig {
+    pub enabled: Option<bool>,
+    pub socket_dir: Option<PathBuf>,
 }
