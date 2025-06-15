@@ -30,7 +30,7 @@ pub mod log;
 
 const SOCKET_ADDR: &str = "var/data/tmp/minidump.sock";
 
-pub async fn init() -> Result<(), Error> {
+pub async fn init(_socket_dir: &Path) -> Result<(), Error> {
     log_dumps().await?;
 
     fs::create_dir_all(Path::new(SOCKET_ADDR).parent().unwrap()).map_err(Error::internal_safe)?;
@@ -42,7 +42,7 @@ pub async fn init() -> Result<(), Error> {
         .spawn()
         .map_err(Error::internal_safe)?;
 
-    let client = connect().await?;
+    let client = connect(_socket_dir).await?;
 
     // Enable the child to trace us in restricted ptrace linux environments
     #[cfg(target_os = "linux")]
@@ -96,7 +96,7 @@ fn handle_restricted_ptrace(child: u32) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn connect() -> Result<minidumper::Client, Error> {
+pub async fn connect(_socket_dir: &Path) -> Result<minidumper::Client, Error> {
     for _ in 0..200 {
         match tokio::task::spawn_blocking(|| minidumper::Client::with_name(Path::new(SOCKET_ADDR)))
             .await

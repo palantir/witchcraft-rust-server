@@ -300,7 +300,6 @@ use debug::endpoint::DebugResource;
 use debug::endpoint::DebugServiceEndpoints;
 #[cfg(feature = "jemalloc")]
 use debug::heap_profile::{self, HeapProfileDiagnostic};
-use futures::FutureExt;
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
@@ -457,17 +456,22 @@ where
 
     if install_config.as_ref().minidump().enabled() {
         let minidump_ok = Arc::new(AtomicBool::new(true));
-        let minidump_ok_cloned = minidump_ok.clone();
-        handle.spawn(minidump::init().then(|result| async move {
-            minidump_ok_cloned.store(result.is_ok(), Ordering::Relaxed);
-            if let Err(e) = result {
-                error!("error during minidump init", error: e)
+        let socket_dir = install_config.as_ref().minidump().socket_dir();
+        handle.spawn({
+            let minidump_ok = minidump_ok.clone();
+            let socket_dir = socket_dir.to_owned();
+            async move {
+                let result = minidump::init(&socket_dir).await;
+                minidump_ok.store(result.is_ok(), Ordering::Relaxed);
+                if let Err(e) = result {
+                    error!("error during minidump init", error: e)
+                }
             }
-        }));
+        });
 
         health_checks.register(MinidumpHealthCheck::new(minidump_ok));
         #[cfg(target_os = "linux")]
-        diagnostics.register(ThreadDumpDiagnostic);
+        diagnostics.register(ThreadDumpDiagnostic::new(socket_dir));
     }
 
     metrics::init(&metrics);

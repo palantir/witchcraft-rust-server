@@ -23,7 +23,7 @@ use std::fs;
 use std::io::Cursor;
 use std::os::unix::prelude::{OsStrExt, OsStringExt};
 use std::os::unix::process;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 use tokio::runtime::Handle;
 use witchcraft_log::error;
@@ -31,7 +31,17 @@ use witchcraft_log::error;
 /// A diagnostic which returns a stack trace of every thread in the server.
 ///
 /// It is only supported on Linux.
-pub struct ThreadDumpDiagnostic;
+pub struct ThreadDumpDiagnostic {
+    socket_dir: PathBuf,
+}
+
+impl ThreadDumpDiagnostic {
+    pub fn new(socket_dir: &Path) -> Self {
+        ThreadDumpDiagnostic {
+            socket_dir: socket_dir.to_owned(),
+        }
+    }
+}
 
 impl Diagnostic for ThreadDumpDiagnostic {
     fn type_(&self) -> &str {
@@ -50,7 +60,7 @@ impl Diagnostic for ThreadDumpDiagnostic {
         let target_file = NamedTempFile::new_in("var/data/tmp").map_err(Error::internal_safe)?;
         let handle = Handle::current();
 
-        let client = handle.block_on(minidump::connect())?;
+        let client = handle.block_on(minidump::connect(&self.socket_dir))?;
         client
             .send_message(0, target_file.path().as_os_str().as_bytes())
             .map_err(Error::internal_safe)?;
