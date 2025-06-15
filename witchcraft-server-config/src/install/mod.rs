@@ -482,6 +482,8 @@ impl<'de> Deserialize<'de> for MinidumpConfig {
 impl MinidumpConfig {
     /// Determines if the server will spawn the minidump sidecar.
     ///
+    /// The sidecar is required for the thread dump diagnostic and crash reports.
+    ///
     /// Defaults to `true`.
     #[inline]
     pub fn enabled(&self) -> bool {
