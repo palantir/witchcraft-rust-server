@@ -48,9 +48,9 @@
 //! Witchcraft divides configuration into two categories:
 //!
 //! * *Install* - Configuration that is fixed for the lifetime of a service. For example, the port that the server
-//!     listens on is part of the server's install configuration.
+//!   listens on is part of the server's install configuration.
 //! * *Runtime* - Configuration that can dynamically update while the service is running. For example, the logging
-//!     verbosity level is part of the server's runtime configuration.
+//!   verbosity level is part of the server's runtime configuration.
 //!
 //! Configuration is loaded from the `var/conf/install.yml` and `var/conf/runtime.yml` files respectively. The
 //! `runtime.yml` file is automatically checked for updates every few seconds.
@@ -95,7 +95,7 @@
 //! The server's configuration deserializer supports two methods to handle sensitive values:
 //!
 //! * `${enc:5BBfGvf90H6bApwfx...}` - inline in an encrypted form using [`serde_encrypted_value`] with the
-//!     key stored in `var/conf/encrypted-config-value.key`.
+//!   key stored in `var/conf/encrypted-config-value.key`.
 //! * `${file:/mnt/secrets/foo}` - as a reference to a file containing the value using [`serde_file_value`].
 //!
 //! ## Refreshable runtime configuration
@@ -156,9 +156,9 @@
 //!
 //! * `CONFIG_RELOAD` - Reports an error state if the runtime configuration failed to reload properly.
 //! * `ENDPOINT_FIVE_HUNDREDS` - Reports a warning if an endpoint has a high rate of `500 Internal Server Error`
-//!     responses.
+//!   responses.
 //! * `SERVICE_DEPENDENCY` - Tracks the status of requests made with HTTP clients created via the server's client
-//!     factory, and reports a warning state of requests to a remote service have a high failure rate.
+//!   factory, and reports a warning state of requests to a remote service have a high failure rate.
 //! * `PANICS` - Reports a warning if the server has panicked at any point.
 //!
 //! # Diagnostics
@@ -170,12 +170,12 @@
 //!
 //! * `diagnostic.types.v1` - Returns a JSON-encoded list of all valid diagnostic types.
 //! * `rust.heap.status.v1` - Returns detailed statistics about the state of the heap. Requires the `jemalloc` feature
-//!     (enabled by default).
+//!   (enabled by default).
 //! * `rust.heap.profile.v1` - Returns a profile of the source of a sample of live allocations. Use the `jeprof` tool
-//!     to analyze the profile. Requires the `jemalloc` feature (enabled by default).
+//!   to analyze the profile. Requires the `jemalloc` feature (enabled by default).
 //! * `metric.names.v1` - Returns a JSON-encoded list of the names of all metrics registered with the server.
 //! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process. Only supported when running on
-//!     Linux.
+//!   Linux.
 //!
 //! # Logging
 //!
@@ -221,10 +221,10 @@
 //! ## Thread Pool
 //!
 //! * `server.worker.max` (gauge) - The configured maximum size of the server's thread pool used for requests to
-//!     blocking endpoints.
+//!   blocking endpoints.
 //! * `server.worker.active` (gauge) - The number of threads actively processing requests to blocking endpoints.
 //! * `server.worker.utilization-max` (gauge) - `server.worker.active` divided by `server.worker.max`. If this is 1, the
-//!     server will immediately reject calls to blocking endpoints with a `503 Service Unavailable` status code.
+//!   server will immediately reject calls to blocking endpoints with a `503 Service Unavailable` status code.
 //!
 //! ## Logging
 //!
@@ -233,34 +233,34 @@
 //! ## Process
 //!
 //! * `process.heap` (gauge) - The total number of bytes allocated from the heap. Requires the `jemalloc` feature
-//!     (enabled by default).
+//!   (enabled by default).
 //! * `process.heap.active` (gauge) - The total number of bytes in active pages. Requires the `jemalloc` feature
-//!     (enabled by default).
+//!   (enabled by default).
 //! * `process.heap.resident` (gauge) - The total number of bytes in physically resident pages. Requires the `jemalloc` feature
-//!     (enabled by default).
+//!   (enabled by default).
 //! * `process.uptime` (gauge) - The number of microseconds that have elapsed since the server started.
 //! * `process.panics` (counter) - The number of times the server has panicked.
 //! * `process.user-time` (gauge) - The number of microseconds the process has spent running in user-space.
 //! * `process.user-time.norm` (gauge) - `process.user-time` divided by the number of CPU cores.
 //! * `process.system-time` (gauge) - The number of microseconds the process has spent either running in kernel-space
-//!     or in uninterruptable IO wait.
+//!   or in uninterruptable IO wait.
 //! * `process.system-time.norm` (gauge) - `process.system-time` divided by the number of CPU cores.
 //! * `process.blocks-read` (gauge) - The number of filesystem blocks the server has read.
 //! * `process.blocks-written` (gauge) - The number of filesystem blocks the server has written.
 //! * `process.threads` (gauge) - The number of threads in the process.
 //! * `process.filedescriptor` (gauge) - The number of file descriptors held open by the process divided by the maximum
-//!     number of files the server may hold open.
+//!   number of files the server may hold open.
 //!
 //! ## Connection
 //!
 //! * `server.connection.active` (counter) - The number of TCP sockets currently connected to the HTTP server.
 //! * `server.connection.utilization` (gauge) - `server.connection.active` divided by the maximum number of connections
-//!     the server will accept.
+//!   the server will accept.
 //!
 //! ## TLS
 //!
 //! * `tls.handshake (context: server, protocol: <protocol>, cipher: <cipher>)` (meter) - The rate of TLS handshakes
-//!     completed by the HTTP server.
+//!   completed by the HTTP server.
 //!
 //! ## Server
 //!
@@ -277,9 +277,9 @@
 //! ## Endpoints
 //!
 //! * `server.response (service-name: <service_name>, endpoint: <endpoint>)` (timer) - The amount of time required to
-//!     process each request to the endpoint, including sending the entire response body.
+//!   process each request to the endpoint, including sending the entire response body.
 //! * `server.response.error (service-name: <service_name>, endpoint: <endpoint>)` (meter) - The rate of `5xx` errors
-//!     returned for requests to the endpoint.
+//!   returned for requests to the endpoint.
 //!
 //! ## HTTP clients
 //!
@@ -287,6 +287,7 @@
 #![warn(missing_docs)]
 
 use std::env;
+use std::path::Path;
 use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -300,7 +301,6 @@ use debug::endpoint::DebugResource;
 use debug::endpoint::DebugServiceEndpoints;
 #[cfg(feature = "jemalloc")]
 use debug::heap_profile::{self, HeapProfileDiagnostic};
-use futures::FutureExt;
 use futures_util::{stream, Stream, StreamExt};
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
@@ -416,8 +416,9 @@ where
 {
     logging::early_init();
 
-    if env::args_os().nth(1).is_some_and(|a| a == "minidump") {
-        return minidump::server();
+    let args = env::args_os().collect::<Vec<_>>();
+    if args.len() == 3 && args[1] == "minidump" {
+        return minidump::server(Path::new(&args[2]));
     }
 
     let install_config = load_install()?;
@@ -441,6 +442,10 @@ where
     let runtime_config = load_runtime(&handle, &runtime_config_ok)?;
 
     let metrics = Arc::new(MetricRegistry::new());
+    let host_metrics = Arc::new(HostMetricsRegistry::new());
+    let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
+    let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
+    let diagnostics = Arc::new(DiagnosticRegistry::new());
 
     let loggers = handle.block_on(logging::init(
         &metrics,
@@ -451,28 +456,32 @@ where
 
     info!("server starting");
 
-    let minidump_ok = Arc::new(AtomicBool::new(true));
-    let minidump_ok_cloned = minidump_ok.clone();
-    handle.spawn(minidump::init().then(|result| async move {
-        minidump_ok_cloned.store(result.is_ok(), Ordering::Relaxed);
-        if let Err(e) = result {
-            error!("error during minidump init", error: e)
-        }
-    }));
+    if install_config.as_ref().minidump().enabled() {
+        let minidump_ok = Arc::new(AtomicBool::new(true));
+        let socket_dir = install_config.as_ref().minidump().socket_dir();
+        handle.spawn({
+            let minidump_ok = minidump_ok.clone();
+            let socket_dir = socket_dir.to_owned();
+            async move {
+                let result = minidump::init(&socket_dir).await;
+                minidump_ok.store(result.is_ok(), Ordering::Relaxed);
+                if let Err(e) = result {
+                    error!("error during minidump init", error: e)
+                }
+            }
+        });
+
+        health_checks.register(MinidumpHealthCheck::new(minidump_ok));
+        #[cfg(target_os = "linux")]
+        diagnostics.register(ThreadDumpDiagnostic::new(socket_dir));
+    }
 
     metrics::init(&metrics);
 
-    let host_metrics = Arc::new(HostMetricsRegistry::new());
-
-    let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
     health_checks.register(ServiceDependencyHealthCheck::new(&host_metrics));
     health_checks.register(PanicsHealthCheck::new());
     health_checks.register(ConfigReloadHealthCheck::new(runtime_config_ok));
-    health_checks.register(MinidumpHealthCheck::new(minidump_ok));
 
-    let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
-
-    let diagnostics = Arc::new(DiagnosticRegistry::new());
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
     {
@@ -480,9 +489,8 @@ where
         heap_profile::init(&runtime_config);
         diagnostics.register(HeapProfileDiagnostic);
     }
-    #[cfg(target_os = "linux")]
-    diagnostics.register(ThreadDumpDiagnostic);
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
+
     let client_factory = ClientFactory::builder()
         .config(runtime_config.map(|c| c.as_ref().service_discovery().clone()))
         .user_agent(UserAgent::new(Agent::new(

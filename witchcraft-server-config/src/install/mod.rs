@@ -44,6 +44,8 @@ pub struct InstallConfig {
     use_console_log: bool,
     #[builder(default)]
     server: ServerConfig,
+    #[builder(default)]
+    minidump: MinidumpConfig,
 }
 
 impl Validate for InstallConfig {
@@ -90,7 +92,9 @@ impl<'de> Deserialize<'de> for InstallConfig {
         if let Some(server) = raw.server {
             builder = builder.server(server);
         }
-
+        if let Some(minidump) = raw.minidump {
+            builder = builder.minidump(minidump);
+        }
         builder.build().map_err(Error::custom)
     }
 }
@@ -174,6 +178,12 @@ impl InstallConfig {
     #[inline]
     pub fn server(&self) -> &ServerConfig {
         &self.server
+    }
+
+    /// Returns minidump settings.
+    #[inline]
+    pub fn minidump(&self) -> &MinidumpConfig {
+        &self.minidump
     }
 }
 
@@ -432,5 +442,59 @@ impl ServerConfig {
     #[inline]
     pub fn idle_connection_timeout(&self) -> Option<Duration> {
         self.idle_connection_timeout
+    }
+}
+
+/// Minidump configuration.
+#[derive(Clone, PartialEq, Debug)]
+#[staged_builder]
+pub struct MinidumpConfig {
+    #[builder(default = true)]
+    enabled: bool,
+    #[builder(into, default = PathBuf::from("var/data/tmp"))]
+    socket_dir: PathBuf,
+}
+
+impl Default for MinidumpConfig {
+    #[inline]
+    fn default() -> Self {
+        MinidumpConfig::builder().build()
+    }
+}
+
+impl<'de> Deserialize<'de> for MinidumpConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = de::MinidumpConfig::deserialize(deserializer)?;
+        let mut builder = MinidumpConfig::builder();
+        if let Some(enabled) = raw.enabled {
+            builder = builder.enabled(enabled);
+        }
+        if let Some(socket_dir) = raw.socket_dir {
+            builder = builder.socket_dir(socket_dir);
+        }
+        Ok(builder.build())
+    }
+}
+
+impl MinidumpConfig {
+    /// Determines if the server will spawn the minidump sidecar.
+    ///
+    /// The sidecar is required for the thread dump diagnostic and crash reports.
+    ///
+    /// Defaults to `true`.
+    #[inline]
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Returns the directory in which the minidump Unix socket will be placed.
+    ///
+    /// Defaults to `var/data/tmp`.
+    #[inline]
+    pub fn socket_dir(&self) -> &Path {
+        &self.socket_dir
     }
 }

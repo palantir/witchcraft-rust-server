@@ -78,6 +78,13 @@ fn format_dump(state: &ProcessState) -> String {
         format_thread(&mut buf, thread);
     }
 
+    if let Some(soft_errors) = &state.soft_errors {
+        let soft_errors = serde_json::to_string_pretty(soft_errors).unwrap();
+        writeln!(buf).unwrap();
+        writeln!(buf, "Soft errors:").unwrap();
+        writeln!(buf, "{soft_errors}").unwrap();
+    }
+
     buf
 }
 
