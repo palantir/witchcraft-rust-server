@@ -12,32 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use parking_lot::{Condvar, Mutex};
-use std::cell::UnsafeCell;
+use pin_list::{Node, PinList};
 use std::collections::VecDeque;
-use std::ptr;
+use std::pin::pin;
 use std::time::Instant;
 
-struct Node {
-    cvar: Condvar,
-    next: *mut Node,
-    prev: *mut Node,
-}
+type PinListTypes = dyn pin_list::Types<
+    Id = pin_list::id::Checked,
+    Protected = (),
+    Removed = (),
+    Unprotected = Condvar,
+>;
 
 struct State<T> {
-    head: *mut Node,
+    waiters: PinList<PinListTypes>,
     jobs: VecDeque<T>,
 }
-
-unsafe impl<T> Sync for State<T> where T: Sync {}
-unsafe impl<T> Send for State<T> where T: Send {}
 
 /// A blocking queue that is "maximally unfair" to waiters.
 ///
 /// That is, while jobs are processed FIFO, waiters are processed LIFO. This allows us to keep the number of threads in
 /// the pool to the minimum number required to keep up with the current request volume.
 ///
-/// To make this happen, we unfortunately need to use a manual queueing implementation with intrusive lists rather than
-/// a simple Mutex + Condvar.
+/// To make this happen, we need to use a manual queueing implementation rather than a simple Mutex + Condvar.
 pub struct JobQueue<T> {
     state: Mutex<State<T>>,
 }
@@ -46,7 +43,7 @@ impl<T> JobQueue<T> {
     pub fn new() -> Self {
         JobQueue {
             state: Mutex::new(State {
-                head: ptr::null_mut(),
+                waiters: PinList::new(pin_list::id::Checked::new()),
                 jobs: VecDeque::new(),
             }),
         }
@@ -61,17 +58,10 @@ impl<T> JobQueue<T> {
 
         state.jobs.push_back(job);
 
-        unsafe {
-            if !state.head.is_null() {
-                let woken = state.head;
-                state.head = (*woken).next;
-                if !state.head.is_null() {
-                    (*state.head).prev = ptr::null_mut();
-                }
-
-                (*woken).next = ptr::null_mut();
-                (*woken).cvar.notify_one();
-            }
+        let mut cursor = state.waiters.cursor_back_mut();
+        if let Some(cvar) = cursor.unprotected() {
+            cvar.notify_one();
+            cursor.remove_current(()).expect("cursor at node");
         }
     }
 
@@ -87,33 +77,15 @@ impl<T> JobQueue<T> {
                 return Some(job);
             }
 
-            let node = UnsafeCell::new(Node {
-                cvar: Condvar::new(),
-                next: state.head,
-                prev: ptr::null_mut(),
-            });
+            let node = pin!(Node::new());
+            let node = state.waiters.push_back(node, (), Condvar::new());
 
-            unsafe {
-                if !state.head.is_null() {
-                    (*state.head).prev = node.get();
-                }
-                state.head = node.get();
+            let result = node.unprotected().wait_until(&mut state, timeout);
+            // We may or may not have been removed from the list, but don't actually care which.
+            node.reset(&mut state.waiters);
 
-                let result = (*node.get()).cvar.wait_until(&mut state, timeout);
-
-                if !(*node.get()).next.is_null() {
-                    (*(*node.get()).next).prev = (*node.get()).prev;
-                }
-
-                if !(*node.get()).prev.is_null() {
-                    (*(*node.get()).prev).next = (*node.get()).next;
-                } else if state.head == node.get() {
-                    state.head = (*node.get()).next;
-                }
-
-                if result.timed_out() {
-                    return None;
-                }
+            if result.timed_out() {
+                return None;
             }
         }
     }
