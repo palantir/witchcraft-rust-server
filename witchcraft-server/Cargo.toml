@@ -59,8 +59,8 @@ itertools = "0.14"
 lazycell = "1.3"
 libc = "0.2"
 log = "0.4"
-minidump-processor = "0.25"
-minidump-unwind = { version = "0.25", features = ["debuginfo-symbols"] }
+minidump-processor = "0.26"
+minidump-unwind = { version = "0.26", features = ["debuginfo-symbols"] }
 minidump-writer = "0.10"
 minidump = "0.26"
 minidumper = "0.8"
