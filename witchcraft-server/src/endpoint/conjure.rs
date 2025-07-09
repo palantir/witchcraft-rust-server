@@ -106,7 +106,7 @@ impl WitchcraftEndpoint for ConjureEndpoint {
             .await
         {
             Ok(Ok(response)) => response.map(ResponseBody::new),
-            Ok(Err(error)) => errors::to_response(error, |o| {
+            Ok(Err(error)) => errors::to_response(&response_extensions, error, |o| {
                 o.map_or(
                     ResponseBody {
                         state: State::Empty,

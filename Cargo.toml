@@ -10,3 +10,10 @@ members = [
     "witchcraft-server-ete",
     "witchcraft-server-macros",
 ]
+
+[patch.crates-io]
+conjure-error = { git = "https://github.com/palantir/conjure-rust", branch = "param-stringify-flag" }
+conjure-object = { git = "https://github.com/palantir/conjure-rust", branch = "param-stringify-flag" }
+conjure-serde = { git = "https://github.com/palantir/conjure-rust", branch = "param-stringify-flag" }
+conjure-http = { git = "https://github.com/palantir/conjure-rust", branch = "param-stringify-flag" }
+conjure-macros = { git = "https://github.com/palantir/conjure-rust", branch = "param-stringify-flag" }
