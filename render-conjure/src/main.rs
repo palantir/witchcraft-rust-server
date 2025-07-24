@@ -5,8 +5,7 @@ const API_VERSION: &str = "2.5.0";
 
 fn main() {
     let health_api_url = format!(
-        "https://oss.sonatype.org/service/local/repositories/releases/content/com/palantir/witchcraft/api/witchcraft-health-api/{0}/witchcraft-health-api-{0}.conjure.json",
-        API_VERSION,
+        "https://oss.sonatype.org/service/local/repositories/releases/content/com/palantir/witchcraft/api/witchcraft-health-api/{API_VERSION}/witchcraft-health-api-{API_VERSION}.conjure.json",
    );
     render(
         &health_api_url,

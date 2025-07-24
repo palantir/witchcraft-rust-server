@@ -334,7 +334,7 @@ impl ServerLogs {
                         continue;
                     }
 
-                    panic!("service error: {:#?}", line)
+                    panic!("service error: {line:#?}")
                 }
             }
         }

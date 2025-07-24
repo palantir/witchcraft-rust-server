@@ -93,6 +93,7 @@ where
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[pin_project(project = HyperFutureProj)]
 pub enum HyperFuture<T, S, E>
 where

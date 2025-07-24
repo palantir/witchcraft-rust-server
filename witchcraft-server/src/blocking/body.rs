@@ -108,7 +108,7 @@ impl BufRead for RequestBody {
         while self.cur.is_empty() {
             match self
                 .next_raw()
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+                .map_err(io::Error::other)?
             {
                 Some(bytes) => self.cur = bytes,
                 None => break,
@@ -210,7 +210,7 @@ impl Write for ResponseWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if self.buf.len() > 4096 {
             self.flush_shallow()
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+                .map_err(io::Error::other)?;
         }
 
         self.buf.extend_from_slice(buf);
@@ -219,10 +219,10 @@ impl Write for ResponseWriter {
 
     fn flush(&mut self) -> io::Result<()> {
         self.flush_shallow()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         Self::with_timeout(&self.handle, self.sender.flush())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         Ok(())
     }

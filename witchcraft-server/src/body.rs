@@ -119,7 +119,7 @@ impl AsyncBufRead for RequestBody {
         while self.cur.is_empty() {
             match ready!(self.as_mut().poll_next_raw(cx))
                 .transpose()
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+                .map_err(io::Error::other)?
             {
                 Some(bytes) => *self.as_mut().project().cur = bytes,
                 None => break,
@@ -252,7 +252,7 @@ impl AsyncWrite for ResponseWriter {
     ) -> Poll<io::Result<usize>> {
         if self.buf.len() > 4096 {
             ready!(self.as_mut().poll_flush_shallow(cx))
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+                .map_err(io::Error::other)?;
         }
 
         self.project().buf.extend_from_slice(buf);
@@ -261,22 +261,22 @@ impl AsyncWrite for ResponseWriter {
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         ready!(self.as_mut().poll_flush_shallow(cx))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         self.project()
             .sender
             .poll_flush(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .map_err(io::Error::other)
     }
 
     fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         ready!(self.as_mut().poll_flush_shallow(cx))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         self.project()
             .sender
             .poll_close(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .map_err(io::Error::other)
     }
 }
 
