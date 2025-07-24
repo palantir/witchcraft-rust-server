@@ -251,8 +251,7 @@ impl AsyncWrite for ResponseWriter {
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
         if self.buf.len() > 4096 {
-            ready!(self.as_mut().poll_flush_shallow(cx))
-                .map_err(io::Error::other)?;
+            ready!(self.as_mut().poll_flush_shallow(cx)).map_err(io::Error::other)?;
         }
 
         self.project().buf.extend_from_slice(buf);
@@ -260,8 +259,7 @@ impl AsyncWrite for ResponseWriter {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))
-            .map_err(io::Error::other)?;
+        ready!(self.as_mut().poll_flush_shallow(cx)).map_err(io::Error::other)?;
 
         self.project()
             .sender
@@ -270,8 +268,7 @@ impl AsyncWrite for ResponseWriter {
     }
 
     fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))
-            .map_err(io::Error::other)?;
+        ready!(self.as_mut().poll_flush_shallow(cx)).map_err(io::Error::other)?;
 
         self.project()
             .sender
