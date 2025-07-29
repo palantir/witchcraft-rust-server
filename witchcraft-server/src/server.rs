@@ -52,7 +52,7 @@ use hyper::body::Incoming;
 use std::mem;
 use std::sync::Arc;
 use tokio::task;
-use witchcraft_log::debug;
+use witchcraft_log::{debug, info};
 
 pub type RawBody = RequestLogRequestBody<SpannedBody<Incoming>>;
 
@@ -144,6 +144,7 @@ pub(crate) async fn start(
     });
 
     witchcraft.on_shutdown(async move {
+        info!("Shutting down witchcraft server");
         handle.abort();
     });
 
