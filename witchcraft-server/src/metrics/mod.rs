@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::metrics::rusage::Rusage;
+use ::tokio::runtime::Handle;
 use std::time::Instant;
 use std::{panic, thread};
 use witchcraft_metrics::MetricRegistry;
@@ -21,11 +22,13 @@ mod jemalloc;
 #[cfg(target_os = "linux")]
 mod proc;
 mod rusage;
+mod tokio;
 
-pub fn init(metrics: &MetricRegistry) {
+pub fn init(metrics: &MetricRegistry, handle: &Handle) {
     register_uptime_metric(metrics);
     register_panic_metric(metrics);
     register_rusage_metrics(metrics);
+    tokio::register_metrics(metrics, handle);
     #[cfg(target_os = "linux")]
     proc::register_metrics(metrics);
     #[cfg(feature = "jemalloc")]

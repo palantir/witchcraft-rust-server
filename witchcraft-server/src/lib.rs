@@ -251,6 +251,23 @@
 //! * `process.filedescriptor` (gauge) - The number of file descriptors held open by the process divided by the maximum
 //!   number of files the server may hold open.
 //!
+//! ## Tokio
+//!
+//! * `tokio.tasks` (gauge) - The number of tasks in the Tokio runtime.
+//!
+//! ### Unstable metrics
+//!
+//! Services can opt-in to metrics that depend on unstable Tokio features. To do so, *both* enable the `tokio_unstable`
+//! Cargo feature of the `witchcraft-server` crate *and* set the [`tokio_unstable` cfg].
+//!
+//! * `tokio.blocking.threads` (gauge) - The number of threads in Tokio's blocking pool.
+//! * `tokio.blocking.threads.idle` (gauge) - The number of threads in Tokio's blocking pool that are idle.
+//! * `tokio.tasks.polls` (gauge) - The number of individual poll calls to tasks.
+//! * `tokio.tasks.poll-duration-bucket (ge: <ge_micros>, lt: <lt_micros>)` - Histogram buckets of the duration of
+//!     individual poll calls to tasks, tagged by the bounds of the bucket in microseconds.
+//!
+//! [`tokio_unstable` cfg]:(https://docs.rs/tokio/latest/tokio/index.html#unstable-features)
+//!
 //! ## Connection
 //!
 //! * `server.connection.active` (counter) - The number of TCP sockets currently connected to the HTTP server.
@@ -307,6 +324,8 @@ use serde::de::DeserializeOwned;
 use status::StatusResource;
 use status::StatusServiceEndpoints;
 use tokio::runtime::{Handle, Runtime};
+#[cfg(all(tokio_unstable, feature = "tokio_unstable"))]
+use tokio::runtime::{HistogramConfiguration, LogHistogram};
 use tokio::signal::unix::{self, SignalKind};
 use tokio::{runtime, select, time};
 use witchcraft_log::{error, fatal, info};
@@ -424,13 +443,25 @@ where
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
-    let runtime = runtime::Builder::new_multi_thread()
+    let mut builder = runtime::Builder::new_multi_thread();
+    builder
         .enable_all()
         .thread_name_fn(move || format!("runtime-{}", thread_id.fetch_add(1, Ordering::Relaxed)))
         .worker_threads(install_config.as_ref().server().io_threads())
-        .thread_keep_alive(install_config.as_ref().server().idle_thread_timeout())
-        .build()
-        .map_err(Error::internal_safe)?;
+        .thread_keep_alive(install_config.as_ref().server().idle_thread_timeout());
+
+    #[cfg(all(tokio_unstable, feature = "tokio_unstable"))]
+    builder
+        .enable_metrics_poll_time_histogram()
+        .metrics_poll_time_histogram_configuration(HistogramConfiguration::log(
+            LogHistogram::builder()
+                .precision_exact(0)
+                .min_value(Duration::from_micros(100))
+                .max_value(Duration::from_secs(10))
+                .build(),
+        ));
+
+    let runtime = builder.build().map_err(Error::internal_safe)?;
 
     let handle = runtime.handle().clone();
     let runtime = runtime_guard.insert(RuntimeGuard {
@@ -476,7 +507,7 @@ where
         diagnostics.register(ThreadDumpDiagnostic::new(socket_dir));
     }
 
-    metrics::init(&metrics);
+    metrics::init(&metrics, &handle);
 
     health_checks.register(ServiceDependencyHealthCheck::new(&host_metrics));
     health_checks.register(PanicsHealthCheck::new());
