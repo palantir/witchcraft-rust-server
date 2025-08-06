@@ -1,9 +1,3 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
-
-use parking_lot::Mutex;
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +11,14 @@ use parking_lot::Mutex;
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use tikv_jemalloc_ctl::{epoch, stats};
 use witchcraft_metrics::MetricRegistry;
+
+use parking_lot::Mutex;
 
 pub fn register_metrics(metrics: &MetricRegistry) {
     let advance = Arc::new(Mutex::new(Debounced::new(|| {

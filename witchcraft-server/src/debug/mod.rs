@@ -25,9 +25,9 @@ use regex::Regex;
 
 pub(crate) mod diagnostic_types;
 pub(crate) mod endpoint;
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "jemalloc", not(windows)))]
 pub(crate) mod heap_profile;
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "jemalloc", not(windows)))]
 pub(crate) mod heap_stats;
 pub(crate) mod metric_names;
 #[cfg(target_os = "linux")]
