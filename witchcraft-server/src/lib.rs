@@ -586,7 +586,8 @@ async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<()
 
 #[cfg(unix)]
 mod signals {
-    use futures_util::{stream, Stream, StreamExt};
+    use conjure_error::Error;
+    use futures_util::{stream, Stream};
     use tokio::signal::unix::{self, SignalKind};
 
     pub fn signals() -> Result<impl Stream<Item = ()>, Error> {
