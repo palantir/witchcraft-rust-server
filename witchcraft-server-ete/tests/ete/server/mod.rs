@@ -123,13 +123,21 @@ impl Server {
             .parent()
             .unwrap()
             .join("../witchcraft-server-ete");
-        let mut child = Command::new(binary)
+        let mut command = Command::new(binary);
+        command
             .current_dir(dir.path())
             .env("HANDLER_TYPE", handler_type)
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .unwrap();
+            .stderr(Stdio::inherit());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            use windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP;
+
+            command.creation_flags(CREATE_NEW_PROCESS_GROUP.0);
+        }
+
+        let mut child = command.spawn().unwrap();
 
         let mut stdout = child.stdout.take().unwrap();
         let (tx, stdout_rx) = oneshot::channel();
@@ -264,7 +272,13 @@ impl Server {
 
     pub fn start_shutdown(&mut self) {
         unsafe {
+            #[cfg(unix)]
             libc::kill(self.child.id() as libc::pid_t, libc::SIGINT);
+            #[cfg(windows)]
+            windows_sys::Win32::System::Console::GenerateConsoleCtrlEvent(
+                windows_sys::Win32::System::Console::CTRL_BREAK_EVENT,
+                self.child.id() as u32,
+            );
         }
     }
 

@@ -609,8 +609,13 @@ mod signals {
     use tokio::signal::windows;
 
     pub fn signals() -> Result<impl Stream<Item = ()>, Error> {
-        let mut signal = windows::ctrl_c().map_err(Error::internal_safe)?;
-        Ok(stream::poll_fn(move |cx| signal.poll_recv(cx)))
+        let mut ctrlc = windows::ctrl_c().map_err(Error::internal_safe)?;
+        let ctrlc = stream::poll_fn(move |cx| ctrlc.poll_recv(cx));
+
+        let mut ctrlbreak = windows::ctrl_break().map_err(Error::internal_safe)?;
+        let ctrlbreak = stream::poll_fn(move |cx| ctrlbreak.poll_recv(cx));
+
+        Ok(stream::select(ctrlc, ctrlbreak))
     }
 }
 

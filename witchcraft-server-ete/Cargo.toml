@@ -31,3 +31,6 @@ libc = "0.2"
 rustls-pemfile = "2"
 tempfile = "3.20.0"
 tokio-rustls = { version = "0.26.2", default-features = false, features = ["ring", "tls12"] }
+
+[target."cfg(windows)".dev-dependencies]
+windows-sys = "0.60.0"
