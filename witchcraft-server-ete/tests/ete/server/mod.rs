@@ -19,22 +19,21 @@ use hyper::body::{Body, Incoming};
 use hyper::client::conn::{http1, http2};
 use hyper::Request;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use openssl::ssl::{SslConnector, SslMethod};
 use std::error::{self, Error};
-use std::fs::File;
 use std::future::Future;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use std::process::{Child, Command, Stdio};
+use std::sync::Arc;
 use std::time::Duration;
 use std::{env, fs, thread};
 use tempfile::TempDir;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::{task, time};
-use tokio_openssl::SslStream;
+use tokio_rustls::rustls::{ClientConfig, KeyLogFile, RootCertStore};
+use tokio_rustls::TlsConnector;
 use witchcraft_server::logging::api::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
 
 // this is a bit racy, but should work in practice
@@ -76,7 +75,7 @@ pub struct Server {
     dir: PathBuf,
     child: Child,
     stdout_rx: Option<oneshot::Receiver<String>>,
-    ctx: SslConnector,
+    connector: TlsConnector,
     port: u16,
     management_port: Option<u16>,
     shutdown: bool,
@@ -140,24 +139,28 @@ impl Server {
             let _ = tx.send(buf);
         });
 
-        let mut ctx = SslConnector::builder(SslMethod::tls()).unwrap();
-        ctx.set_ca_file(dir.path().join("var/security/cert.cer"))
+        let mut roots = RootCertStore::empty();
+        let certs = fs::read(dir.path().join("var/security/cert.cer")).unwrap();
+        let certs = rustls_pemfile::certs(&mut &*certs)
+            .collect::<Result<Vec<_>, _>>()
             .unwrap();
+        roots.add_parsable_certificates(certs);
+
+        let mut client_config = ClientConfig::builder()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+
         if builder.http2 {
-            ctx.set_alpn_protos(b"\x02h2").unwrap();
+            client_config.alpn_protocols = vec![b"h2".to_vec()];
         }
-        let file = File::create(dir.path().join("keylog")).unwrap();
-        ctx.set_keylog_callback(move |_, b| {
-            let _ = (&file).write_all(b.as_bytes());
-            let _ = (&file).write_all(b"\n");
-        });
-        let ctx = ctx.build();
+
+        client_config.key_log = Arc::new(KeyLogFile::new());
 
         let server = Server {
             dir: dir.keep(),
             child,
             stdout_rx: Some(stdout_rx),
-            ctx,
+            connector: TlsConnector::from(Arc::new(client_config)),
             port,
             management_port: builder.management_port,
             shutdown: false,
@@ -226,9 +229,10 @@ impl Server {
         B::Error: Into<Box<dyn error::Error + Sync + Send>>,
     {
         let stream = TcpStream::connect(("127.0.0.1", port)).await?;
-        let ssl = self.ctx.configure()?.into_ssl("localhost")?;
-        let mut stream = SslStream::new(ssl, stream)?;
-        Pin::new(&mut stream).connect().await?;
+        let stream = self
+            .connector
+            .connect("localhost".try_into().unwrap(), stream)
+            .await?;
 
         if self.http2 {
             let (client, connection) = http2::Builder::new(TokioExecutor::new())

@@ -28,9 +28,6 @@ http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["tokio"] }
 hyper = "1"
 libc = "0.2"
-openssl = "0.10"
+rustls-pemfile = "2"
 tempfile = "3.20.0"
-tokio-openssl = "0.6"
-
-[target."cfg(windows)".dev-dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
+tokio-rustls = { version = "0.26.2", default-features = false, features = ["ring", "tls12"] }
