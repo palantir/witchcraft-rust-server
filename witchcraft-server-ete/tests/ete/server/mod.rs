@@ -134,7 +134,7 @@ impl Server {
             use std::os::windows::process::CommandExt;
             use windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP;
 
-            command.creation_flags(CREATE_NEW_PROCESS_GROUP.0);
+            command.creation_flags(CREATE_NEW_PROCESS_GROUP);
         }
 
         let mut child = command.spawn().unwrap();
