@@ -66,10 +66,10 @@ jobs:
             - C:\Users\circleci\.cargo\registry\index
       - run: rustc --version > ..\rust-version
       - restore_cache:
-          <<: *DEPS_KEY
+          key: win-deps-{{ checksum "~/rust-version" }}-{{ checksum "Cargo.lock" }}
       - run: cargo test --all
       - save_cache:
-          <<: *DEPS_KEY
+          key: win-deps-{{ checksum "~/rust-version" }}-{{ checksum "Cargo.lock" }}
           paths:
             - target
             - C:\Users\circleci\.cargo\registry\cache
