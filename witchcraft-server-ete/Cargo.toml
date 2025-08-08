@@ -31,3 +31,6 @@ libc = "0.2"
 openssl = "0.10"
 tempfile = "3.20.0"
 tokio-openssl = "0.6"
+
+[target."cfg(windows)".dev-dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
