@@ -17,6 +17,7 @@ save_deps: &SAVE_DEPS
     paths:
       - target
       - /usr/local/cargo/registry/cache
+      - /usr/local/cargo/registry/src
 
 version: 2.1
 
@@ -56,7 +57,23 @@ jobs:
       - run: choco uninstall rust
       - run: choco install -y rustup.install
       - run: rustup default 1.85.0
+      - restore_cache:
+          key: win-registry
+      - run: cargo generate-lockfile
+      - save_cache:
+          key: win-registry-{{ .BuildNum }}
+          paths:
+            - C:\Users\circleci\.cargo\registry\index
+      - run: rustc --version > ..\rust-version
+      - restore_cache:
+          <<: *DEPS_KEY
       - run: cargo test --all
+      - save_cache:
+          <<: *DEPS_KEY
+          paths:
+            - target
+            - C:\Users\circleci\.cargo\registry\cache
+            - C:\Users\circleci\.cargo\registry\src
   circle-all:
     docker: [{ image: busybox }]
     resource_class: small
