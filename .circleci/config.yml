@@ -18,9 +18,13 @@ save_deps: &SAVE_DEPS
       - target
       - /usr/local/cargo/registry/cache
 
-version: 2
+version: 2.1
+
+orbs:
+  win: circleci/windows@5.1.0
+
 jobs:
-  circle-all:
+  test-linux:
     docker:
       - image: rust:1.85.0
     environment:
@@ -45,10 +49,28 @@ jobs:
             exit 1
           fi
       - *SAVE_DEPS
+  test-windows:
+    executor: win/default
+    steps:
+      - checkout
+      - run: choco uninstall rust
+      - run: choco install -y rustup.install
+      - run: rustup default 1.85.0
+      - run: cargo test --all
+  circle-all:
+    docker: [{ image: busybox }]
+    resource_class: small
+    steps:
+      - run: {command: echo "All required jobs finished successfully"}
 
 workflows:
   version: 2
   main:
     jobs:
+      - test-linux:
+          filters: { tags: { only: /.*/ } }
+      - test-windows:
+          filters: { tags: { only: /.*/ } }
       - circle-all:
+          requires: [test-linux, test-windows]
           filters: { tags: { only: /.*/ } }
