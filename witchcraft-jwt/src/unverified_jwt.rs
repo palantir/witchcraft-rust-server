@@ -1,8 +1,8 @@
-use std::fmt;
 use base64::Engine;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use serde::de::{Deserializer, Error, Unexpected, Visitor};
 use serde_derive::Deserialize;
+use std::fmt;
 use uuid::Uuid;
 
 #[derive(PartialEq, Eq, Debug, Deserialize, Clone)]
@@ -15,6 +15,8 @@ pub struct UnverifiedJwt {
     jti: Option<Uuid>,
     #[serde(default, deserialize_with = "de_opt_uuid")]
     org: Option<Uuid>,
+    #[serde(default)]
+    exp: Option<u32>,
 }
 
 impl UnverifiedJwt {
@@ -33,10 +35,14 @@ impl UnverifiedJwt {
     pub fn unverified_organization_id(&self) -> Option<Uuid> {
         self.org
     }
+
+    pub fn unverified_exp(&self) -> Option<u32> {
+        self.exp
+    }
 }
 
 impl UnverifiedJwt {
-    fn parse(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         let mut it = s.split('.').skip(1);
         let payload = it.next()?;
         if it.count() != 1 {
@@ -135,6 +141,7 @@ mod test {
             sid: Some("3fc663d4-3e48-4ded-ba4e-d78af98b8363".parse().unwrap()),
             jti: Some("a459b4a1-5089-4fe0-8655-d5dfd9b2b7fd".parse().unwrap()),
             org: Some("1414b6ab-cfe5-4ffd-ac00-52aa80e8909b".parse().unwrap()),
+            exp: Some(1577865600),
         };
 
         assert_eq!(expected, parsed);
