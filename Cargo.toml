@@ -5,6 +5,7 @@ version = "5.6.0"
 resolver = "2"
 members = [
     "render-conjure",
+    "witchcraft-jwt",
     "witchcraft-server",
     "witchcraft-server-config",
     "witchcraft-server-ete",

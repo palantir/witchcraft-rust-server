@@ -1,0 +1,11 @@
+[package]
+name = "witchcraft-jwt"
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+base64 = "0.22"
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+uuid = { version = "1.18.0", features = ["v4"] }

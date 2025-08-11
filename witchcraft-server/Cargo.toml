@@ -35,7 +35,6 @@ jemalloc = ["dep:tikv-jemalloc-ctl", "dep:tikv-jemallocator"]
 arc-swap = "1"
 async-compression = { version = "0.4", features = ["tokio", "gzip"] }
 async-trait = "0.1"
-base64 = "0.22"
 bytes = "1"
 conjure-error = "4"
 conjure-http = "4"
@@ -114,6 +113,7 @@ witchcraft-logging-api = "1.0.0"
 witchcraft-metrics = "1"
 witchcraft-server-config = { version = "5.6.0", path = "../witchcraft-server-config" }
 witchcraft-server-macros = { version = "5.6.0", path = "../witchcraft-server-macros" }
+witchcraft-jwt = { version = "5.6.0", path = "../witchcraft-jwt" }
 zipkin = "1.0"
 
 [dev-dependencies]
