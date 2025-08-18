@@ -18,7 +18,7 @@ fn main() {
     let input = "test-ir.json";
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("conjure");
 
-    println!("cargo:rerun-if-changed={}", input);
+    println!("cargo:rerun-if-changed={input}");
     conjure_codegen::Config::new()
         .strip_prefix("com.palantir.witchcraft.server.test".to_string())
         .generate_files(input, output)

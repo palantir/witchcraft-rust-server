@@ -228,25 +228,25 @@ fn log_dir() -> &'static Path {
 
 fn log_path(dir: &Path, name: &str) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}.log", name));
+    path.push(format!("{name}.log"));
     path
 }
 
 fn archive_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}-{}-{}.log", name, date, number));
+    path.push(format!("{name}-{date}-{number}.log"));
     path
 }
 
 fn archive_gz_tmp_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}-{}-{}.log.gz.tmp", name, date, number));
+    path.push(format!("{name}-{date}-{number}.log.gz.tmp"));
     path
 }
 
 fn archive_gz_path(dir: &Path, name: &str, date: NaiveDate, number: u32) -> PathBuf {
     let mut path = dir.to_path_buf();
-    path.push(format!("{}-{}-{}.log.gz", name, date, number));
+    path.push(format!("{name}-{date}-{number}.log.gz"));
     path
 }
 
