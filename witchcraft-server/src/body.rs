@@ -289,11 +289,11 @@ impl Serialize for ClientIo {
 }
 
 impl ErrorType for ClientIo {
-    fn code(&self) -> ErrorCode {
+    fn code() -> ErrorCode {
         ErrorCode::CustomClient
     }
 
-    fn name(&self) -> &str {
+    fn name() -> &'static str {
         "Witchcraft:ClientIo"
     }
 
@@ -301,7 +301,7 @@ impl ErrorType for ClientIo {
         None
     }
 
-    fn safe_args(&self) -> &'static [&'static str] {
+    fn safe_args() -> &'static [&'static str] {
         &[]
     }
 }

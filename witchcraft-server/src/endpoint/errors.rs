@@ -15,21 +15,34 @@ use std::sync::Arc;
 // limitations under the License.
 use bytes::Bytes;
 use conjure_error::{Error, ErrorKind};
+use conjure_http::server::UseLegacyErrorSerialization;
 use conjure_serde::json;
 use http::header::{CONTENT_TYPE, RETRY_AFTER};
-use http::{HeaderValue, Response, StatusCode};
+use http::{Extensions, HeaderValue, Response, StatusCode};
 use witchcraft_log::error;
 
 #[allow(clippy::declare_interior_mutable_const)]
 const APPLICATION_JSON: HeaderValue = HeaderValue::from_static("application/json");
 
-pub fn to_response<F, B>(error: Error, body_creator: F) -> Response<B>
+pub fn to_response<F, B>(
+    response_extensions: &Extensions,
+    error: Error,
+    body_creator: F,
+) -> Response<B>
 where
     F: FnOnce(Option<Bytes>) -> B,
 {
     let mut response = match error.kind() {
         ErrorKind::Service(service) => {
-            let body = json::to_vec(service).unwrap();
+            let body = if response_extensions
+                .get::<UseLegacyErrorSerialization>()
+                .is_some()
+            {
+                let service = conjure_error::stringify_parameters(service.clone());
+                json::to_vec(&service).unwrap()
+            } else {
+                json::to_vec(service).unwrap()
+            };
             let mut response = Response::new(body_creator(Some(Bytes::from(body))));
             *response.status_mut() =
                 StatusCode::from_u16(service.error_code().status_code()).unwrap();
