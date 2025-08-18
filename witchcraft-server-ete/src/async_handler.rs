@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::conjure::AsyncTestService;
+use crate::conjure::endpoints::AsyncTestService;
 use conjure_error::{Error, InvalidArgument};
 use conjure_http::server::AsyncWriteBody;
 use http::{HeaderMap, HeaderValue};
