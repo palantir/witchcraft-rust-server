@@ -21,6 +21,7 @@ fn main() {
     println!("cargo:rerun-if-changed={input}");
     conjure_codegen::Config::new()
         .strip_prefix("com.palantir.witchcraft.server.test".to_string())
+        .use_legacy_error_serialization(true)
         .generate_files(input, output)
         .unwrap();
 }
