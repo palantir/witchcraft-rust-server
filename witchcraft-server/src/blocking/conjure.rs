@@ -16,7 +16,8 @@ use crate::blocking::cancellation::CancellationGuard;
 use crate::blocking::pool::ThreadPool;
 use crate::blocking::{Cancellation, RequestBody, ResponseWriter};
 use crate::body::ClientIo;
-use crate::endpoint::{errors, WitchcraftEndpoint};
+use crate::endpoint::errors::ErrorConverter;
+use crate::endpoint::WitchcraftEndpoint;
 use crate::health::endpoint_500s::EndpointHealth;
 use crate::server::RawBody;
 use crate::service::endpoint_metrics::EndpointMetrics;
@@ -118,13 +119,14 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
             mdc::set(snapshot);
 
             let req = req.map(|inner| RequestBody::new(inner, handle.clone()));
+            let error_converter = ErrorConverter::new(req.headers());
             let mut response_extensions = Extensions::new();
 
             let mut response = match panic::catch_unwind(AssertUnwindSafe(|| {
                 endpoint.handle(req, &mut response_extensions)
             })) {
                 Ok(Ok(resp)) => resp,
-                Ok(Err(e)) => errors::to_response(&response_extensions, e, |o| {
+                Ok(Err(e)) => error_converter.convert(&response_extensions, e, |o| {
                     o.map_or(server::ResponseBody::Empty, server::ResponseBody::Fixed)
                 }),
                 Err(_) => {

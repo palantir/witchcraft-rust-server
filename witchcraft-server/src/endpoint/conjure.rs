@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::endpoint::{errors, WitchcraftEndpoint};
+use crate::endpoint::errors::ErrorConverter;
+use crate::endpoint::WitchcraftEndpoint;
 use crate::health::endpoint_500s::EndpointHealth;
 use crate::server::RawBody;
 use crate::service::endpoint_metrics::EndpointMetrics;
@@ -99,6 +100,7 @@ impl WitchcraftEndpoint for ConjureEndpoint {
 
     async fn handle(&self, req: Request<RawBody>) -> Response<BoxBody<Bytes, BodyWriteAborted>> {
         let req = req.map(RequestBody::new);
+        let error_converter = ErrorConverter::new(req.headers());
         let mut response_extensions = Extensions::new();
 
         let mut response = match AssertUnwindSafe(self.inner.handle(req, &mut response_extensions))
@@ -106,7 +108,7 @@ impl WitchcraftEndpoint for ConjureEndpoint {
             .await
         {
             Ok(Ok(response)) => response.map(ResponseBody::new),
-            Ok(Err(error)) => errors::to_response(&response_extensions, error, |o| {
+            Ok(Err(error)) => error_converter.convert(&response_extensions, error, |o| {
                 o.map_or(
                     ResponseBody {
                         state: State::Empty,
