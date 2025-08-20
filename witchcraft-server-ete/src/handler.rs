@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::conjure::endpoints::TestService;
+use crate::conjure::errors::ComplexParameterError;
 use conjure_error::{Error, InvalidArgument};
 use conjure_http::server::WriteBody;
 use http::{HeaderMap, HeaderValue};
@@ -77,6 +78,16 @@ impl TestService<RequestBody, ResponseWriter> for TestResource {
         let _ = body.read(&mut buf);
 
         Ok(IoAfterEofBody)
+    }
+
+    fn error_response(&self) -> Result<(), Error> {
+        Err(Error::service_safe(
+            "blammo",
+            ComplexParameterError::builder()
+                .boolean(true)
+                .list(vec![1, 2, 3])
+                .build(),
+        ))
     }
 }
 

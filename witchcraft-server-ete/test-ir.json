@@ -1,6 +1,32 @@
 {
   "version" : 1,
-  "errors" : [ ],
+  "errors" : [ {
+    "errorName" : {
+      "name" : "ComplexParameterError",
+      "package" : "com.palantir.witchcraft.server.test"
+    },
+    "namespace" : "Test",
+    "code" : "CUSTOM_CLIENT",
+    "safeArgs" : [ {
+      "fieldName" : "boolean",
+      "type" : {
+        "type" : "primitive",
+        "primitive" : "BOOLEAN"
+      }
+    }, {
+      "fieldName" : "list",
+      "type" : {
+        "type" : "list",
+        "list" : {
+          "itemType" : {
+            "type" : "primitive",
+            "primitive" : "INTEGER"
+          }
+        }
+      }
+    } ],
+    "unsafeArgs" : [ ]
+  } ],
   "types" : [ ],
   "services" : [ {
     "serviceName" : {
@@ -184,6 +210,13 @@
         "type" : "primitive",
         "primitive" : "BINARY"
       },
+      "markers" : [ ],
+      "tags" : [ ]
+    }, {
+      "endpointName" : "errorResponse",
+      "httpMethod" : "GET",
+      "httpPath" : "/test/errorResponse",
+      "args" : [ ],
       "markers" : [ ],
       "tags" : [ ]
     } ]

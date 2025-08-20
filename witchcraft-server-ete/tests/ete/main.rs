@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use bytes::Bytes;
+use conjure_error::SerializableError;
 use conjure_object::Any;
+use conjure_serde::json;
 use http::{HeaderMap, HeaderValue};
 use http_body_util::{BodyExt, Empty, Full};
 use hyper::body::{Body, Frame};
 use hyper::{Request, StatusCode};
 use server::Server;
+use std::collections::BTreeMap;
 use std::pin::Pin;
 use std::str;
 use std::task::{Context, Poll};
@@ -498,4 +501,53 @@ async fn management_port() {
             server.shutdown().await;
         })
         .await;
+}
+
+#[tokio::test]
+async fn error_parameters() {
+    Server::builder()
+        .with(|server| async {
+            let request = Request::builder()
+                .uri("/witchcraft-ete/api/test/errorResponse")
+                .body(Empty::<Bytes>::new())
+                .unwrap();
+            let response = server
+                .client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            let error = json::client_from_slice::<SerializableError>(&body).unwrap();
+
+            let expected = BTreeMap::from([("boolean".to_string(), Any::new("true").unwrap())]);
+            assert_eq!(*error.parameters(), expected);
+
+            let request = Request::builder()
+                .uri("/witchcraft-ete/api/test/errorResponse")
+                .header("Accept-Conjure-Error-Parameter-Format", "JSON")
+                .body(Empty::<Bytes>::new())
+                .unwrap();
+            let response = server
+                .client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            let error = json::client_from_slice::<SerializableError>(&body).unwrap();
+
+            let expected = BTreeMap::from([
+                ("boolean".to_string(), Any::new(true).unwrap()),
+                ("list".to_string(), Any::new(vec![1u64, 2, 3]).unwrap()),
+            ]);
+            assert_eq!(*error.parameters(), expected);
+
+            server.shutdown().await;
+        })
+        .await
 }

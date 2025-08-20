@@ -1,3 +1,13 @@
+types:
+  definitions:
+    default-package: com.palantir.witchcraft.server.test
+    errors:
+      ComplexParameterError:
+        namespace: Test
+        code: CUSTOM_CLIENT
+        safe-args:
+          boolean: boolean
+          list: list<integer>
 services:
   TestService:
     name: Test Service
@@ -55,3 +65,5 @@ services:
         args:
           body: binary
         returns: binary
+      errorResponse:
+        http: GET /errorResponse
