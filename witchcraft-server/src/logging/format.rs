@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::logging::api::{
+use crate::logging::api::objects::{
     AuditLogV3, EventLogV2, LogLevel, MetricLogV1, RequestLogV2, ServiceLogV1, TraceLogV1,
 };
 use std::marker::PhantomData;

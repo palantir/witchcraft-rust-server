@@ -22,7 +22,7 @@ use http::{Extensions, Method, Request, Response};
 use std::borrow::Cow;
 use std::sync::Arc;
 use witchcraft_server::extensions::AuditLogEntry;
-use witchcraft_server::logging::api::{AuditLogV3, AuditProducer, AuditResult};
+use witchcraft_server::logging::api::objects::{AuditLogV3, AuditProducer, AuditResult};
 
 pub struct AuditService;
 
@@ -47,8 +47,6 @@ impl AuditEndpoint {
     fn audit_log_entry(&self) -> AuditLogEntry {
         let log = AuditLogV3::builder()
             .type_("audit.3")
-            .deployment("deployment")
-            .host("host")
             .product("product")
             .product_version("product_version")
             .producer_type(AuditProducer::Server)

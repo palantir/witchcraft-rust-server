@@ -11,7 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::logging::api::{OrganizationId, RequestLogV2, SessionId, TokenId, TraceId, UserId};
+use crate::logging::api::objects::{
+    OrganizationId, RequestLogV2, SessionId, TokenId, TraceId, UserId,
+};
 use crate::logging::{self, Appender};
 use crate::service::routing::Route;
 use crate::service::{Layer, Service};

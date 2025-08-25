@@ -35,7 +35,7 @@ use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::{task, time};
 use tokio_openssl::SslStream;
-use witchcraft_server::logging::api::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
+use witchcraft_server::logging::api::objects::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
 
 // this is a bit racy, but should work in practice
 fn open_port() -> u16 {
