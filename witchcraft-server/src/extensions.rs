@@ -17,7 +17,7 @@
 use std::net::SocketAddr;
 use std::ops::Deref;
 
-use crate::logging::api::AuditLogV3;
+use crate::logging::api::objects::AuditLogV3;
 
 /// An extension containing the peer's socket address.
 ///

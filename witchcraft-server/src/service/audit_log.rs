@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::extensions::AuditLogEntry;
-use crate::logging::api::AuditLogV3;
+use crate::logging::api::objects::AuditLogV3;
 use crate::service::{Layer, Service};
 use conjure_error::Error;
 use futures_sink::Sink;
@@ -145,7 +145,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::logging::api::{AuditProducer, AuditResult};
+    use crate::logging::api::objects::{AuditProducer, AuditResult};
     use crate::service::test_util::service_fn;
     use conjure_object::{Utc, Uuid};
 
@@ -202,8 +202,6 @@ mod test {
     async fn log_audit_event() {
         let log = AuditLogV3::builder()
             .type_("audit.3")
-            .deployment("foo")
-            .host("bar")
             .product("baz")
             .product_version("1")
             .producer_type(AuditProducer::Server)
