@@ -64,7 +64,6 @@ minidump-unwind = { version = "0.26", features = ["debuginfo-symbols"] }
 minidump-writer = "0.10"
 minidump = "0.26"
 minidumper = "0.8"
-object = "0.37"
 once_cell = "1"
 parking_lot = "0.12"
 pin-project = "1"
