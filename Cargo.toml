@@ -1,12 +1,12 @@
 [workspace.package]
-version = "5.6.0"
+version = "6.0.0"
 
 [workspace]
 resolver = "2"
 members = [
-    "render-conjure",
-    "witchcraft-server",
-    "witchcraft-server-config",
-    "witchcraft-server-ete",
     "witchcraft-server-macros",
+    "witchcraft-server-config",
+    "witchcraft-server",
+    "witchcraft-server-ete",
+    "render-conjure",
 ]

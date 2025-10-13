@@ -124,7 +124,7 @@ impl WitchcraftEndpoint for ConjureBlockingEndpoint {
                 endpoint.handle(req, &mut response_extensions)
             })) {
                 Ok(Ok(resp)) => resp,
-                Ok(Err(e)) => errors::to_response(e, |o| {
+                Ok(Err(e)) => errors::to_response(&response_extensions, e, |o| {
                     o.map_or(server::ResponseBody::Empty, server::ResponseBody::Fixed)
                 }),
                 Err(_) => {

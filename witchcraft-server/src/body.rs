@@ -119,7 +119,7 @@ impl AsyncBufRead for RequestBody {
         while self.cur.is_empty() {
             match ready!(self.as_mut().poll_next_raw(cx))
                 .transpose()
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+                .map_err(io::Error::other)?
             {
                 Some(bytes) => *self.as_mut().project().cur = bytes,
                 None => break,
@@ -251,8 +251,7 @@ impl AsyncWrite for ResponseWriter {
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
         if self.buf.len() > 4096 {
-            ready!(self.as_mut().poll_flush_shallow(cx))
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            ready!(self.as_mut().poll_flush_shallow(cx)).map_err(io::Error::other)?;
         }
 
         self.project().buf.extend_from_slice(buf);
@@ -260,23 +259,21 @@ impl AsyncWrite for ResponseWriter {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        ready!(self.as_mut().poll_flush_shallow(cx)).map_err(io::Error::other)?;
 
         self.project()
             .sender
             .poll_flush(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .map_err(io::Error::other)
     }
 
     fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        ready!(self.as_mut().poll_flush_shallow(cx))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        ready!(self.as_mut().poll_flush_shallow(cx)).map_err(io::Error::other)?;
 
         self.project()
             .sender
             .poll_close(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .map_err(io::Error::other)
     }
 }
 
@@ -292,11 +289,11 @@ impl Serialize for ClientIo {
 }
 
 impl ErrorType for ClientIo {
-    fn code(&self) -> ErrorCode {
+    fn code() -> ErrorCode {
         ErrorCode::CustomClient
     }
 
-    fn name(&self) -> &str {
+    fn name() -> &'static str {
         "Witchcraft:ClientIo"
     }
 
@@ -304,7 +301,7 @@ impl ErrorType for ClientIo {
         None
     }
 
-    fn safe_args(&self) -> &'static [&'static str] {
+    fn safe_args() -> &'static [&'static str] {
         &[]
     }
 }

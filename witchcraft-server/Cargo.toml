@@ -37,11 +37,11 @@ async-compression = { version = "0.4", features = ["tokio", "gzip"] }
 async-trait = "0.1"
 base64 = "0.22"
 bytes = "1"
-conjure-error = "4"
-conjure-http = "4"
-conjure-object = "4"
-conjure-runtime = "6"
-conjure-serde = "4"
+conjure-error = "5.0.0"
+conjure-http = "5.0.0"
+conjure-object = "5.0.0"
+conjure-runtime = "7.0.0"
+conjure-serde = "5.0.0"
 crash-handler = "0.6"
 flate2 = "1"
 foreign-types = "0.5"
@@ -64,7 +64,6 @@ minidump-unwind = { version = "0.26", features = ["debuginfo-symbols"] }
 minidump-writer = "0.10"
 minidump = "0.26"
 minidumper = "0.8"
-object = "0.37"
 once_cell = "1"
 parking_lot = "0.12"
 pin-project = "1"
@@ -99,12 +98,12 @@ tokio = { version = "1.37", features = [
     "time",
 ] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log-util = "1.0.0"
-witchcraft-log = "4"
-witchcraft-logging-api = "1.0.0"
+witchcraft-log-util = "2.0.0"
+witchcraft-log = "5.0.0"
+witchcraft-logging-api = "2.0.0"
 witchcraft-metrics = "1"
-witchcraft-server-config = { version = "5.6.0", path = "../witchcraft-server-config" }
-witchcraft-server-macros = { version = "5.6.0", path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "6.0.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "6.0.0", path = "../witchcraft-server-macros" }
 zipkin = "1.0"
 
 [target.'cfg(not(windows))'.dependencies]

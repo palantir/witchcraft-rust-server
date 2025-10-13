@@ -50,7 +50,7 @@ impl Endpoint {
                     regex: segment_regex,
                 } => {
                     let segment_regex = segment_regex.as_deref().unwrap_or(DEFAULT_REGEX);
-                    write!(regex, "(?P<{}>{})", name, segment_regex).unwrap();
+                    write!(regex, "(?P<{name}>{segment_regex})").unwrap();
                 }
             }
         }

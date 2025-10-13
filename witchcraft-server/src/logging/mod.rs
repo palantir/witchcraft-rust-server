@@ -14,7 +14,7 @@
 
 //! Logging APIs
 use crate::extensions::AuditLogEntry;
-use crate::logging::api::{AuditLogV3, EventLogV2, RequestLogV2};
+use crate::logging::api::objects::{AuditLogV3, EventLogV2, RequestLogV2};
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
 use conjure_serde::json;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::audit_service::AuditService;
-use crate::conjure::{AsyncTestServiceEndpoints, TestServiceEndpoints};
+use crate::conjure::endpoints::{AsyncTestServiceEndpoints, TestServiceEndpoints};
 use conjure_error::Error;
 use refreshable::Refreshable;
 use std::env;
