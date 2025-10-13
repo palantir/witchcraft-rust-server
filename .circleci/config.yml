@@ -1,4 +1,8 @@
 version: 2.1
+
+orbs:
+  win: circleci/windows@5.1.0
+
 jobs:
   build-linux:
     docker: [{ image: cimg/rust:1.88.0 }]
