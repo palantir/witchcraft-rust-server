@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //! Health checks.
-pub use api::HealthState;
+pub use api::objects::HealthState;
 use conjure_object::Any;
 pub use registry::HealthCheckRegistry;
 use serde::Serialize;
