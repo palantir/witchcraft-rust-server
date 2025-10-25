@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use super::HealthState;
-use crate::health::api::{self, CheckType, HealthStatus};
+use crate::health::api::objects::{self, CheckType, HealthStatus};
 use crate::health::{HealthCheck, HealthCheckResult};
 use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
@@ -145,7 +145,7 @@ impl HealthCheckRegistry {
                     stale_checks.push(type_.clone());
                 }
 
-                let result = api::HealthCheckResult::builder()
+                let result = objects::HealthCheckResult::builder()
                     .type_(type_.clone())
                     .state(result.result.state().clone())
                     .message(result.result.message().map(|s| s.to_string()))
@@ -163,13 +163,13 @@ impl HealthCheckRegistry {
         ));
 
         let staleness_result = if stale_checks.is_empty() {
-            api::HealthCheckResult::builder()
+            objects::HealthCheckResult::builder()
                 .type_(CheckType(HEALTH_CHECK_COMPUTATION_STALENESS_TYPE.to_string()))
                 .state(HealthState::Healthy)
                 .message(format!("All healthcheck results have been computed within the last {STALENESS_THRESHOLD:?}"))
                 .build()
         } else {
-            api::HealthCheckResult::builder()
+            objects::HealthCheckResult::builder()
                 .type_(CheckType(HEALTH_CHECK_COMPUTATION_STALENESS_TYPE.to_string()))
                 .state(HealthState::Warning)
                 .message(

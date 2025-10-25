@@ -37,6 +37,7 @@ use crate::service::request_log::{RequestLogLayer, RequestLogRequestBody};
 use crate::service::routing::RoutingLayer;
 use crate::service::server_header::ServerHeaderLayer;
 use crate::service::server_metrics::ServerMetricsLayer;
+use crate::service::server_timing_header::ServerTimingHeaderLayer;
 use crate::service::spans::{SpannedBody, SpansLayer};
 use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
@@ -96,6 +97,7 @@ pub(crate) async fn start(
         .layer(NoCachingLayer)
         .layer(WebSecurityLayer)
         .layer(TraceIdHeaderLayer)
+        .layer(ServerTimingHeaderLayer)
         .layer(ServerMetricsLayer::new(&witchcraft.metrics, listener))
         .layer(EndpointMetricsLayer)
         .layer(EndpointHealthLayer)
