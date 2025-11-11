@@ -294,6 +294,9 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+pub use body::{RequestBody, ResponseWriter};
+use config::install::InstallConfig;
+use config::runtime::RuntimeConfig;
 use conjure_error::Error;
 use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
@@ -309,13 +312,8 @@ use status::StatusServiceEndpoints;
 use tokio::runtime::{Handle, Runtime};
 use tokio::signal::unix::{self, SignalKind};
 use tokio::{runtime, select, time};
-use witchcraft_log::{error, fatal, info};
-use witchcraft_metrics::MetricRegistry;
-
-pub use body::{RequestBody, ResponseWriter};
-use config::install::InstallConfig;
-use config::runtime::RuntimeConfig;
 pub use witchcraft::Witchcraft;
+use witchcraft_log::{error, fatal, info};
 #[doc(inline)]
 pub use witchcraft_server_config as config;
 #[doc(inline)]
@@ -441,7 +439,7 @@ where
     let runtime_config_ok = Arc::new(AtomicBool::new(true));
     let runtime_config = load_runtime(&handle, &runtime_config_ok)?;
 
-    let metrics = Arc::new(MetricRegistry::new());
+    let metrics = Arc::new(logging::metric::registry());
     let host_metrics = Arc::new(HostMetricsRegistry::new());
     let health_checks = Arc::new(HealthCheckRegistry::new(&handle));
     let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
