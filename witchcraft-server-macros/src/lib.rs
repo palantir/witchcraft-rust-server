@@ -13,15 +13,21 @@
 // limitations under the License.
 #![allow(clippy::needless_doctest_main)]
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
-use syn::{Error, ItemFn};
+use structmeta::StructMeta;
+use syn::{Error, Expr, ItemFn};
 
 /// Marks the entrypoint of a Witchcraft server.
 ///
 /// This macro should be applied to a function taking 3 arguments: the server's install config, a `Refreshable` of the
 /// server's runtime config, and a mutable reference to the `Witchcraft` context object. It is a simple convenience
 /// function that wraps the annotated function in one that passes it to the `witchcraft_server::init` function.
+///
+/// # Parameters
+///
+/// The attribute allows configuration of the Witchcraft builder via optional parameters:
+///
+/// * `conjure_runtime` - An expression which creates the `Arc<ConjureRuntime>` used for application endpoints.
 ///
 /// # Examples
 ///
@@ -62,20 +68,16 @@ use syn::{Error, ItemFn};
 ///         Ok(())
 ///     }
 ///
-///     witchcraft_server::init(inner_main)
+///     witchcraft_server::Builder::new()
+///         .init(inner_main)
 /// }
 /// ```
 #[proc_macro_attribute]
 pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
-    if !args.is_empty() {
-        return with_error(
-            input,
-            Error::new(
-                Span::call_site(),
-                "#[witchcraft_server::main] does not take arguments",
-            ),
-        );
-    }
+    let args = match syn::parse::<MainArgs>(args) {
+        Ok(args) => args,
+        Err(e) => return with_error(input, e),
+    };
 
     let function = match syn::parse::<ItemFn>(input.clone()) {
         Ok(function) => function,
@@ -84,14 +86,23 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
     let vis = &function.vis;
     let name = &function.sig.ident;
 
+    let conjure_runtime_call = args.conjure_runtime.map(|e| quote!(.conjure_runtime(#e)));
+
     quote! {
         #vis fn #name() {
             #function
 
-            witchcraft_server::init(#name)
+            witchcraft_server::Builder::new()
+                #conjure_runtime_call
+                .init(#name)
         }
     }
     .into()
+}
+
+#[derive(StructMeta)]
+struct MainArgs {
+    conjure_runtime: Option<Expr>,
 }
 
 fn with_error(mut tokens: TokenStream, error: Error) -> TokenStream {
