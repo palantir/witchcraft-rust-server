@@ -21,6 +21,7 @@ use conjure_object::{DateTime, Utc};
 use futures_sink::Sink;
 use futures_util::{ready, SinkExt, Stream};
 use pin_project::pin_project;
+use serde::Serialize;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -36,8 +37,7 @@ use witchcraft_server_config::install::InstallConfig;
 mod gauge_reporter;
 
 const LOG_INTERVAL: Duration = Duration::from_secs(30);
-const NANOS_PER_MICRO: i64 = 1_000;
-const NANOS_PER_MICRO_F64: f64 = NANOS_PER_MICRO as f64;
+const NANOS_PER_MICRO: f64 = 1_000.;
 
 struct Exemplar {
     instant: Instant,
@@ -109,19 +109,21 @@ async fn log_metrics(mut appender: Appender<MetricLogV1>, metrics: Arc<MetricReg
                         .insert_values("p99", snapshot.value(0.99))
                         .insert_values("p999", snapshot.value(0.999))
                         .insert_values("count", m.count())
-                        .samples(extract_samples(&*snapshot))
+                        .samples(extract_samples(&*snapshot, |v| v))
                 }
                 Metric::Timer(m) => {
                     let snapshot = m.snapshot();
                     builder(id)
                         .metric_type("timer")
-                        .insert_values("max", snapshot.max() / NANOS_PER_MICRO)
-                        .insert_values("p95", snapshot.value(0.95) / NANOS_PER_MICRO_F64)
-                        .insert_values("p99", snapshot.value(0.99) / NANOS_PER_MICRO_F64)
-                        .insert_values("p999", snapshot.value(0.999) / NANOS_PER_MICRO_F64)
+                        .insert_values("max", (snapshot.max() as f64) / NANOS_PER_MICRO)
+                        .insert_values("p95", snapshot.value(0.95) / NANOS_PER_MICRO)
+                        .insert_values("p99", snapshot.value(0.99) / NANOS_PER_MICRO)
+                        .insert_values("p999", snapshot.value(0.999) / NANOS_PER_MICRO)
                         .insert_values("count", m.count())
                         .insert_values("1m", m.one_minute_rate())
-                        .samples(extract_samples(&*snapshot))
+                        .samples(extract_samples(&*snapshot, |v| {
+                            (v as f64) / NANOS_PER_MICRO
+                        }))
                 }
             };
 
@@ -192,7 +194,13 @@ fn provide_exemplar() -> Option<Arc<dyn witchcraft_metrics::Exemplar>> {
 }
 
 // We report the single exemplar with the highest value recorded within the logging window.
-fn extract_samples(snapshot: &dyn Snapshot) -> impl Iterator<Item = Sample> {
+fn extract_samples<T>(
+    snapshot: &dyn Snapshot,
+    map_value: impl Fn(i64) -> T,
+) -> impl Iterator<Item = Sample>
+where
+    T: Serialize,
+{
     let cutoff = Instant::now() - LOG_INTERVAL;
 
     snapshot
@@ -203,7 +211,7 @@ fn extract_samples(snapshot: &dyn Snapshot) -> impl Iterator<Item = Sample> {
         .max_by_key(|(v, _)| *v)
         .map(|(v, e)| {
             Sample::builder()
-                .value(v)
+                .value(map_value(v))
                 .time(e.time)
                 .trace_id(TraceId(e.trace_id.to_string()))
                 .build()
