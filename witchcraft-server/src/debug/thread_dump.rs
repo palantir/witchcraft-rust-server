@@ -17,7 +17,7 @@ use crate::minidump::log;
 use bytes::Bytes;
 use conjure_error::Error;
 use http::HeaderValue;
-use minidump_writer::minidump_writer::MinidumpWriter;
+use minidump_writer::minidump_writer::MinidumpWriterConfig;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Cursor;
@@ -76,12 +76,13 @@ impl Diagnostic for ThreadDumpDiagnostic {
 pub fn handle_request(buf: Vec<u8>) {
     let target_file = PathBuf::from(OsString::from_vec(buf));
     let ppid = process::parent_id();
-    let minidump = match MinidumpWriter::new(ppid as _, ppid as _).dump(&mut Cursor::new(vec![])) {
-        Ok(minidump) => minidump,
-        Err(e) => {
-            error!("error creating minidump", error: Error::internal_safe(e));
-            return;
-        }
-    };
+    let minidump =
+        match MinidumpWriterConfig::new(ppid as _, ppid as _).write(&mut Cursor::new(vec![])) {
+            Ok(minidump) => minidump,
+            Err(e) => {
+                error!("error creating minidump", error: Error::internal_safe(e));
+                return;
+            }
+        };
     let _ = fs::write(target_file, minidump);
 }
