@@ -337,6 +337,7 @@ use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
 use crate::server::Listener;
 use crate::shutdown_hooks::ShutdownHooks;
+use crate::startup_tasks::StartupTasks;
 
 pub mod blocking;
 mod body;
@@ -352,6 +353,7 @@ pub mod readiness;
 mod server;
 mod service;
 mod shutdown_hooks;
+mod startup_tasks;
 mod status;
 pub mod tls;
 mod witchcraft;
@@ -512,6 +514,7 @@ where
         thread_pool: None,
         endpoints: vec![],
         shutdown_hooks: ShutdownHooks::new(),
+        startup_tasks: StartupTasks::new(),
         conjure_runtime: Arc::new(ConjureRuntime::new()),
     };
 
@@ -544,6 +547,9 @@ where
     }
 
     init(install_config, runtime_config, &mut witchcraft)?;
+
+    let startup_tasks = std::mem::take(&mut witchcraft.startup_tasks);
+    handle.block_on(startup_tasks);
 
     witchcraft
         .health_checks

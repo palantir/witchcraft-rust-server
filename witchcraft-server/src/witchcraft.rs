@@ -20,6 +20,7 @@ use crate::endpoint::WitchcraftEndpoint;
 use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
 use crate::shutdown_hooks::ShutdownHooks;
+use crate::startup_tasks::StartupTasks;
 use crate::{blocking, RequestBody, ResponseWriter};
 use conjure_http::server::{AsyncService, BoxAsyncEndpoint, ConjureRuntime, Endpoint, Service};
 use conjure_runtime::ClientFactory;
@@ -41,6 +42,7 @@ pub struct Witchcraft {
     pub(crate) thread_pool: Option<Arc<ThreadPool>>,
     pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
     pub(crate) shutdown_hooks: ShutdownHooks,
+    pub(crate) startup_tasks: StartupTasks,
     pub(crate) conjure_runtime: Arc<ConjureRuntime>,
 }
 
@@ -150,6 +152,17 @@ impl Witchcraft {
                 .map(|e| Box::new(ConjureBlockingEndpoint::new(&self.metrics, thread_pool, e)))
                 .map(|e| extend_path(e, self.install_config.context_path(), prefix)),
         )
+    }
+
+    /// Adds a future that will be run during server startup before accepting connections.
+    ///
+    /// This runs within the tokio runtime, allowing you to spawn tasks.
+    /// All startup tasks will complete before the server begins accepting requests.
+    pub fn on_startup<F>(&mut self, future: F)
+    where
+        F: Future<Output = ()> + 'static + Send,
+    {
+        self.startup_tasks.push(future)
     }
 
     /// Adds a future that will be run when the server begins its shutdown process.
