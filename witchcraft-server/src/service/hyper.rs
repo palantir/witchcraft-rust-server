@@ -83,12 +83,18 @@ where
                 },
             ))
         } else {
-            HyperFuture::Http1(http1::Builder::new().serve_connection(
-                TokioIo::new(req.stream),
-                AdaptorService {
-                    inner: Arc::new(req.service_builder.service(self.request_service.clone())),
-                },
-            ))
+            HyperFuture::Http1(
+                http1::Builder::new()
+                    .serve_connection(
+                        TokioIo::new(req.stream),
+                        AdaptorService {
+                            inner: Arc::new(
+                                req.service_builder.service(self.request_service.clone()),
+                            ),
+                        },
+                    )
+                    .with_upgrades(),
+            )
         }
     }
 }
@@ -99,7 +105,7 @@ pub enum HyperFuture<T, S, E>
 where
     S: HttpService<Incoming>,
 {
-    Http1(#[pin] http1::Connection<T, S>),
+    Http1(#[pin] http1::UpgradeableConnection<T, S>),
     Http2(#[pin] http2::Connection<T, S, E>),
 }
 
@@ -107,7 +113,7 @@ impl<T, S, E, B> Future for HyperFuture<T, S, E>
 where
     S: HttpService<Incoming, ResBody = B>,
     S::Error: Into<Box<dyn error::Error + Sync + Send>>,
-    T: Read + Write + Unpin + 'static,
+    T: Read + Write + Unpin + 'static + Send,
     B: Body + 'static,
     B::Error: Into<Box<dyn error::Error + Sync + Send>>,
     E: Http2ServerConnExec<S::Future, B>,
