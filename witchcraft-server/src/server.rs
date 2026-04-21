@@ -1,4 +1,3 @@
-use crate::endpoint::WitchcraftEndpoint;
 // Copyright 2022 Palantir Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +11,7 @@ use crate::endpoint::WitchcraftEndpoint;
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::endpoint::WitchcraftEndpoint;
 use crate::logging::Loggers;
 use crate::service::accept::AcceptService;
 use crate::service::audit_log::AuditLogLayer;
