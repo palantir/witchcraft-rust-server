@@ -286,13 +286,13 @@
 //! See the documentation of the [`conjure_runtime`] crate for the metrics reported by HTTP clients.
 #![warn(missing_docs)]
 
-use std::env;
 use std::path::Path;
 use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use std::{env, mem};
 
 use conjure_error::Error;
 use conjure_http::server::{AsyncService, ConjureRuntime};
@@ -530,18 +530,9 @@ where
         DebugServiceEndpoints::new(DebugResource::new(&runtime_config, &diagnostics));
     witchcraft.app(debug_endpoints);
 
-    // server::start clears out the previously-registered endpoints so the existing Witchcraft
-    // is ready to reuse for the main port afterwards.
-    if let Some(management_port) = install_config.as_ref().management_port() {
-        if management_port != install_config.as_ref().port() {
-            handle.block_on(server::start(
-                &mut witchcraft,
-                &loggers,
-                Listener::Management,
-                management_port,
-            ))?;
-        }
-    }
+    // A bit of a dance to avoid activating the management server before init returns, which would
+    // cause us to report ready too early.
+    let management_endpoints = mem::take(&mut witchcraft.endpoints);
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
@@ -549,9 +540,25 @@ where
         .health_checks
         .register(Endpoint500sHealthCheck::new(&witchcraft.endpoints));
 
+    let mut main_endpoints = mem::take(&mut witchcraft.endpoints);
+
+    match witchcraft.install_config.management_port() {
+        Some(management_port) if management_port != witchcraft.install_config.port() => {
+            handle.block_on(server::start(
+                &mut witchcraft,
+                management_endpoints,
+                &loggers,
+                Listener::Management,
+                management_port,
+            ))?;
+        }
+        _ => main_endpoints.extend(management_endpoints),
+    }
+
     let port = witchcraft.install_config.port();
     handle.block_on(server::start(
         &mut witchcraft,
+        main_endpoints,
         &loggers,
         Listener::Service,
         port,
