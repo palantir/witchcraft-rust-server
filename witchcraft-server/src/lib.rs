@@ -87,6 +87,7 @@
 //! product-name: my-service
 //! product-version: 1.0.0
 //! port: 12345
+//! management-port: 12346
 //! shave-yaks: true
 //! ```
 //!
@@ -540,20 +541,16 @@ where
         .health_checks
         .register(Endpoint500sHealthCheck::new(&witchcraft.endpoints));
 
-    let mut main_endpoints = mem::take(&mut witchcraft.endpoints);
+    let main_endpoints = mem::take(&mut witchcraft.endpoints);
 
-    match witchcraft.install_config.management_port() {
-        Some(management_port) if management_port != witchcraft.install_config.port() => {
-            handle.block_on(server::start(
-                &mut witchcraft,
-                management_endpoints,
-                &loggers,
-                Listener::Management,
-                management_port,
-            ))?;
-        }
-        _ => main_endpoints.extend(management_endpoints),
-    }
+    let management_port = witchcraft.install_config.management_port();
+    handle.block_on(server::start(
+        &mut witchcraft,
+        management_endpoints,
+        &loggers,
+        Listener::Management,
+        management_port,
+    ))?;
 
     let port = witchcraft.install_config.port();
     handle.block_on(server::start(
