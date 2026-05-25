@@ -88,7 +88,7 @@ tikv-jemalloc-ctl = { version = "0.6", features = [
     "stats",
     "use_std",
 ], optional = true }
-tikv-jemallocator = { version = "0.6", features = [
+tikv-jemallocator = { version = "0.7", features = [
     "unprefixed_malloc_on_supported_platforms",
     "background_threads",
     "profiling",
