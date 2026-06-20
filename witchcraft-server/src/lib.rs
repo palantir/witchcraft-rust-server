@@ -360,6 +360,75 @@ mod witchcraft;
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+/// A builder to configure a [`Witchcraft`].
+#[derive(Default)]
+pub struct Builder {
+    conjure_runtime: Arc<ConjureRuntime>,
+}
+
+impl Builder {
+    /// Creates a new builder with default settings.
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the [`ConjureRuntime`] used for application endpoints.
+    ///
+    /// This does not affect the runtime used by the server's management endpoints.
+    #[inline]
+    pub fn conjure_runtime(mut self, conjure_runtime: Arc<ConjureRuntime>) -> Self {
+        self.conjure_runtime = conjure_runtime;
+        self
+    }
+
+    /// Initializes a Witchcraft server.
+    ///
+    /// `init` is invoked with the parsed install and runtime configs as well as the [`Witchcraft`] context object. It
+    /// is expected to return quickly; any long running initialization should be spawned off into the background to run
+    /// asynchronously.
+    pub fn init<I, R, F>(self, init: F)
+    where
+        I: AsRef<InstallConfig> + DeserializeOwned,
+        R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+        F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+    {
+        self.init_with_configs(init, configs::load_install::<I>, configs::load_runtime::<R>)
+    }
+
+    /// Initializes a Witchcraft server with custom config loaders.
+    ///
+    /// `init` is invoked with the install and runtime configs from the provided loaders as well as the [`Witchcraft`]
+    /// context object. It is expected to return quickly; any long running initialization should be spawned off into
+    /// the background to run asynchronously.
+    pub fn init_with_configs<I, R, F, LI, LR>(
+        self,
+        init: F,
+        load_install: LI,
+        load_runtime: LR,
+    ) -> !
+    where
+        I: AsRef<InstallConfig> + DeserializeOwned,
+        R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+        F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+        LI: FnOnce() -> Result<I, Error>,
+        LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
+    {
+        let mut runtime_guard = None;
+
+        let ret = match init_inner(self, init, load_install, load_runtime, &mut runtime_guard) {
+            Ok(()) => 0,
+            Err(e) => {
+                fatal!("error starting server", error: e);
+                1
+            }
+        };
+        drop(runtime_guard);
+
+        process::exit(ret);
+    }
+}
+
 /// Initializes a Witchcraft server.
 ///
 /// `init` is invoked with the parsed install and runtime configs as well as the [`Witchcraft`] context object. It
@@ -371,7 +440,7 @@ where
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
 {
-    init_with_configs(init, configs::load_install::<I>, configs::load_runtime::<R>)
+    Builder::new().init(init)
 }
 
 /// Initializes a Witchcraft server with custom config loaders.
@@ -387,21 +456,11 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    let mut runtime_guard = None;
-
-    let ret = match init_inner(init, load_install, load_runtime, &mut runtime_guard) {
-        Ok(()) => 0,
-        Err(e) => {
-            fatal!("error starting server", error: e);
-            1
-        }
-    };
-    drop(runtime_guard);
-
-    process::exit(ret);
+    Builder::new().init_with_configs(init, load_install, load_runtime)
 }
 
 fn init_inner<I, R, F, LI, LR>(
+    builder: Builder,
     init: F,
     load_install: LI,
     load_runtime: LR,
@@ -512,6 +571,7 @@ where
         thread_pool: None,
         endpoints: vec![],
         shutdown_hooks: ShutdownHooks::new(),
+        // intentionally using a default runtime for the management endpoints
         conjure_runtime: Arc::new(ConjureRuntime::new()),
     };
 
@@ -533,6 +593,8 @@ where
     // A bit of a dance to avoid activating the management server before init returns, which would
     // cause us to report ready too early.
     let management_endpoints = mem::take(&mut witchcraft.endpoints);
+
+    witchcraft.conjure_runtime = builder.conjure_runtime;
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
