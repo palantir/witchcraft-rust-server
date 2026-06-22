@@ -434,7 +434,7 @@ pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
         &mut runtime_guard,
         InitOptions {
             init_log,
-            thread_prefix: thread_prefix.unwrap_or_else(|| "".into()),
+            thread_prefix: thread_prefix.unwrap_or_else(|| NO_THREAD_PREFIX.to_string()),
         },
     ) {
         Ok(()) => 0,
@@ -448,6 +448,8 @@ pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
     process::exit(ret);
 }
 
+const NO_THREAD_PREFIX: &str = "";
+
 struct InitOptions {
     init_log: bool,
     thread_prefix: String,
@@ -457,7 +459,7 @@ impl Default for InitOptions {
     fn default() -> Self {
         Self {
             init_log: true,
-            thread_prefix: "".to_string(),
+            thread_prefix: NO_THREAD_PREFIX.to_string(),
         }
     }
 }
