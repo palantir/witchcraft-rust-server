@@ -97,11 +97,15 @@ impl Shared {
 
 pub struct ThreadPool {
     shared: Arc<Shared>,
-    thread_prefix: String,
+    thread_prefix: Option<String>,
 }
 
 impl ThreadPool {
-    pub fn new(config: &InstallConfig, metrics: &MetricRegistry, thread_prefix: String) -> Self {
+    pub fn new(
+        config: &InstallConfig,
+        metrics: &MetricRegistry,
+        thread_prefix: Option<String>,
+    ) -> Self {
         let pool = ThreadPool {
             shared: Arc::new(Shared {
                 min_threads: config.server().min_threads(),
@@ -146,8 +150,13 @@ impl ThreadPool {
 
         let id = state.next_id;
         state.next_id += 1;
+        let thread_prefix = self
+            .thread_prefix
+            .as_ref()
+            .map(|tp| tp.as_str())
+            .unwrap_or("server");
         let r = thread::Builder::new()
-            .name(format!("{}server-{id}", self.thread_prefix))
+            .name(format!("{}-{id}", thread_prefix))
             .spawn({
                 let shared = self.shared.clone();
                 move || shared.worker_loop()

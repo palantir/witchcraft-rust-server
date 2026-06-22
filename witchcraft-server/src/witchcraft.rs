@@ -39,7 +39,7 @@ pub struct Witchcraft {
     pub(crate) handle: Handle,
     pub(crate) install_config: InstallConfig,
     pub(crate) thread_pool: Option<Arc<ThreadPool>>,
-    pub(crate) thread_prefix: String,
+    pub(crate) thread_prefix: Option<String>,
     pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
     pub(crate) shutdown_hooks: ShutdownHooks,
     pub(crate) conjure_runtime: Arc<ConjureRuntime>,

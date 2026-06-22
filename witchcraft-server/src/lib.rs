@@ -408,6 +408,9 @@ where
 }
 
 #[cfg(feature = "in-memory-testing")]
+static GLOBALS_INITIALIZED: std::sync::OnceLock<AtomicBool> = std::sync::OnceLock::new();
+
+#[cfg(feature = "in-memory-testing")]
 /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
 /// can initialize a Witchcraft server that's running in a thread, rather than as a separate
 /// process. Note: only one in-memory server can initialize logging (`init_log = true`). Use the
@@ -416,7 +419,6 @@ pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
     init: F,
     load_install: LI,
     load_runtime: LR,
-    init_log: bool,
     thread_prefix: Option<String>,
 ) where
     I: AsRef<InstallConfig> + DeserializeOwned,
@@ -425,6 +427,9 @@ pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
+    let globals_initialized = GLOBALS_INITIALIZED.get_or_init(|| AtomicBool::new(false));
+    let init_globals = !globals_initialized.swap(true, Ordering::Relaxed);
+
     let mut runtime_guard = None;
 
     let ret = match init_inner(
@@ -433,8 +438,8 @@ pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
         load_runtime,
         &mut runtime_guard,
         InitOptions {
-            init_log,
-            thread_prefix: thread_prefix.unwrap_or_else(|| NO_THREAD_PREFIX.to_string()),
+            init_globals,
+            thread_prefix,
         },
     ) {
         Ok(()) => 0,
@@ -448,18 +453,16 @@ pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
     process::exit(ret);
 }
 
-const NO_THREAD_PREFIX: &str = "";
-
 struct InitOptions {
-    init_log: bool,
-    thread_prefix: String,
+    init_globals: bool,
+    thread_prefix: Option<String>,
 }
 
 impl Default for InitOptions {
     fn default() -> Self {
         Self {
-            init_log: true,
-            thread_prefix: NO_THREAD_PREFIX.to_string(),
+            init_globals: true,
+            thread_prefix: None,
         }
     }
 }
@@ -478,7 +481,7 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    if init_options.init_log {
+    if init_options.init_globals {
         logging::early_init();
     }
 
@@ -490,12 +493,15 @@ where
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
-    let thread_prefix = init_options.thread_prefix.clone();
+    let thread_prefix = init_options
+        .thread_prefix
+        .clone()
+        .unwrap_or("runtime".to_string());
     let runtime = runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name_fn(move || {
             format!(
-                "{}runtime-{}",
+                "{}-{}",
                 thread_prefix,
                 thread_id.fetch_add(1, Ordering::Relaxed)
             )
@@ -520,7 +526,7 @@ where
     let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
     let diagnostics = Arc::new(DiagnosticRegistry::new());
 
-    let loggers = if init_options.init_log {
+    let loggers = if init_options.init_globals {
         handle.block_on(logging::init(
             &metrics,
             install_config.as_ref(),
@@ -533,7 +539,7 @@ where
 
     info!("server starting");
 
-    if install_config.as_ref().minidump().enabled() {
+    if init_options.init_globals && install_config.as_ref().minidump().enabled() {
         let minidump_ok = Arc::new(AtomicBool::new(true));
         let socket_dir = install_config.as_ref().minidump().socket_dir();
         handle.spawn({
@@ -562,9 +568,11 @@ where
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
     {
-        diagnostics.register(HeapStatsDiagnostic);
-        heap_profile::init(&runtime_config);
-        diagnostics.register(HeapProfileDiagnostic);
+        if init_options.init_globals {
+            diagnostics.register(HeapStatsDiagnostic);
+            heap_profile::init(&runtime_config);
+            diagnostics.register(HeapProfileDiagnostic);
+        }
     }
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
 
