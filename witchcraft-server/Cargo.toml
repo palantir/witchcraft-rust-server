@@ -30,6 +30,7 @@ docs = "A recording of running threads and their respective stacktraces."
 [features]
 default = ["jemalloc"]
 jemalloc = ["dep:tikv-jemalloc-ctl", "dep:tikv-jemallocator"]
+in-memory-testing = []
 
 [dependencies]
 arc-swap = "1"

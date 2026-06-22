@@ -389,7 +389,13 @@ where
 {
     let mut runtime_guard = None;
 
-    let ret = match init_inner(init, load_install, load_runtime, &mut runtime_guard) {
+    let ret = match init_inner(
+        init,
+        load_install,
+        load_runtime,
+        &mut runtime_guard,
+        InitOptions::default(),
+    ) {
         Ok(()) => 0,
         Err(e) => {
             fatal!("error starting server", error: e);
@@ -401,11 +407,67 @@ where
     process::exit(ret);
 }
 
+#[cfg(feature = "in-memory-testing")]
+/// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
+/// can initialize a Witchcraft server that's running in a thread, rather than as a separate
+/// process. Note: only one in-memory server can initialize logging (`init_log = true`). Use the
+/// `thread_prefix` parameter to differentiate log messages across servers.
+pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
+    init: F,
+    load_install: LI,
+    load_runtime: LR,
+    init_log: bool,
+    thread_prefix: Option<String>,
+) where
+    I: AsRef<InstallConfig> + DeserializeOwned,
+    R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+    F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+    LI: FnOnce() -> Result<I, Error>,
+    LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
+{
+    let mut runtime_guard = None;
+
+    let ret = match init_inner(
+        init,
+        load_install,
+        load_runtime,
+        &mut runtime_guard,
+        InitOptions {
+            init_log,
+            thread_prefix: thread_prefix.unwrap_or_else(|| "".into()),
+        },
+    ) {
+        Ok(()) => 0,
+        Err(e) => {
+            fatal!("error starting server", error: e);
+            1
+        }
+    };
+    drop(runtime_guard);
+
+    process::exit(ret);
+}
+
+struct InitOptions {
+    init_log: bool,
+    thread_prefix: String,
+}
+
+impl Default for InitOptions {
+    fn default() -> Self {
+        Self {
+            init_log: true,
+            thread_prefix: "".to_string(),
+        }
+    }
+}
+
 fn init_inner<I, R, F, LI, LR>(
     init: F,
     load_install: LI,
     load_runtime: LR,
     runtime_guard: &mut Option<RuntimeGuard>,
+    init_options: InitOptions,
 ) -> Result<(), Error>
 where
     I: AsRef<InstallConfig> + DeserializeOwned,
@@ -414,7 +476,9 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    logging::early_init();
+    if init_options.init_log {
+        logging::early_init();
+    }
 
     let args = env::args_os().collect::<Vec<_>>();
     if args.len() == 3 && args[1] == "minidump" {
@@ -424,9 +488,16 @@ where
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
+    let thread_prefix = init_options.thread_prefix.clone();
     let runtime = runtime::Builder::new_multi_thread()
         .enable_all()
-        .thread_name_fn(move || format!("runtime-{}", thread_id.fetch_add(1, Ordering::Relaxed)))
+        .thread_name_fn(move || {
+            format!(
+                "{}runtime-{}",
+                thread_prefix,
+                thread_id.fetch_add(1, Ordering::Relaxed)
+            )
+        })
         .worker_threads(install_config.as_ref().server().io_threads())
         .thread_keep_alive(install_config.as_ref().server().idle_thread_timeout())
         .build()
@@ -447,12 +518,16 @@ where
     let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
     let diagnostics = Arc::new(DiagnosticRegistry::new());
 
-    let loggers = handle.block_on(logging::init(
-        &metrics,
-        install_config.as_ref(),
-        &runtime_config.map(|c| c.as_ref().logging().clone()),
-        runtime.logger_shutdown.as_mut().unwrap(),
-    ))?;
+    let loggers = if init_options.init_log {
+        handle.block_on(logging::init(
+            &metrics,
+            install_config.as_ref(),
+            &runtime_config.map(|c| c.as_ref().logging().clone()),
+            runtime.logger_shutdown.as_mut().unwrap(),
+        ))
+    } else {
+        logging::get_existing()
+    }?;
 
     info!("server starting");
 
@@ -510,6 +585,7 @@ where
         handle: handle.clone(),
         install_config: install_config.as_ref().clone(),
         thread_pool: None,
+        thread_prefix: init_options.thread_prefix,
         endpoints: vec![],
         shutdown_hooks: ShutdownHooks::new(),
         conjure_runtime: Arc::new(ConjureRuntime::new()),
