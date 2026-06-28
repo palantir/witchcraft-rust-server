@@ -387,70 +387,163 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    let mut runtime_guard = None;
+    logging::early_init();
 
-    let ret = match init_inner(
-        init,
-        load_install,
-        load_runtime,
-        &mut runtime_guard,
-        InitOptions::default(),
-    ) {
-        Ok(()) => 0,
-        Err(e) => {
-            fatal!("error starting server", error: e);
-            1
-        }
-    };
-    drop(runtime_guard);
+    let args = env::args_os().collect::<Vec<_>>();
+    if args.len() == 3 && args[1] == "minidump" {
+        let ret = match minidump::server(Path::new(&args[2])) {
+            Ok(()) => 0,
+            Err(e) => {
+                fatal!("error starting minidump server", error: e);
+                1
+            }
+        };
+        process::exit(ret);
+    } else {
+        let mut runtime_guard = None;
 
-    process::exit(ret);
+        let ret = match init_inner(
+            init,
+            load_install,
+            load_runtime,
+            &mut runtime_guard,
+            InitOptions::default(),
+        ) {
+            Ok(witchcraft) => {
+                match witchcraft.handle.block_on(shutdown(
+                    witchcraft.shutdown_hooks,
+                    witchcraft.install_config.server().shutdown_timeout(),
+                )) {
+                    Ok(_) => 0,
+                    Err(e) => {
+                        fatal!("error after starting server", error: e);
+                        1
+                    }
+                }
+            }
+            Err(e) => {
+                fatal!("error starting server", error: e);
+                1
+            }
+        };
+        drop(runtime_guard);
+
+        process::exit(ret);
+    }
 }
 
 #[cfg(feature = "in-memory-testing")]
-static GLOBALS_INITIALIZED: std::sync::OnceLock<AtomicBool> = std::sync::OnceLock::new();
+/// Variation of the Witchcraft server initialization, which can be used for testing. Allows
+/// spawning multiple instances of the server in memory.
+pub mod in_memory_testing {
+    use crate::{drain_shutdown_hooks, init_inner, logging, InitOptions, Witchcraft};
+    use conjure_error::Error;
+    use refreshable::Refreshable;
+    use serde::de::DeserializeOwned;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{mpsc, Arc};
+    use std::thread::{self, JoinHandle};
+    use tokio::runtime::Handle;
+    use tokio::sync::oneshot;
+    use witchcraft_server_config::install::InstallConfig;
+    use witchcraft_server_config::runtime::RuntimeConfig;
 
-#[cfg(feature = "in-memory-testing")]
-/// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
-/// can initialize a Witchcraft server that's running in a thread, rather than as a separate
-/// process. Note: only one in-memory server can initialize logging (`init_log = true`). Use the
-/// `thread_prefix` parameter to differentiate log messages across servers.
-pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
-    init: F,
-    load_install: LI,
-    load_runtime: LR,
-    thread_prefix: Option<String>,
-) where
-    I: AsRef<InstallConfig> + DeserializeOwned,
-    R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
-    F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
-    LI: FnOnce() -> Result<I, Error>,
-    LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
-{
-    let globals_initialized = GLOBALS_INITIALIZED.get_or_init(|| AtomicBool::new(false));
-    let init_globals = !globals_initialized.swap(true, Ordering::Relaxed);
+    static GLOBALS_INITIALIZED: std::sync::OnceLock<AtomicBool> = std::sync::OnceLock::new();
 
-    let mut runtime_guard = None;
+    /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
+    /// can initialize a Witchcraft server that's running in a thread, rather than as a separate
+    /// process. Note: only one in-memory server can initialize logging (`init_log = true`). Use the
+    /// `thread_prefix` parameter to differentiate log messages across servers.
+    ///
+    /// The server runs on a dedicated thread, and the returned [`RunHandle`] shuts the
+    /// server down gracefully when dropped. Note that the first call to this init function will
+    /// also initialize global shared logging; and the returned handle will shut down the appenders
+    /// on drop. Ensure that first initialized server is the last one to go out of scope.
+    pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
+        init: F,
+        load_install: LI,
+        load_runtime: LR,
+        thread_prefix: Option<String>,
+    ) -> Result<RunHandle, Error>
+    where
+        I: AsRef<InstallConfig> + DeserializeOwned,
+        R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+        F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error> + Send + 'static,
+        LI: FnOnce() -> Result<I, Error> + Send + 'static,
+        LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>
+            + Send
+            + 'static,
+    {
+        let globals_initialized = GLOBALS_INITIALIZED.get_or_init(|| AtomicBool::new(false));
+        let init_globals = !globals_initialized.swap(true, Ordering::Relaxed);
 
-    let ret = match init_inner(
-        init,
-        load_install,
-        load_runtime,
-        &mut runtime_guard,
-        InitOptions {
-            init_globals,
-            thread_prefix,
-        },
-    ) {
-        Ok(()) => 0,
-        Err(e) => {
-            fatal!("error starting server", error: e);
-            1
+        if init_globals {
+            logging::early_init();
         }
-    };
-    drop(runtime_guard);
 
-    process::exit(ret);
+        let (startup_result_sender, startup_result_receiver) = mpsc::channel::<Result<(), Error>>();
+        let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
+
+        // Dedicated thread for this server instance, allows it to create its own tokio runtime
+        let server_thread = thread::spawn(move || {
+            let mut runtime_guard = None;
+            let witchcraft = match init_inner(
+                init,
+                load_install,
+                load_runtime,
+                &mut runtime_guard,
+                InitOptions {
+                    init_globals,
+                    thread_prefix,
+                },
+            ) {
+                Ok(witchcraft) => witchcraft,
+                Err(e) => {
+                    let _ = startup_result_sender.send(Err(e));
+                    return;
+                }
+            };
+
+            let handle = witchcraft.handle.clone();
+            let timeout = witchcraft.install_config.server().shutdown_timeout();
+            let _ = startup_result_sender.send(Ok(()));
+
+            // Block the server until shutdown is called by the RunHandle's drop
+            handle.block_on(async move {
+                let _ = shutdown_signal_receiver.await;
+                    drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
+            });
+            drop(runtime_guard);
+        });
+
+        // Wait for startup to finish before handing back a handle. A receive error means the thread
+        // panicked before reporting, dropping `startup_tx`.
+        match startup_result_receiver.recv() {
+            Ok(Ok(())) => Ok(RunHandle {
+                shutdown_signal_sender: Some(shutdown_signal_sender),
+                server_thread: Some(server_thread),
+            }),
+            Ok(Err(e)) => Err(e), // Error during init_error()
+            Err(_) => Err(Error::internal_safe(
+                "in-memory server thread panicked during initialization",
+            )),
+        }
+    }
+
+    /// Provides a handle for a running in-memory Witchcraft server. Gracefully shuts the server
+    /// down when it goes out of scope.
+    pub struct RunHandle {
+        shutdown_signal_sender: Option<oneshot::Sender<()>>,
+        server_thread: Option<JoinHandle<()>>,
+    }
+
+    impl Drop for RunHandle {
+        fn drop(&mut self) {
+            // Signal shutdown, then wait for the server thread to drain and tear down its runtime.
+            let _ = self.shutdown_signal_sender.take().unwrap().send(());
+            let _ = self.server_thread.take().unwrap().join();
+        }
+    }
 }
 
 struct InitOptions {
@@ -473,7 +566,7 @@ fn init_inner<I, R, F, LI, LR>(
     load_runtime: LR,
     runtime_guard: &mut Option<RuntimeGuard>,
     init_options: InitOptions,
-) -> Result<(), Error>
+) -> Result<Witchcraft, Error>
 where
     I: AsRef<InstallConfig> + DeserializeOwned,
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
@@ -481,15 +574,6 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    if init_options.init_globals {
-        logging::early_init();
-    }
-
-    let args = env::args_os().collect::<Vec<_>>();
-    if args.len() == 3 && args[1] == "minidump" {
-        return minidump::server(Path::new(&args[2]));
-    }
-
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
@@ -650,21 +734,28 @@ where
         port,
     ))?;
 
-    handle.block_on(shutdown(
-        witchcraft.shutdown_hooks,
-        witchcraft.install_config.server().shutdown_timeout(),
-    ))
+    Ok(witchcraft)
 }
 
 async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<(), Error> {
     let mut signals = pin!(signals()?);
 
     signals.next().await;
+
+    select! {
+        _ = drain_shutdown_hooks(shutdown_hooks, timeout) => {}
+        _ = signals.next() => info!("graceful shutdown interrupted by signal"),
+    }
+
+    Ok(())
+}
+
+/// Awaits the server's shutdown hooks, giving up after `timeout` elapses.
+async fn drain_shutdown_hooks(shutdown_hooks: ShutdownHooks, timeout: Duration) {
     info!("server shutting down");
 
     select! {
         _ = shutdown_hooks => {}
-        _ = signals.next() => info!("graceful shutdown interrupted by signal"),
         _ = time::sleep(timeout) => {
             info!(
                 "graceful shutdown timed out",
@@ -674,8 +765,6 @@ async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<()
             );
         }
     }
-
-    Ok(())
 }
 
 fn signals() -> Result<impl Stream<Item = ()>, Error> {
