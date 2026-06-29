@@ -150,9 +150,7 @@ impl ThreadPool {
 
         let id = state.next_id;
         state.next_id += 1;
-        let thread_prefix = self
-            .thread_prefix.as_deref()
-            .unwrap_or("server");
+        let thread_prefix = self.thread_prefix.as_deref().unwrap_or("server");
         let r = thread::Builder::new()
             .name(format!("{}-{id}", thread_prefix))
             .spawn({
