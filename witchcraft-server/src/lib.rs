@@ -451,14 +451,15 @@ pub mod in_memory_testing {
     static GLOBALS_INITIALIZED: std::sync::OnceLock<AtomicBool> = std::sync::OnceLock::new();
 
     /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
-    /// can initialize a Witchcraft server that's running in a thread, rather than as a separate
-    /// process. Note: only one in-memory server can initialize logging (`init_log = true`). Use the
-    /// `thread_prefix` parameter to differentiate log messages across servers.
+    /// spawns a Witchcraft server in a thread, rather than as a separate process. Note: because
+    /// logging infrastructure is global to a process, the first initialized server will also
+    /// initialize logging; all subsequent ones will reuse the same log levels and appenders.
     ///
     /// The server runs on a dedicated thread, and the returned [`RunHandle`] shuts the
-    /// server down gracefully when dropped. Note that the first call to this init function will
-    /// also initialize global shared logging; and the returned handle will shut down the appenders
-    /// on drop. Ensure that first initialized server is the last one to go out of scope.
+    /// server down gracefully when dropped. Note that since the first call to this init function will
+    /// also initialize global shared logging; the corresponding returned handle will shut down the
+    /// appenders on drop, making logging unavailable to servers initialized after the first one.
+    /// Thus, ensure that first initialized server is the last one to go out of scope.
     pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
         init: F,
         load_install: LI,
@@ -503,10 +504,11 @@ pub mod in_memory_testing {
                     return;
                 }
             };
+            // Startup OK, notify receiver waiting below
+            let _ = startup_result_sender.send(Ok(()));
 
             let handle = witchcraft.handle.clone();
             let timeout = witchcraft.install_config.server().shutdown_timeout();
-            let _ = startup_result_sender.send(Ok(()));
 
             // Block the server until shutdown is called by the RunHandle's drop
             handle.block_on(async move {
@@ -517,13 +519,13 @@ pub mod in_memory_testing {
         });
 
         // Wait for startup to finish before handing back a handle. A receive error means the thread
-        // panicked before reporting, dropping `startup_tx`.
+        // panicked before reporting.
         match startup_result_receiver.recv() {
             Ok(Ok(())) => Ok(RunHandle {
                 shutdown_signal_sender: Some(shutdown_signal_sender),
                 server_thread: Some(server_thread),
             }),
-            Ok(Err(e)) => Err(e), // Error during init_error()
+            Ok(Err(e)) => Err(e), // Error during init_inner()
             Err(_) => Err(Error::internal_safe(
                 "in-memory server thread panicked during initialization",
             )),
