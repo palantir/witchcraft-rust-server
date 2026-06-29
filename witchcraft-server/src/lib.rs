@@ -513,7 +513,7 @@ pub mod in_memory_testing {
             // Block the server until shutdown is called by the RunHandle's drop
             handle.block_on(async move {
                 let _ = shutdown_signal_receiver.await;
-                    drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
+                drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
             });
             drop(runtime_guard);
         });
