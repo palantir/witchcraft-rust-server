@@ -440,15 +440,15 @@ pub mod in_memory_testing {
     use conjure_error::Error;
     use refreshable::Refreshable;
     use serde::de::DeserializeOwned;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::{mpsc, Arc};
+    use std::sync::atomic::AtomicBool;
+    use std::sync::{mpsc, Arc, Once};
     use std::thread::{self, JoinHandle};
     use tokio::runtime::Handle;
     use tokio::sync::oneshot;
     use witchcraft_server_config::install::InstallConfig;
     use witchcraft_server_config::runtime::RuntimeConfig;
 
-    static GLOBALS_INITIALIZED: std::sync::OnceLock<AtomicBool> = std::sync::OnceLock::new();
+    static INIT: Once = Once::new();
 
     /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
     /// spawns a Witchcraft server in a thread, rather than as a separate process. Note: because
@@ -475,61 +475,73 @@ pub mod in_memory_testing {
             + Send
             + 'static,
     {
-        let globals_initialized = GLOBALS_INITIALIZED.get_or_init(|| AtomicBool::new(false));
-        let init_globals = !globals_initialized.swap(true, Ordering::Relaxed);
+        let init_fn = |init_globals: bool| {
+            if init_globals {
+                logging::early_init();
+            }
 
-        if init_globals {
-            logging::early_init();
-        }
+            let (startup_result_sender, startup_result_receiver) =
+                mpsc::channel::<Result<(), Error>>();
+            let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
 
-        let (startup_result_sender, startup_result_receiver) = mpsc::channel::<Result<(), Error>>();
-        let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
+            // Dedicated thread for this server instance, allows it to create its own tokio runtime
+            let server_thread = thread::spawn(move || {
+                let mut runtime_guard = None;
 
-        // Dedicated thread for this server instance, allows it to create its own tokio runtime
-        let server_thread = thread::spawn(move || {
-            let mut runtime_guard = None;
-            let witchcraft = match init_inner(
-                init,
-                load_install,
-                load_runtime,
-                &mut runtime_guard,
-                InitOptions {
-                    init_globals,
-                    thread_prefix,
-                },
-            ) {
-                Ok(witchcraft) => witchcraft,
-                Err(e) => {
-                    let _ = startup_result_sender.send(Err(e));
-                    return;
-                }
-            };
-            // Startup OK, notify receiver waiting below
-            let _ = startup_result_sender.send(Ok(()));
+                let witchcraft = match init_inner(
+                    init,
+                    load_install,
+                    load_runtime,
+                    &mut runtime_guard,
+                    InitOptions {
+                        init_globals,
+                        thread_prefix,
+                    },
+                ) {
+                    Ok(witchcraft) => witchcraft,
+                    Err(e) => {
+                        let _ = startup_result_sender.send(Err(e));
+                        return;
+                    }
+                };
+                // Startup OK, notify receiver waiting below
+                let _ = startup_result_sender.send(Ok(()));
 
-            let handle = witchcraft.handle.clone();
-            let timeout = witchcraft.install_config.server().shutdown_timeout();
+                let handle = witchcraft.handle.clone();
+                let timeout = witchcraft.install_config.server().shutdown_timeout();
 
-            // Block the server until shutdown is called by the RunHandle's drop
-            handle.block_on(async move {
-                let _ = shutdown_signal_receiver.await;
-                drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
+                // Block the server until shutdown is called by the RunHandle's drop
+                handle.block_on(async move {
+                    let _ = shutdown_signal_receiver.await;
+                    drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
+                });
+                drop(runtime_guard);
             });
-            drop(runtime_guard);
+
+            // Wait for startup to finish before handing back a handle. A receive error means the thread
+            // panicked before reporting.
+            match startup_result_receiver.recv() {
+                Ok(Ok(())) => Ok(RunHandle {
+                    shutdown_signal_sender: Some(shutdown_signal_sender),
+                    server_thread: Some(server_thread),
+                }),
+                Ok(Err(e)) => Err(e), // Error during init_inner()
+                Err(_) => Err(Error::internal_safe(
+                    "in-memory server thread panicked during initialization",
+                )),
+            }
+        };
+
+        let mut init_fn = Some(init_fn);
+
+        let mut first_init_result: Option<Result<RunHandle, Error>> = None;
+        INIT.call_once(|| {
+            // Only one branch of init_fn() is guaranteed to run, this take() lets us bypass
+            // borrow checker not detecting this branching.
+            first_init_result = Some(init_fn.take().unwrap()(true));
         });
 
-        // Wait for startup to finish before handing back a handle. A receive error means the thread
-        // panicked before reporting.
-        match startup_result_receiver.recv() {
-            Ok(Ok(())) => Ok(RunHandle {
-                shutdown_signal_sender: Some(shutdown_signal_sender),
-                server_thread: Some(server_thread),
-            }),
-            Ok(Err(e)) => Err(e), // Error during init_inner()
-            Err(_) => Err(Error::internal_safe(
-                "in-memory server thread panicked during initialization",
-            )),
-        }
+        first_init_result.unwrap_or_else(|| init_fn.unwrap()(false))
     }
 
     /// Provides a handle for a running in-memory Witchcraft server. Gracefully shuts the server
