@@ -440,7 +440,7 @@ pub mod in_memory_testing {
     use conjure_error::Error;
     use refreshable::Refreshable;
     use serde::de::DeserializeOwned;
-    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc, Once};
     use std::thread::{self, JoinHandle};
     use tokio::runtime::Handle;
@@ -449,6 +449,7 @@ pub mod in_memory_testing {
     use witchcraft_server_config::runtime::RuntimeConfig;
 
     static INIT: Once = Once::new();
+    static FIRST_INIT_SUCCESS: AtomicBool = AtomicBool::new(false);
 
     /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
     /// spawns a Witchcraft server in a thread, rather than as a separate process. Note: because
@@ -538,10 +539,17 @@ pub mod in_memory_testing {
         INIT.call_once(|| {
             // Only one branch of init_fn() is guaranteed to run, this take() lets us bypass
             // borrow checker not detecting this branching.
-            first_init_result = Some(init_fn.take().unwrap()(true));
+            let res = init_fn.take().unwrap()(true);
+            FIRST_INIT_SUCCESS.store(res.is_ok(), Ordering::Relaxed);
+            first_init_result = Some(res);
         });
 
-        first_init_result.unwrap_or_else(|| init_fn.unwrap()(false))
+        first_init_result.unwrap_or_else(|| {
+            if !FIRST_INIT_SUCCESS.load(Ordering::Relaxed) {
+                return Err(Error::internal_safe("Initial init failed, not continuing"));
+            }
+            init_fn.take().unwrap()(false)
+        })
     }
 
     /// Provides a handle for a running in-memory Witchcraft server. Gracefully shuts the server
