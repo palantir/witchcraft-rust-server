@@ -39,6 +39,7 @@ pub struct Witchcraft {
     pub(crate) handle: Handle,
     pub(crate) install_config: InstallConfig,
     pub(crate) thread_pool: Option<Arc<ThreadPool>>,
+    pub(crate) thread_prefix: Option<String>,
     pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
     pub(crate) shutdown_hooks: ShutdownHooks,
     pub(crate) conjure_runtime: Arc<ConjureRuntime>,
@@ -140,9 +141,13 @@ impl Witchcraft {
             Box<dyn Endpoint<blocking::RequestBody, blocking::ResponseWriter> + Sync + Send>,
         >,
     ) {
-        let thread_pool = self
-            .thread_pool
-            .get_or_insert_with(|| Arc::new(ThreadPool::new(&self.install_config, &self.metrics)));
+        let thread_pool = self.thread_pool.get_or_insert_with(|| {
+            Arc::new(ThreadPool::new(
+                &self.install_config,
+                &self.metrics,
+                self.thread_prefix.clone(),
+            ))
+        });
 
         self.endpoints.extend(
             endpoints
