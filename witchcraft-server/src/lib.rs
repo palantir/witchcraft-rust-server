@@ -436,7 +436,7 @@ where
 /// Variation of the Witchcraft server initialization, which can be used for testing. Allows
 /// spawning multiple instances of the server in memory.
 pub mod in_memory_testing {
-    use crate::{drain_shutdown_hooks, init_inner, logging, InitOptions, Witchcraft};
+    use crate::{drain_shutdown_hooks, init_inner, InitOptions, Witchcraft};
     use conjure_error::Error;
     use refreshable::Refreshable;
     use serde::de::DeserializeOwned;
@@ -454,11 +454,13 @@ pub mod in_memory_testing {
     /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
     /// spawns a Witchcraft server in a thread, rather than as a separate process. Note: because
     /// logging infrastructure is global to a process, the first initialized server will also
-    /// initialize logging; all subsequent ones will reuse the same log levels and appenders.
+    /// initialize logging appenders; all subsequent ones will reuse the same appenders. However,
+    /// the actual service logger implementation and log level must be set globally once by the
+    /// calling test code.
     ///
     /// The server runs on a dedicated thread, and the returned [`RunHandle`] shuts the
     /// server down gracefully when dropped. Note that since the first call to this init function will
-    /// also initialize global shared logging; the corresponding returned handle will shut down the
+    /// also initialize the global logging appenders; the corresponding returned handle will shut down the
     /// appenders on drop, making logging unavailable to servers initialized after the first one.
     /// Thus, ensure that first initialized server is the last one to go out of scope.
     pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
@@ -477,10 +479,6 @@ pub mod in_memory_testing {
             + 'static,
     {
         let init_fn = |init_globals: bool| {
-            if init_globals {
-                logging::early_init();
-            }
-
             let (startup_result_sender, startup_result_receiver) =
                 mpsc::channel::<Result<(), Error>>();
             let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
