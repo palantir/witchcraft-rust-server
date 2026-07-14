@@ -30,7 +30,7 @@ const X_CONTENT_TYPE_OPTIONS_VALUE: HeaderValue = HeaderValue::from_static("nosn
 #[allow(clippy::declare_interior_mutable_const)]
 const X_FRAME_OPTIONS_VALUE: HeaderValue = HeaderValue::from_static("sameorigin");
 #[allow(clippy::declare_interior_mutable_const)]
-const X_XSS_PROTECTION_VALUE: HeaderValue = HeaderValue::from_static("1; mode=block");
+const X_XSS_PROTECTION_VALUE: HeaderValue = HeaderValue::from_static("0");
 
 #[allow(clippy::declare_interior_mutable_const)]
 const X_CONTENT_SECURITY_POLICY: HeaderName = HeaderName::from_static("x-content-security-policy");
