@@ -286,11 +286,11 @@
 //! See the documentation of the [`conjure_runtime`] crate for the metrics reported by HTTP clients.
 #![warn(missing_docs)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Once, OnceLock};
 use std::time::Duration;
 use std::{env, mem};
 
@@ -387,10 +387,9 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    logging::early_init();
-
     let args = env::args_os().collect::<Vec<_>>();
     if args.len() == 3 && args[1] == "minidump" {
+        logging::early_init();
         let ret = match minidump::server(Path::new(&args[2])) {
             Ok(()) => 0,
             Err(e) => {
@@ -440,16 +439,13 @@ pub mod in_memory_testing {
     use conjure_error::Error;
     use refreshable::Refreshable;
     use serde::de::DeserializeOwned;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::{mpsc, Arc, Once};
+    use std::sync::atomic::AtomicBool;
+    use std::sync::{mpsc, Arc};
     use std::thread::{self, JoinHandle};
     use tokio::runtime::Handle;
     use tokio::sync::oneshot;
     use witchcraft_server_config::install::InstallConfig;
     use witchcraft_server_config::runtime::RuntimeConfig;
-
-    static INIT: Once = Once::new();
-    static FIRST_INIT_SUCCESS: AtomicBool = AtomicBool::new(false);
 
     /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
     /// spawns a Witchcraft server in a thread, rather than as a separate process. Note: because
@@ -478,76 +474,55 @@ pub mod in_memory_testing {
             + Send
             + 'static,
     {
-        let init_fn = |init_globals: bool| {
-            let (startup_result_sender, startup_result_receiver) =
-                mpsc::channel::<Result<(), Error>>();
-            let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
+        let (startup_result_sender, startup_result_receiver) = mpsc::channel::<Result<(), Error>>();
+        let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
 
-            // Dedicated thread for this server instance, allows it to create its own tokio runtime
-            let server_thread = thread::spawn(move || {
-                let mut runtime_guard = None;
+        // Dedicated thread for this server instance, allows it to create its own tokio runtime.
+        // Process-global initialization (logging appenders, minidump, heap profiling) happens inside
+        // `init_inner`: the first server to start performs it while any concurrent servers block,
+        // then every server reuses the shared globals.
+        let server_thread = thread::spawn(move || {
+            let mut runtime_guard = None;
 
-                let witchcraft = match init_inner(
-                    init,
-                    load_install,
-                    load_runtime,
-                    &mut runtime_guard,
-                    InitOptions {
-                        init_globals,
-                        thread_prefix,
-                    },
-                ) {
-                    Ok(witchcraft) => witchcraft,
-                    Err(e) => {
-                        let _ = startup_result_sender.send(Err(e));
-                        return;
-                    }
-                };
-                // Startup OK, notify receiver waiting below
-                let _ = startup_result_sender.send(Ok(()));
+            let witchcraft = match init_inner(
+                init,
+                load_install,
+                load_runtime,
+                &mut runtime_guard,
+                InitOptions { thread_prefix },
+            ) {
+                Ok(witchcraft) => witchcraft,
+                Err(e) => {
+                    let _ = startup_result_sender.send(Err(e));
+                    return;
+                }
+            };
+            // Startup OK, notify receiver waiting below
+            let _ = startup_result_sender.send(Ok(()));
 
-                let handle = witchcraft.handle.clone();
-                let timeout = witchcraft.install_config.server().shutdown_timeout();
+            let handle = witchcraft.handle.clone();
+            let timeout = witchcraft.install_config.server().shutdown_timeout();
 
-                // Block the server until shutdown is called by the RunHandle's drop
-                handle.block_on(async move {
-                    let _ = shutdown_signal_receiver.await;
-                    drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
-                });
-                drop(runtime_guard);
+            // Block the server until shutdown is called by the RunHandle's drop
+            handle.block_on(async move {
+                let _ = shutdown_signal_receiver.await;
+                drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
             });
-
-            // Wait for startup to finish before handing back a handle. A receive error means the thread
-            // panicked before reporting.
-            match startup_result_receiver.recv() {
-                Ok(Ok(())) => Ok(RunHandle {
-                    shutdown_signal_sender: Some(shutdown_signal_sender),
-                    server_thread: Some(server_thread),
-                }),
-                Ok(Err(e)) => Err(e), // Error during init_inner()
-                Err(_) => Err(Error::internal_safe(
-                    "in-memory server thread panicked during initialization",
-                )),
-            }
-        };
-
-        let mut init_fn = Some(init_fn);
-
-        let mut first_init_result: Option<Result<RunHandle, Error>> = None;
-        INIT.call_once(|| {
-            // Only one branch of init_fn() is guaranteed to run, this take() lets us bypass
-            // borrow checker not detecting this branching.
-            let res = init_fn.take().unwrap()(true);
-            FIRST_INIT_SUCCESS.store(res.is_ok(), Ordering::Relaxed);
-            first_init_result = Some(res);
+            drop(runtime_guard);
         });
 
-        first_init_result.unwrap_or_else(|| {
-            if !FIRST_INIT_SUCCESS.load(Ordering::Relaxed) {
-                return Err(Error::internal_safe("Initial init failed, not continuing"));
-            }
-            init_fn.take().unwrap()(false)
-        })
+        // Wait for startup to finish before handing back a handle. A receive error means the thread
+        // panicked before reporting.
+        match startup_result_receiver.recv() {
+            Ok(Ok(())) => Ok(RunHandle {
+                shutdown_signal_sender: Some(shutdown_signal_sender),
+                server_thread: Some(server_thread),
+            }),
+            Ok(Err(e)) => Err(e), // Error during init_inner()
+            Err(_) => Err(Error::internal_safe(
+                "in-memory server thread panicked during initialization",
+            )),
+        }
     }
 
     /// Provides a handle for a running in-memory Witchcraft server. Gracefully shuts the server
@@ -566,18 +541,26 @@ pub mod in_memory_testing {
     }
 }
 
+#[derive(Default)]
 struct InitOptions {
-    init_globals: bool,
     thread_prefix: Option<String>,
 }
 
-impl Default for InitOptions {
-    fn default() -> Self {
-        Self {
-            init_globals: true,
-            thread_prefix: None,
-        }
-    }
+/// Runs `logging::early_init` exactly once per process, before any server loads its config.
+static EARLY_INIT: Once = Once::new();
+/// Process-global state
+static GLOBALS: OnceLock<Option<Globals>> = OnceLock::new();
+
+struct Globals {
+    /// `Some` iff minidump was enabled in the first server's install config.
+    minidump: Option<MinidumpGlobals>,
+}
+
+struct MinidumpGlobals {
+    ok: Arc<AtomicBool>,
+    // Only read by the linux-only `ThreadDumpDiagnostic`.
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    socket_dir: PathBuf,
 }
 
 fn init_inner<I, R, F, LI, LR>(
@@ -594,6 +577,9 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
+    // Set up the early logging bridge before loading config, exactly once per process.
+    EARLY_INIT.call_once(logging::early_init);
+
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
@@ -630,37 +616,61 @@ where
     let readiness_checks = Arc::new(ReadinessCheckRegistry::new());
     let diagnostics = Arc::new(DiagnosticRegistry::new());
 
-    let loggers = if init_options.init_globals {
-        handle.block_on(logging::init(
+    // Perform process-global initialization exactly once, by the first server to reach this.
+    let mut init_error = None;
+    let globals_result = GLOBALS.get_or_init(|| {
+        let logging_res = handle.block_on(logging::init(
             &metrics,
             install_config.as_ref(),
             &runtime_config.map(|c| c.as_ref().logging().clone()),
             runtime.logger_shutdown.as_mut().unwrap(),
-        ))
-    } else {
-        logging::get_existing()
-    }?;
+        ));
+
+        if let Err(e) = logging_res {
+            init_error = Some(e);
+            return None;
+        }
+
+        let minidump = if install_config.as_ref().minidump().enabled() {
+            let minidump_ok = Arc::new(AtomicBool::new(true));
+            let socket_dir = install_config.as_ref().minidump().socket_dir().to_owned();
+            handle.spawn({
+                let minidump_ok = minidump_ok.clone();
+                let socket_dir = socket_dir.to_owned();
+                async move {
+                    let result = minidump::init(&socket_dir).await;
+                    minidump_ok.store(result.is_ok(), Ordering::Relaxed);
+                    if let Err(e) = result {
+                        error!("error during minidump init", error: e)
+                    }
+                }
+            });
+            Some(MinidumpGlobals { ok: minidump_ok, socket_dir })
+        } else {
+            None
+        };
+
+        #[cfg(feature = "jemalloc")]
+        heap_profile::init(&runtime_config);
+
+        Some(Globals { minidump })
+    });
+
+    if let Some(init_error) = init_error {
+        return Err(init_error);
+    }
+    let Some(globals) = globals_result else {
+        return Err(Error::internal_safe("Process-global initialization failed"));
+    };
+
+    let loggers = logging::get_existing()?;
 
     info!("server starting");
 
-    if init_options.init_globals && install_config.as_ref().minidump().enabled() {
-        let minidump_ok = Arc::new(AtomicBool::new(true));
-        let socket_dir = install_config.as_ref().minidump().socket_dir();
-        handle.spawn({
-            let minidump_ok = minidump_ok.clone();
-            let socket_dir = socket_dir.to_owned();
-            async move {
-                let result = minidump::init(&socket_dir).await;
-                minidump_ok.store(result.is_ok(), Ordering::Relaxed);
-                if let Err(e) = result {
-                    error!("error during minidump init", error: e)
-                }
-            }
-        });
-
-        health_checks.register(MinidumpHealthCheck::new(minidump_ok));
+    if let Some(minidump) = &globals.minidump {
+        health_checks.register(MinidumpHealthCheck::new(minidump.ok.clone()));
         #[cfg(target_os = "linux")]
-        diagnostics.register(ThreadDumpDiagnostic::new(socket_dir));
+        diagnostics.register(ThreadDumpDiagnostic::new(&minidump.socket_dir));
     }
 
     metrics::init(&metrics);
@@ -672,11 +682,8 @@ where
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
     #[cfg(feature = "jemalloc")]
     {
-        if init_options.init_globals {
-            diagnostics.register(HeapStatsDiagnostic);
-            heap_profile::init(&runtime_config);
-            diagnostics.register(HeapProfileDiagnostic);
-        }
+        diagnostics.register(HeapStatsDiagnostic);
+        diagnostics.register(HeapProfileDiagnostic);
     }
     diagnostics.register(DiagnosticTypesDiagnostic::new(Arc::downgrade(&diagnostics)));
 
