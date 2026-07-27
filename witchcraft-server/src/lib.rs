@@ -645,7 +645,10 @@ where
                     }
                 }
             });
-            Some(MinidumpGlobals { ok: minidump_ok, socket_dir })
+            Some(MinidumpGlobals {
+                ok: minidump_ok,
+                socket_dir,
+            })
         } else {
             None
         };
