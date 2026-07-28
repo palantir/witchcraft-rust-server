@@ -13,8 +13,8 @@
 // limitations under the License.
 use crate::service::{Layer, Service};
 use http::header::{
-    Entry, HeaderName, CONTENT_SECURITY_POLICY, REFERRER_POLICY, USER_AGENT, X_CONTENT_TYPE_OPTIONS,
-    X_FRAME_OPTIONS, X_XSS_PROTECTION,
+    Entry, HeaderName, CONTENT_SECURITY_POLICY, REFERRER_POLICY, USER_AGENT,
+    X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION,
 };
 use http::{HeaderValue, Request, Response};
 
