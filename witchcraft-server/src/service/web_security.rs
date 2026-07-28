@@ -13,8 +13,8 @@
 // limitations under the License.
 use crate::service::{Layer, Service};
 use http::header::{
-    HeaderName, CONTENT_SECURITY_POLICY, REFERRER_POLICY, USER_AGENT, X_CONTENT_TYPE_OPTIONS,
-    X_FRAME_OPTIONS, X_XSS_PROTECTION,
+    Entry, HeaderName, CONTENT_SECURITY_POLICY, REFERRER_POLICY, USER_AGENT,
+    X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION,
 };
 use http::{HeaderValue, Request, Response};
 
@@ -68,9 +68,9 @@ where
             .is_some_and(|s| s.contains(USER_AGENT_IE_10) || s.contains(USER_AGENT_IE_11));
 
         let mut response = self.inner.call(req).await;
-        response
-            .headers_mut()
-            .insert(CONTENT_SECURITY_POLICY, CONTENT_SECURITY_POLICY_VALUE);
+        if let Entry::Vacant(e) = response.headers_mut().entry(CONTENT_SECURITY_POLICY) {
+            e.insert(CONTENT_SECURITY_POLICY_VALUE);
+        }
         response
             .headers_mut()
             .insert(REFERRER_POLICY, REFERRER_POLICY_VALUE);
