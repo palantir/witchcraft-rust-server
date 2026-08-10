@@ -14,10 +14,10 @@
 
 use crate::logging;
 use crate::service::request_id::RequestId;
-use crate::service::unverified_jwt::UnverifiedJwt;
 use crate::service::{Layer, Service};
 use http::Request;
 use witchcraft_log::mdc;
+use witchcraft_log_util::jwt::UnverifiedJwt;
 
 /// A layer which injects Witchcraft-managed request state into the MDC.
 ///

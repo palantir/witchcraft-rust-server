@@ -36,7 +36,6 @@ in-memory-testing = []
 arc-swap = "1"
 async-compression = { version = "0.4", features = ["tokio", "gzip"] }
 async-trait = "0.1"
-base64 = "0.23"
 bytes = "1"
 conjure-error = "5.0.0"
 conjure-http = "5.0.0"
