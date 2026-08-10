@@ -107,7 +107,7 @@ tokio = { version = "1.37", features = [
     "time",
 ] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log-util = "2.0.0"
+witchcraft-log-util = "2.1.0"
 witchcraft-log = "5.0.0"
 witchcraft-logging-api = "2.0.0"
 witchcraft-metrics = "1"
