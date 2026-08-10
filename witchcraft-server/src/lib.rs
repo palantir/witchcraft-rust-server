@@ -290,7 +290,7 @@ use std::path::{Path, PathBuf};
 use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Once, OnceLock};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use std::{env, mem};
 
@@ -387,9 +387,10 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
+    logging::early_init();
+
     let args = env::args_os().collect::<Vec<_>>();
     if args.len() == 3 && args[1] == "minidump" {
-        logging::early_init();
         let ret = match minidump::server(Path::new(&args[2])) {
             Ok(()) => 0,
             Err(e) => {
@@ -546,8 +547,6 @@ struct InitOptions {
     thread_prefix: Option<String>,
 }
 
-/// Runs `logging::early_init` exactly once per process, before any server loads its config.
-static EARLY_INIT: Once = Once::new();
 /// Process-global state
 static GLOBALS: OnceLock<Option<Globals>> = OnceLock::new();
 
@@ -577,9 +576,6 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    // Set up the early logging bridge before loading config, exactly once per process.
-    EARLY_INIT.call_once(logging::early_init);
-
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
