@@ -36,7 +36,6 @@ in-memory-testing = []
 arc-swap = "1"
 async-compression = { version = "0.4", features = ["tokio", "gzip"] }
 async-trait = "0.1"
-base64 = "0.23"
 bytes = "1"
 conjure-error = "5.0.0"
 conjure-http = "5.0.0"
@@ -108,7 +107,7 @@ tokio = { version = "1.37", features = [
     "time",
 ] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log-util = "2.0.0"
+witchcraft-log-util = "2.1.0"
 witchcraft-log = "5.0.0"
 witchcraft-logging-api = "2.0.0"
 witchcraft-metrics = "1"
