@@ -39,6 +39,7 @@ pub mod request_log;
 pub mod routing;
 pub mod server_header;
 pub mod server_metrics;
+pub mod server_timing_header;
 pub mod spans;
 #[cfg(test)]
 mod test_util;

@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use crate::endpoint::WitchcraftEndpoint;
 use crate::logging::Loggers;
 use crate::service::accept::AcceptService;
 use crate::service::audit_log::AuditLogLayer;
@@ -37,6 +38,7 @@ use crate::service::request_log::{RequestLogLayer, RequestLogRequestBody};
 use crate::service::routing::RoutingLayer;
 use crate::service::server_header::ServerHeaderLayer;
 use crate::service::server_metrics::ServerMetricsLayer;
+use crate::service::server_timing_header::ServerTimingHeaderLayer;
 use crate::service::spans::{SpannedBody, SpansLayer};
 use crate::service::tls::TlsLayer;
 use crate::service::tls_metrics::TlsMetricsLayer;
@@ -49,7 +51,6 @@ use crate::service::{Service, ServiceBuilder};
 use crate::Witchcraft;
 use conjure_error::Error;
 use hyper::body::Incoming;
-use std::mem;
 use std::sync::Arc;
 use tokio::task;
 use witchcraft_log::debug;
@@ -73,13 +74,14 @@ impl Listener {
 
 pub(crate) async fn start(
     witchcraft: &mut Witchcraft,
+    endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
     loggers: &Loggers,
     listener: Listener,
     port: u16,
 ) -> Result<(), Error> {
     // This service handles individual HTTP requests, each running concurrently.
     let request_service = ServiceBuilder::new()
-        .layer(RoutingLayer::new(mem::take(&mut witchcraft.endpoints)))
+        .layer(RoutingLayer::new(endpoints))
         .layer(RequestIdLayer)
         .layer(TracePropagationLayer)
         .layer(SpansLayer)
@@ -96,6 +98,7 @@ pub(crate) async fn start(
         .layer(NoCachingLayer)
         .layer(WebSecurityLayer)
         .layer(TraceIdHeaderLayer)
+        .layer(ServerTimingHeaderLayer)
         .layer(ServerMetricsLayer::new(&witchcraft.metrics, listener))
         .layer(EndpointMetricsLayer)
         .layer(EndpointHealthLayer)

@@ -15,7 +15,7 @@
 use conjure_error::Error;
 use conjure_object::Uuid;
 use crash_handler::CrashHandler;
-use minidumper::{LoopAction, MinidumpBinary, ServerHandler};
+use minidumper::{LoopAction, MinidumpBinary, ServerHandler, SocketName};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -105,7 +105,7 @@ pub async fn connect(socket_dir: &Path) -> Result<minidumper::Client, Error> {
     for _ in 0..200 {
         let result = tokio::task::spawn_blocking({
             let socket_addr = socket_addr.clone();
-            move || minidumper::Client::with_name(&*socket_addr)
+            move || minidumper::Client::with_name(SocketName::Path(&socket_addr))
         })
         .await
         .unwrap();
@@ -135,7 +135,7 @@ pub fn server(socket_addr: &Path) -> Result<(), Error> {
         }
     });
 
-    minidumper::Server::with_name(socket_addr)
+    minidumper::Server::with_name(SocketName::Path(socket_addr))
         .map_err(Error::internal_safe)?
         .run(Box::new(WitchcraftServerHandler), &shutdown, None)
         .map_err(Error::internal_safe)

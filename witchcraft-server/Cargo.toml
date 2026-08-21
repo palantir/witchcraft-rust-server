@@ -30,19 +30,19 @@ docs = "A recording of running threads and their respective stacktraces."
 [features]
 default = ["jemalloc"]
 jemalloc = ["dep:tikv-jemalloc-ctl", "dep:tikv-jemallocator"]
+in-memory-testing = []
 
 [dependencies]
 arc-swap = "1"
 async-compression = { version = "0.4", features = ["tokio", "gzip"] }
 async-trait = "0.1"
-base64 = "0.22"
 bytes = "1"
 conjure-error = "5.0.0"
 conjure-http = "5.0.0"
 conjure-object = "5.0.0"
 conjure-runtime = "7.0.0"
 conjure-serde = "5.0.0"
-crash-handler = "0.6"
+crash-handler = "0.8"
 flate2 = "1"
 foreign-types = "0.5"
 futures-channel = "0.3"
@@ -55,19 +55,19 @@ http-zipkin = "1.0"
 http = "1"
 hyper-util = { version = "0.1", features = ["tokio"] }
 hyper = { version = "1", features = ["http1", "http2", "server"] }
-itertools = "0.14"
+itertools = "0.15"
 lazycell = "1.3"
 libc = "0.2"
 log = "0.4"
 minidump-processor = "0.26"
 minidump-unwind = { version = "0.26", features = ["debuginfo-symbols"] }
-minidump-writer = "0.10"
+minidump-writer = "0.13"
 minidump = "0.26"
-minidumper = "0.8"
+minidumper = "0.11"
 once_cell = "1"
 parking_lot = "0.12"
 pin-project = "1"
-rand = "0.9"
+rand = "0.10"
 refreshable = "2"
 regex = "1"
 rustls-pemfile = "2"
@@ -78,7 +78,7 @@ serde-file-value = "0.1"
 serde = "1"
 serde_json = "1"
 serde_yaml = "0.9"
-sha2 = "0.10.8"
+sha2 = "0.11.0"
 socket2 = "0.6"
 staged-builder = "0.2.0"
 subtle = "2.5"
@@ -98,20 +98,20 @@ tokio = { version = "1.37", features = [
     "time",
 ] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log-util = "2.0.0"
+witchcraft-log-util = "2.1.0"
 witchcraft-log = "5.0.0"
 witchcraft-logging-api = "2.0.0"
 witchcraft-metrics = "1"
-witchcraft-server-config = { version = "6.0.0", path = "../witchcraft-server-config" }
-witchcraft-server-macros = { version = "6.0.0", path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "6.11.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "6.11.0", path = "../witchcraft-server-macros" }
 zipkin = "1.0"
 
 [target.'cfg(not(windows))'.dependencies]
-tikv-jemalloc-ctl = { version = "0.6", features = [
+tikv-jemalloc-ctl = { version = "0.7", features = [
     "stats",
     "use_std",
 ], optional = true }
-tikv-jemallocator = { version = "0.6", features = [
+tikv-jemallocator = { version = "0.7", features = [
     "unprefixed_malloc_on_supported_platforms",
     "background_threads",
     "profiling",

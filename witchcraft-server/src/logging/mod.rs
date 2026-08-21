@@ -46,6 +46,7 @@ pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Arc<Mutex<Appender<AuditLogV3>>>>
     AtomicLazyCell::NONE;
 
 static EVENT_LOGGER: OnceCell<Appender<EventLogV2>> = OnceCell::new();
+static REQUEST_LOGGER: OnceCell<Arc<Appender<RequestLogV2>>> = OnceCell::new();
 
 pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
@@ -74,6 +75,11 @@ pub(crate) async fn init(
     let audit_logger = Arc::new(Mutex::new(audit_logger));
     let event_logger = logger::appender(install, metrics, hooks).await?;
 
+    REQUEST_LOGGER
+        .set(request_logger.clone())
+        .ok()
+        .expect("Request logger already initialized");
+
     AUDIT_LOGGER
         .fill(audit_logger.clone())
         .ok()
@@ -89,6 +95,21 @@ pub(crate) async fn init(
     Ok(Loggers {
         request_logger,
         audit_logger,
+    })
+}
+
+pub(crate) fn get_existing() -> Result<Loggers, Error> {
+    let audit_logger = AUDIT_LOGGER
+        .borrow()
+        .ok_or_else(|| Error::internal_safe("Audit logger not initialized"))?;
+
+    let request_logger = REQUEST_LOGGER
+        .get()
+        .ok_or_else(|| Error::internal_safe("Event logger not initialized"))?;
+
+    Ok(Loggers {
+        request_logger: request_logger.clone(),
+        audit_logger: audit_logger.clone(),
     })
 }
 

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::health::api::HealthStatus;
+use crate::health::api::objects::HealthStatus;
 use crate::health::HealthCheckRegistry;
 use crate::readiness::{ReadinessCheckMetadata, ReadinessCheckRegistry};
 use conjure_error::{Error, PermissionDenied};
@@ -29,7 +29,7 @@ use tokio::task;
 use witchcraft_server_config::runtime::RuntimeConfig;
 
 #[conjure_endpoints]
-pub trait StatusService {
+pub(crate) trait StatusService {
     #[endpoint(path = "/status/liveness", method = GET)]
     async fn liveness(&self) -> Result<(), Error>;
 
@@ -40,7 +40,7 @@ pub trait StatusService {
     async fn health(&self, #[auth] token: BearerToken) -> Result<HealthStatus, Error>;
 }
 
-pub struct StatusResource {
+pub(crate) struct StatusResource {
     health_check_secret: Refreshable<String, Error>,
     health_checks: Arc<HealthCheckRegistry>,
     readiness_checks: Arc<ReadinessCheckRegistry>,
