@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::api::objects::{metric_log_v1, MetricLogV1};
-use crate::logging::logger::r#async::Closed;
+use crate::logging::logger::r#async::{AppenderHandle, Closed};
 use crate::logging::logger::{self, Appender};
 use crate::logging::metric::gauge_reporter::GaugeReporter;
 use crate::shutdown_hooks::ShutdownHooks;
@@ -38,15 +38,39 @@ const LOG_INTERVAL: Duration = Duration::from_secs(30);
 const NANOS_PER_MICRO: i64 = 1_000;
 const NANOS_PER_MICRO_F64: f64 = NANOS_PER_MICRO as f64;
 
+#[derive(Clone)]
+pub(crate) struct MetricLogger {
+    appender: AppenderHandle<MetricLogV1>,
+}
+
+impl MetricLogger {
+    pub(crate) fn new(appender: AppenderHandle<MetricLogV1>) -> Self {
+        MetricLogger { appender }
+    }
+
+    pub fn gauge(&self, id: &MetricId, value: u64) {
+        // Startup failures can terminate the process before the first periodic metric report, so they must be queued
+        // directly.
+        let metric = finish_log(
+            id,
+            builder(id)
+                .metric_type("gauge")
+                .insert_values("value", value),
+        );
+        let _ = self.appender.try_send(metric);
+    }
+}
+
 pub async fn init(
     metrics: &Arc<MetricRegistry>,
     install: &InstallConfig,
     hooks: &mut ShutdownHooks,
-) -> Result<(), Error> {
+) -> Result<MetricLogger, Error> {
     let appender = logger::appender(install, metrics, hooks).await?;
+    let metric_logger = MetricLogger::new(appender.handle());
     task::spawn(log_metrics(appender, metrics.clone()));
 
-    Ok(())
+    Ok(metric_logger)
 }
 
 /// Periodically records metric values.
@@ -210,5 +234,42 @@ impl Future for IdleFuture<'_> {
         }
 
         Poll::Pending
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::logging::logger::r#async::AsyncAppender;
+    use futures_channel::mpsc;
+    use futures_util::StreamExt;
+
+    #[tokio::test]
+    async fn sends_gauge_immediately() {
+        let metrics = MetricRegistry::new();
+        let mut hooks = ShutdownHooks::new();
+        let (sender, mut receiver) = mpsc::unbounded();
+        let appender = AsyncAppender::new(sender, &metrics, &mut hooks);
+        let logger = MetricLogger::new(appender.handle());
+
+        logger.gauge(&MetricId::new("test.gauge").with_tag("tag", "value"), 42);
+
+        let log = receiver.next().await.unwrap();
+        assert_eq!(log.metric_name(), "test.gauge");
+        assert_eq!(log.metric_type(), "gauge");
+        assert_eq!(log.tags().get("tag").map(String::as_str), Some("value"));
+        assert_eq!(
+            log.values()
+                .get("value")
+                .unwrap()
+                .clone()
+                .deserialize_into::<u64>()
+                .unwrap(),
+            42
+        );
+
+        drop(logger);
+        drop(appender);
+        hooks.await;
     }
 }

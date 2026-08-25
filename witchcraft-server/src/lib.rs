@@ -273,6 +273,10 @@
 //! * `server.response.4xx` (meter) - The rate of `4xx` responses returned by the server.
 //! * `server.response.5xx` (meter) - The rate of `5xx` responses returned by the server.
 //! * `server.response.500` (meter) - The rate of `500 Internal Server Error` responses returned by the server.
+//! * `server.startup.time (stage: <initialized|endpoints-available|ready>)` (gauge) - The elapsed startup time in
+//!   microseconds when the server reached the specified stage.
+//! * `server.startup.failed` (gauge) - Reports a positive value immediately when startup fails after logging has been
+//!   initialized.
 //!
 //! ## Endpoints
 //!
@@ -291,7 +295,7 @@ use std::pin::pin;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{env, mem};
 
 use conjure_error::Error;
@@ -352,6 +356,7 @@ pub mod readiness;
 mod server;
 mod service;
 mod shutdown_hooks;
+mod startup;
 mod status;
 pub mod tls;
 mod witchcraft;
@@ -576,6 +581,7 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
+    let startup_start = Instant::now();
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
@@ -663,6 +669,11 @@ where
     };
 
     let loggers = logging::get_existing()?;
+    let startup_metrics = startup::StartupMetrics::new(
+        startup_start,
+        metrics.clone(),
+        loggers.metric_logger.clone(),
+    );
 
     info!("server starting");
 
@@ -731,6 +742,7 @@ where
     let management_endpoints = mem::take(&mut witchcraft.endpoints);
 
     init(install_config, runtime_config, &mut witchcraft)?;
+    startup_metrics.initialized();
 
     witchcraft
         .health_checks
@@ -759,6 +771,10 @@ where
         Listener::Service,
         port,
     ))?;
+
+    startup_metrics.endpoints_available();
+    startup_metrics.monitor_readiness(&handle, witchcraft.readiness_checks.clone());
+    startup_metrics.complete();
 
     Ok(witchcraft)
 }

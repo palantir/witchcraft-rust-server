@@ -83,6 +83,33 @@ pub struct AsyncAppender<T> {
     state: Arc<Mutex<State<T>>>,
 }
 
+/// A non-closing handle to an [`AsyncAppender`].
+///
+/// Unlike the appender itself, dropping a handle does not close the underlying sink.
+pub struct AppenderHandle<T> {
+    state: Arc<Mutex<State<T>>>,
+}
+
+impl<T> Clone for AppenderHandle<T> {
+    fn clone(&self) -> Self {
+        AppenderHandle {
+            state: self.state.clone(),
+        }
+    }
+}
+
+impl<T> AppenderHandle<T> {
+    pub fn try_send(&self, item: T) -> Result<(), T> {
+        let mut state = self.state.lock();
+
+        if state.closed || !state.ready() {
+            return Err(item);
+        }
+        state.start_send(item);
+        Ok(())
+    }
+}
+
 impl<T> Drop for AsyncAppender<T> {
     fn drop(&mut self) {
         self.state.lock().start_close();
@@ -121,14 +148,14 @@ impl<T> AsyncAppender<T> {
         AsyncAppender { state }
     }
 
-    pub fn try_send(&self, item: T) -> Result<(), T> {
-        let mut state = self.state.lock();
-
-        if state.closed || !state.ready() {
-            return Err(item);
+    pub fn handle(&self) -> AppenderHandle<T> {
+        AppenderHandle {
+            state: self.state.clone(),
         }
-        state.start_send(item);
-        Ok(())
+    }
+
+    pub fn try_send(&self, item: T) -> Result<(), T> {
+        self.handle().try_send(item)
     }
 }
 
@@ -283,5 +310,45 @@ where
         let _ = ready!(this.inner.as_mut().poll_close(cx));
 
         Poll::Ready(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::logging::format::StandardReporter;
+    use futures_channel::mpsc;
+    use futures_util::StreamExt;
+
+    #[tokio::test]
+    async fn dropping_handle_does_not_close_appender() {
+        let metrics = MetricRegistry::new();
+        let mut hooks = ShutdownHooks::new();
+        let (sender, mut receiver) = mpsc::unbounded();
+        let appender = AsyncAppender::new(sender, &metrics, &mut hooks);
+
+        let handle = appender.handle();
+        handle.try_send(TestLog(1)).unwrap();
+        drop(handle);
+        appender.try_send(TestLog(2)).unwrap();
+
+        assert_eq!(receiver.next().await, Some(TestLog(1)));
+        assert_eq!(receiver.next().await, Some(TestLog(2)));
+
+        drop(appender);
+        hooks.await;
+        assert_eq!(receiver.next().await, None);
+    }
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct TestLog(u64);
+
+    impl LogFormat for TestLog {
+        const TYPE: &'static str = "test";
+        const FILE_STEM: &'static str = "test";
+        const SIZE_LIMIT_GB: u32 = 1;
+        const TIME_LIMIT_DAYS: u32 = 1;
+
+        type Reporter = StandardReporter<Self>;
     }
 }

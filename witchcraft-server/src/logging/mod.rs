@@ -32,6 +32,7 @@ use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
 
+pub(crate) use metric::MetricLogger;
 pub use witchcraft_logging_api as api;
 
 mod cleanup;
@@ -46,12 +47,14 @@ pub(crate) static AUDIT_LOGGER: AtomicLazyCell<Arc<Mutex<Appender<AuditLogV3>>>>
     AtomicLazyCell::NONE;
 
 static EVENT_LOGGER: OnceCell<Appender<EventLogV2>> = OnceCell::new();
+static METRIC_LOGGER: OnceCell<metric::MetricLogger> = OnceCell::new();
 static REQUEST_LOGGER: OnceCell<Arc<Appender<RequestLogV2>>> = OnceCell::new();
 
 pub(crate) const REQUEST_ID_KEY: &str = "_requestId";
 pub(crate) const SAMPLED_KEY: &str = "_sampled";
 
 pub(crate) struct Loggers {
+    pub metric_logger: metric::MetricLogger,
     pub request_logger: Arc<Appender<RequestLogV2>>,
     pub audit_logger: Arc<Mutex<Appender<AuditLogV3>>>,
 }
@@ -66,7 +69,7 @@ pub(crate) async fn init(
     runtime: &Refreshable<LoggingConfig, Error>,
     hooks: &mut ShutdownHooks,
 ) -> Result<Loggers, Error> {
-    metric::init(metrics, install, hooks).await?;
+    let metric_logger = metric::init(metrics, install, hooks).await?;
     service::init(metrics, install, runtime, hooks).await?;
     trace::init(metrics, install, runtime, hooks).await?;
     let request_logger = logger::appender(install, metrics, hooks).await?;
@@ -90,9 +93,15 @@ pub(crate) async fn init(
         .ok()
         .expect("Event logger already initialized");
 
+    METRIC_LOGGER
+        .set(metric_logger.clone())
+        .ok()
+        .expect("Metric logger already initialized");
+
     cleanup::cleanup_logs().await;
 
     Ok(Loggers {
+        metric_logger,
         request_logger,
         audit_logger,
     })
@@ -107,7 +116,12 @@ pub(crate) fn get_existing() -> Result<Loggers, Error> {
         .get()
         .ok_or_else(|| Error::internal_safe("Event logger not initialized"))?;
 
+    let metric_logger = METRIC_LOGGER
+        .get()
+        .ok_or_else(|| Error::internal_safe("Metric logger not initialized"))?;
+
     Ok(Loggers {
+        metric_logger: metric_logger.clone(),
         request_logger: request_logger.clone(),
         audit_logger: audit_logger.clone(),
     })
