@@ -23,6 +23,7 @@ use witchcraft_server_config::install::InstallConfig;
 use witchcraft_server_config::runtime::LoggingConfig;
 use zipkin::{Kind, Report, Sample, TraceId};
 
+#[cfg(unix)]
 mod ifaddrs;
 
 pub async fn init(
@@ -42,6 +43,7 @@ pub async fn init(
         .service_name(install.product_name())
         .port(install.port());
 
+    #[cfg(unix)]
     if let Some(ip) = ifaddrs::get_ip() {
         local_endpoint.ip(ip);
     }

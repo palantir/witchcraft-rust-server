@@ -11,24 +11,29 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#[cfg(unix)]
 use crate::metrics::rusage::Rusage;
+use std::panic;
+#[cfg(unix)]
+use std::thread;
 use std::time::Instant;
-use std::{panic, thread};
 use witchcraft_metrics::MetricRegistry;
 
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "jemalloc", not(windows)))]
 mod jemalloc;
 #[cfg(target_os = "linux")]
 mod proc;
+#[cfg(unix)]
 mod rusage;
 
 pub fn init(metrics: &MetricRegistry) {
     register_uptime_metric(metrics);
     register_panic_metric(metrics);
+    #[cfg(unix)]
     register_rusage_metrics(metrics);
     #[cfg(target_os = "linux")]
     proc::register_metrics(metrics);
-    #[cfg(feature = "jemalloc")]
+    #[cfg(all(feature = "jemalloc", not(windows)))]
     jemalloc::register_metrics(metrics);
 }
 
@@ -46,6 +51,7 @@ fn register_panic_metric(metrics: &MetricRegistry) {
     }));
 }
 
+#[cfg(unix)]
 fn register_rusage_metrics(metrics: &MetricRegistry) {
     metrics.gauge("process.user-time", || {
         Rusage::get_self().map_or(0, |r| r.user_time().as_micros() as u64)

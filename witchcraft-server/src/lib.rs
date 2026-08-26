@@ -299,15 +299,14 @@ use conjure_http::server::{AsyncService, ConjureRuntime};
 use conjure_runtime::{Agent, ClientFactory, HostMetricsRegistry, UserAgent};
 use debug::endpoint::DebugResource;
 use debug::endpoint::DebugServiceEndpoints;
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "jemalloc", not(windows)))]
 use debug::heap_profile::{self, HeapProfileDiagnostic};
-use futures_util::{stream, Stream, StreamExt};
+use futures_util::StreamExt;
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
 use status::StatusResource;
 use status::StatusServiceEndpoints;
 use tokio::runtime::{Handle, Runtime};
-use tokio::signal::unix::{self, SignalKind};
 use tokio::{runtime, select, time};
 use witchcraft_log::{error, fatal, info};
 use witchcraft_metrics::MetricRegistry;
@@ -322,7 +321,7 @@ pub use witchcraft_server_config as config;
 pub use witchcraft_server_macros::main;
 
 use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "jemalloc", not(windows)))]
 use crate::debug::heap_stats::HeapStatsDiagnostic;
 use crate::debug::metric_names::MetricNamesDiagnostic;
 #[cfg(target_os = "linux")]
@@ -356,7 +355,7 @@ mod status;
 pub mod tls;
 mod witchcraft;
 
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "jemalloc", not(windows)))]
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
@@ -649,7 +648,7 @@ where
             None
         };
 
-        #[cfg(feature = "jemalloc")]
+        #[cfg(all(feature = "jemalloc", not(windows)))]
         heap_profile::init(&runtime_config);
 
         Some(Globals { minidump })
@@ -679,7 +678,7 @@ where
     health_checks.register(ConfigReloadHealthCheck::new(runtime_config_ok));
 
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
-    #[cfg(feature = "jemalloc")]
+    #[cfg(all(feature = "jemalloc", not(windows)))]
     {
         diagnostics.register(HeapStatsDiagnostic);
         diagnostics.register(HeapProfileDiagnostic);
@@ -764,7 +763,7 @@ where
 }
 
 async fn shutdown(shutdown_hooks: ShutdownHooks, timeout: Duration) -> Result<(), Error> {
-    let mut signals = pin!(signals()?);
+    let mut signals = pin!(signals::signals()?);
 
     signals.next().await;
 
@@ -793,15 +792,39 @@ async fn drain_shutdown_hooks(shutdown_hooks: ShutdownHooks, timeout: Duration) 
     }
 }
 
-fn signals() -> Result<impl Stream<Item = ()>, Error> {
-    let sigint = signal(SignalKind::interrupt())?;
-    let sigterm = signal(SignalKind::terminate())?;
-    Ok(stream::select(sigint, sigterm))
+#[cfg(unix)]
+mod signals {
+    use conjure_error::Error;
+    use futures_util::{stream, Stream};
+    use tokio::signal::unix::{self, SignalKind};
+
+    pub fn signals() -> Result<impl Stream<Item = ()>, Error> {
+        let sigint = signal(SignalKind::interrupt())?;
+        let sigterm = signal(SignalKind::terminate())?;
+        Ok(stream::select(sigint, sigterm))
+    }
+
+    fn signal(kind: SignalKind) -> Result<impl Stream<Item = ()>, Error> {
+        let mut signal = unix::signal(kind).map_err(Error::internal_safe)?;
+        Ok(stream::poll_fn(move |cx| signal.poll_recv(cx)))
+    }
 }
 
-fn signal(kind: SignalKind) -> Result<impl Stream<Item = ()>, Error> {
-    let mut signal = unix::signal(kind).map_err(Error::internal_safe)?;
-    Ok(stream::poll_fn(move |cx| signal.poll_recv(cx)))
+#[cfg(windows)]
+mod signals {
+    use conjure_error::Error;
+    use futures_util::{stream, Stream};
+    use tokio::signal::windows;
+
+    pub fn signals() -> Result<impl Stream<Item = ()>, Error> {
+        let mut ctrlc = windows::ctrl_c().map_err(Error::internal_safe)?;
+        let ctrlc = stream::poll_fn(move |cx| ctrlc.poll_recv(cx));
+
+        let mut ctrlbreak = windows::ctrl_break().map_err(Error::internal_safe)?;
+        let ctrlbreak = stream::poll_fn(move |cx| ctrlbreak.poll_recv(cx));
+
+        Ok(stream::select(ctrlc, ctrlbreak))
+    }
 }
 
 struct RuntimeGuard {
