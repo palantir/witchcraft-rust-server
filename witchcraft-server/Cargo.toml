@@ -102,8 +102,8 @@ witchcraft-log-util = "2.1.0"
 witchcraft-log = "5.0.0"
 witchcraft-logging-api = "2.0.0"
 witchcraft-metrics = "1"
-witchcraft-server-config = { version = "6.12.0", path = "../witchcraft-server-config" }
-witchcraft-server-macros = { version = "6.12.0", path = "../witchcraft-server-macros" }
+witchcraft-server-config = { version = "6.13.0", path = "../witchcraft-server-config" }
+witchcraft-server-macros = { version = "6.13.0", path = "../witchcraft-server-macros" }
 zipkin = "1.0"
 
 [target.'cfg(not(windows))'.dependencies]
