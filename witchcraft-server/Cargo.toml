@@ -62,7 +62,7 @@ log = "0.4"
 minidump-processor = "0.26"
 minidump-unwind = { version = "0.26", features = ["debuginfo-symbols"] }
 minidump-writer = "0.13"
-minidump = "0.26"
+minidump = "0.27"
 minidumper = "0.11"
 once_cell = "1"
 parking_lot = "0.12"
