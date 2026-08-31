@@ -17,18 +17,20 @@
 //!
 //! The entrypoint of a Witchcraft server is an initialization function annotated with `#[witchcraft_server::main]`:
 //!
-//! ```ignore
+//! ```no_run
 //! use conjure_error::Error;
 //! use refreshable::Refreshable;
+//! use witchcraft_server::Witchcraft;
 //! use witchcraft_server::config::install::InstallConfig;
 //! use witchcraft_server::config::runtime::RuntimeConfig;
 //!
 //! #[witchcraft_server::main]
 //! fn main(
 //!     install: InstallConfig,
-//!     runtime: Refreshable<RuntimeConfig>,
+//!     runtime: Refreshable<RuntimeConfig, Error>,
 //!     wc: &mut Witchcraft,
 //! ) -> Result<(), Error> {
+//!     # #[cfg(any())]
 //!     wc.api(CustomApiEndpoints::new(CustomApiResource));
 //!
 //!     Ok(())
@@ -37,6 +39,28 @@
 //!
 //! The function is provided with the server's install and runtime configuration, as well as the [`Witchcraft`] object
 //! which can be used to configure the server. Once the initialization function returns, the server will start.
+//!
+//! Async init functions are also supported:
+//!
+//! ```no_run
+//! use conjure_error::Error;
+//! use refreshable::Refreshable;
+//! use witchcraft_server::Witchcraft;
+//! use witchcraft_server::config::install::InstallConfig;
+//! use witchcraft_server::config::runtime::RuntimeConfig;
+//!
+//! #[witchcraft_server::main]
+//! async fn main(
+//!     install: InstallConfig,
+//!     runtime: Refreshable<RuntimeConfig, Error>,
+//!     wc: &mut Witchcraft,
+//! ) -> Result<(), Error> {
+//!     # #[cfg(any())]
+//!     wc.api(CustomApiEndpoints::new(CustomApiResource));
+//!
+//!     Ok(())
+//! }
+//! ```
 //!
 //! ## Note
 //!
@@ -373,6 +397,18 @@ where
     init_with_configs(init, configs::load_install::<I>, configs::load_runtime::<R>)
 }
 
+/// Initializes a Witchcraft server.
+///
+/// This is equivalent to [`init`], except that it takes an asynchronous init function.
+pub fn init_async<I, R, F>(init_async: F)
+where
+    I: AsRef<InstallConfig> + DeserializeOwned,
+    R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+    F: AsyncFnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+{
+    init(|install, runtime, wc| wc.handle.clone().block_on(init_async(install, runtime, wc)))
+}
+
 /// Initializes a Witchcraft server with custom config loaders.
 ///
 /// `init` is invoked with the install and runtime configs from the provided loaders as well as the [`Witchcraft`]
@@ -559,6 +595,28 @@ struct MinidumpGlobals {
     // Only read by the linux-only `ThreadDumpDiagnostic`.
     #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     socket_dir: PathBuf,
+}
+
+/// Initializes a Witchcraft server with custom config loaders.
+///
+/// This is equivalent to [`init_with_configs`] except that it takes an asynchrnous init function.
+pub fn init_with_configs_async<I, R, F, LI, LR>(init_async: F, load_install: LI, load_runtime: LR)
+where
+    I: AsRef<InstallConfig> + DeserializeOwned,
+    R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+    F: AsyncFnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+    LI: FnOnce() -> Result<I, Error>,
+    LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
+{
+    init_with_configs(
+        |install, runtime, wc| {
+            wc.handle()
+                .clone()
+                .block_on(init_async(install, runtime, wc))
+        },
+        load_install,
+        load_runtime,
+    );
 }
 
 fn init_inner<I, R, F, LI, LR>(
