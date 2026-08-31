@@ -84,18 +84,27 @@ where
 
         this.inner.as_pin_mut().unwrap().poll(cx).map(|r| {
             r.map(|inner| MdcBody {
-                inner,
+                inner: Some(inner),
                 snapshot: mdc::snapshot(),
             })
         })
     }
 }
 
-#[pin_project]
+#[pin_project(PinnedDrop)]
 pub struct MdcBody<B> {
     #[pin]
-    inner: B,
+    inner: Option<B>,
     snapshot: Snapshot,
+}
+
+#[pinned_drop]
+impl<B> PinnedDrop for MdcBody<B> {
+    fn drop(self: Pin<&mut Self>) {
+        let mut this = self.project();
+        let _guard = with(this.snapshot);
+        this.inner.set(None);
+    }
 }
 
 impl<B> Body for MdcBody<B>
@@ -112,15 +121,15 @@ where
     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
         let _guard = with(this.snapshot);
-        this.inner.poll_frame(cx)
+        this.inner.as_pin_mut().unwrap().poll_frame(cx)
     }
 
     fn is_end_stream(&self) -> bool {
-        self.inner.is_end_stream()
+        self.inner.as_ref().unwrap().is_end_stream()
     }
 
     fn size_hint(&self) -> http_body::SizeHint {
-        self.inner.size_hint()
+        self.inner.as_ref().unwrap().size_hint()
     }
 }
 

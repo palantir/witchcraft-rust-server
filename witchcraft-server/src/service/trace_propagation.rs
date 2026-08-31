@@ -18,7 +18,7 @@ use futures_util::ready;
 use http::header::USER_AGENT;
 use http::{Request, Response};
 use http_body::{Body, Frame};
-use pin_project::pin_project;
+use pin_project::{pin_project, pinned_drop};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -91,18 +91,27 @@ where
         span.tag("http.version", &format!("{:?}", req.version()));
 
         TracePropagationFuture {
-            inner: self.inner.call(req),
+            inner: Some(self.inner.call(req)),
             span: Some(span),
         }
         .await
     }
 }
 
-#[pin_project]
+#[pin_project(PinnedDrop)]
 pub struct TracePropagationFuture<F> {
     #[pin]
-    inner: F,
+    inner: Option<F>,
     span: Option<OpenSpan<Detached>>,
+}
+
+#[pinned_drop]
+impl<F> PinnedDrop for TracePropagationFuture<F> {
+    fn drop(self: Pin<&mut Self>) {
+        let mut this = self.project();
+        let _guard = this.span.as_ref().map(|s| zipkin::set_current(s.context()));
+        this.inner.set(None);
+    }
 }
 
 impl<F, B> Future for TracePropagationFuture<F>
@@ -115,20 +124,32 @@ where
         let this = self.project();
         let _guard = zipkin::set_current(this.span.as_ref().unwrap().context());
 
-        let response = ready!(this.inner.poll(cx));
+        let response = ready!(this.inner.as_pin_mut().unwrap().poll(cx));
 
         let mut span = this.span.take().unwrap();
         span.tag("http.status_code", response.status().as_str());
 
-        Poll::Ready(response.map(|inner| TracePropagationBody { inner, span }))
+        Poll::Ready(response.map(|inner| TracePropagationBody {
+            inner: Some(inner),
+            span,
+        }))
     }
 }
 
-#[pin_project]
+#[pin_project(PinnedDrop)]
 pub struct TracePropagationBody<B> {
     #[pin]
-    inner: B,
+    inner: Option<B>,
     span: OpenSpan<Detached>,
+}
+
+#[pinned_drop]
+impl<B> PinnedDrop for TracePropagationBody<B> {
+    fn drop(self: Pin<&mut Self>) {
+        let mut this = self.project();
+        let _guard = zipkin::set_current(this.span.context());
+        this.inner.set(None);
+    }
 }
 
 impl<B> Body for TracePropagationBody<B>
@@ -145,15 +166,15 @@ where
     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
         let _guard = zipkin::set_current(this.span.context());
-        this.inner.poll_frame(cx)
+        this.inner.as_pin_mut().unwrap().poll_frame(cx)
     }
 
     fn is_end_stream(&self) -> bool {
-        self.inner.is_end_stream()
+        self.inner.as_ref().unwrap().is_end_stream()
     }
 
     fn size_hint(&self) -> http_body::SizeHint {
-        self.inner.size_hint()
+        self.inner.as_ref().unwrap().size_hint()
     }
 }
 
