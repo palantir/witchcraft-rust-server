@@ -1,5 +1,0 @@
-type: improvement
-improvement:
-  description: The server now records standard minidumps after crashes.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/54

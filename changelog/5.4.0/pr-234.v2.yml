@@ -1,5 +1,0 @@
-type: improvement
-improvement:
-  description: Errors encountered when writing minidumps are now reported to stdout.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/234

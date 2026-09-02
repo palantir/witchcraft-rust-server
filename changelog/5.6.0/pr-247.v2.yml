@@ -1,6 +1,0 @@
-type: feature
-feature:
-  description: Added configuration options to disable the minidumper and configure
-    its socket dir.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/247

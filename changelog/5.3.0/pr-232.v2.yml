@@ -1,5 +1,0 @@
-type: fix
-fix:
-  description: Only set the ptracer in restricted ptrace environments.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/232

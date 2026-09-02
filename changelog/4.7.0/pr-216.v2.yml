@@ -1,5 +1,0 @@
-type: improvement
-improvement:
-  description: Audit logs are now flushed asynchronously.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/216

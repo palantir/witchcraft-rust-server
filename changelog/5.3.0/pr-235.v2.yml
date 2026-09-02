@@ -1,5 +1,0 @@
-type: fix
-fix:
-  description: Initialize minidump health state to Healthy
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/235/

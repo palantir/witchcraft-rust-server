@@ -1,5 +1,0 @@
-type: fix
-fix:
-  description: Fixed the build with the jemalloc feature disabled.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/229
