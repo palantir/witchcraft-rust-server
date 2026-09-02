@@ -1,5 +1,0 @@
-type: improvement
-improvement:
-  description: Cleaned up the internal `Service` trait.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/155

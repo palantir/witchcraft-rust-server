@@ -1,5 +1,0 @@
-type: improvement
-improvement:
-  description: Switch aws-lc-rs crypto backend to ring
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/221

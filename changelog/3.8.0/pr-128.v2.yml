@@ -1,5 +1,0 @@
-type: feature
-feature:
-  description: Add global functions for ad-hoc audit logging
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/128

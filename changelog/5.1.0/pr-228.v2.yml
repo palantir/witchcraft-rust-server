@@ -1,5 +1,0 @@
-type: improvement
-improvement:
-  description: Fixed minidumps in restricted ptrace environments.
-  links:
-  - https://github.com/palantir/witchcraft-rust-server/pull/228
