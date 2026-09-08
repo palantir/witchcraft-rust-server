@@ -10,3 +10,6 @@ members = [
     "witchcraft-server-ete",
     "render-conjure",
 ]
+
+[patch.crates-io]
+witchcraft-metrics = { git = "https://github.com/palantir/witchcraft-rust-logging", branch = "exemplars" }
