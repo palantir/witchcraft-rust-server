@@ -101,6 +101,7 @@ impl Server {
         Builder {
             management_port: None,
             http2: false,
+            recommend_node_selection: false,
         }
     }
 
@@ -127,6 +128,10 @@ impl Server {
         command
             .current_dir(dir.path())
             .env("HANDLER_TYPE", handler_type)
+            .env(
+                "RECOMMEND_NODE_SELECTION",
+                builder.recommend_node_selection.to_string(),
+            )
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
         #[cfg(windows)]
@@ -310,9 +315,15 @@ impl Server {
 pub struct Builder {
     management_port: Option<u16>,
     http2: bool,
+    recommend_node_selection: bool,
 }
 
 impl Builder {
+    pub fn recommend_node_selection(mut self, recommend: bool) -> Self {
+        self.recommend_node_selection = recommend;
+        self
+    }
+
     pub fn management_port(mut self) -> Self {
         self.management_port = Some(open_port());
         self

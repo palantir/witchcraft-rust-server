@@ -122,6 +122,13 @@
 //! [definition]: https://palantir.github.io/conjure/#/docs/spec/conjure_definitions
 //! [`conjure-codegen`]: https://docs.rs/conjure-codegen
 //!
+//! ## Recommended client routing
+//!
+//! Services can recommend how compatible clients distribute incoming requests across server instances using
+//! [`Witchcraft::set_recommended_node_selection_strategies`]. This adds the standard `Node-Selection-Strategy` response
+//! header with strategies in preference order. No recommendation is sent by default. Clients may ignore the header,
+//! and the setting does not affect the server's outbound HTTP clients.
+//!
 //! # HTTP clients
 //!
 //! Remote services are configured in the `service-discovery` section of the runtime configuration, and clients can be
@@ -314,7 +321,7 @@ use witchcraft_metrics::MetricRegistry;
 pub use body::{RequestBody, ResponseWriter};
 use config::install::InstallConfig;
 use config::runtime::RuntimeConfig;
-pub use witchcraft::Witchcraft;
+pub use witchcraft::{NodeSelectionStrategy, Witchcraft};
 #[doc(inline)]
 pub use witchcraft_server_config as config;
 #[doc(inline)]
@@ -708,6 +715,7 @@ where
         endpoints: vec![],
         shutdown_hooks: ShutdownHooks::new(),
         conjure_runtime: Arc::new(ConjureRuntime::new()),
+        recommended_node_selection_strategies: None,
     };
 
     let status_endpoints = StatusServiceEndpoints::new(StatusResource::new(

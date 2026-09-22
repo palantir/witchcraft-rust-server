@@ -19,7 +19,7 @@ use refreshable::Refreshable;
 use std::env;
 use witchcraft_server::config::install::InstallConfig;
 use witchcraft_server::config::runtime::RuntimeConfig;
-use witchcraft_server::Witchcraft;
+use witchcraft_server::{NodeSelectionStrategy, Witchcraft};
 
 mod async_handler;
 mod audit_service;
@@ -36,6 +36,14 @@ fn main(
     _: Refreshable<RuntimeConfig, Error>,
     wc: &mut Witchcraft,
 ) -> Result<(), Error> {
+    if env::var("RECOMMEND_NODE_SELECTION").as_deref() == Ok("true") {
+        wc.set_recommended_node_selection_strategies([
+            NodeSelectionStrategy::Balanced,
+            NodeSelectionStrategy::PinUntilError,
+            NodeSelectionStrategy::PinUntilErrorWithoutReshuffle,
+        ])?;
+    }
+
     match &*env::var("HANDLER_TYPE").unwrap() {
         "async" => {
             wc.api(AsyncTestServiceEndpoints::new(async_handler::TestResource));

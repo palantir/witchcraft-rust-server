@@ -21,13 +21,40 @@ use crate::health::HealthCheckRegistry;
 use crate::readiness::ReadinessCheckRegistry;
 use crate::shutdown_hooks::ShutdownHooks;
 use crate::{blocking, RequestBody, ResponseWriter};
+use conjure_error::Error;
 use conjure_http::server::{AsyncService, BoxAsyncEndpoint, ConjureRuntime, Endpoint, Service};
 use conjure_runtime::ClientFactory;
 use futures_util::Future;
+use http::HeaderValue;
+use itertools::Itertools;
 use std::sync::Arc;
 use tokio::runtime::Handle;
 use witchcraft_metrics::MetricRegistry;
 use witchcraft_server_config::install::InstallConfig;
+
+/// A client-side node selection strategy that a server can recommend for incoming requests.
+///
+/// See [`Witchcraft::set_recommended_node_selection_strategies`].
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum NodeSelectionStrategy {
+    /// Distributes requests across nodes based on their load.
+    Balanced,
+    /// Pins requests to a node until an error, periodically reshuffling node order.
+    PinUntilError,
+    /// Pins requests to a node until an error, without periodically reshuffling node order.
+    PinUntilErrorWithoutReshuffle,
+}
+
+impl NodeSelectionStrategy {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Balanced => "BALANCED",
+            Self::PinUntilError => "PIN_UNTIL_ERROR",
+            Self::PinUntilErrorWithoutReshuffle => "PIN_UNTIL_ERROR_WITHOUT_RESHUFFLE",
+        }
+    }
+}
 
 /// The Witchcraft server context.
 pub struct Witchcraft {
@@ -43,6 +70,7 @@ pub struct Witchcraft {
     pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
     pub(crate) shutdown_hooks: ShutdownHooks,
     pub(crate) conjure_runtime: Arc<ConjureRuntime>,
+    pub(crate) recommended_node_selection_strategies: Option<HeaderValue>,
 }
 
 impl Witchcraft {
@@ -80,6 +108,36 @@ impl Witchcraft {
     #[inline]
     pub fn handle(&self) -> &Handle {
         &self.handle
+    }
+
+    /// Sets the node selection strategies recommended to clients calling this server, in preference order.
+    ///
+    /// Call this during initialization to add a `Node-Selection-Strategy` header to responses from both the service
+    /// and management listeners, including error responses. By default, no recommendation header is added. Calling
+    /// this method again replaces the previous recommendation.
+    ///
+    /// This recommends routing for incoming requests; it does not configure the server's outbound Conjure clients.
+    /// Clients may ignore the recommendation. Compatible clients select the first strategy they support according to
+    /// the [server-recommended node selection protocol].
+    ///
+    /// Returns an error if `strategies` is empty, leaving any previous recommendation unchanged.
+    ///
+    /// ```
+    /// use witchcraft_server::{NodeSelectionStrategy, Witchcraft};
+    /// # fn init(wc: &mut Witchcraft) -> Result<(), conjure_error::Error> {
+    /// wc.set_recommended_node_selection_strategies([NodeSelectionStrategy::Balanced])?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [server-recommended node selection protocol]: https://github.com/palantir/dialogue#server-recommended-node-selection-strategies
+    pub fn set_recommended_node_selection_strategies(
+        &mut self,
+        strategies: impl IntoIterator<Item = NodeSelectionStrategy>,
+    ) -> Result<(), Error> {
+        self.recommended_node_selection_strategies =
+            Some(node_selection_strategy_header(strategies)?);
+        Ok(())
     }
 
     /// Installs an async service at the server's root.
@@ -168,6 +226,21 @@ impl Witchcraft {
     }
 }
 
+fn node_selection_strategy_header(
+    strategies: impl IntoIterator<Item = NodeSelectionStrategy>,
+) -> Result<HeaderValue, Error> {
+    let value = strategies
+        .into_iter()
+        .map(NodeSelectionStrategy::as_str)
+        .join(",");
+    if value.is_empty() {
+        return Err(Error::internal_safe(
+            "node selection strategies must not be empty",
+        ));
+    }
+    HeaderValue::try_from(value).map_err(Error::internal_safe)
+}
+
 fn extend_path(
     endpoint: Box<dyn WitchcraftEndpoint + Sync + Send>,
     context_path: &str,
@@ -184,5 +257,36 @@ fn extend_path(
         endpoint
     } else {
         Box::new(ExtendedPathEndpoint::new(endpoint, &prefix))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn single_node_selection_strategy() {
+        assert_eq!(
+            node_selection_strategy_header([NodeSelectionStrategy::Balanced]).unwrap(),
+            "BALANCED",
+        );
+    }
+
+    #[test]
+    fn node_selection_strategies_preserve_preference_order() {
+        assert_eq!(
+            node_selection_strategy_header([
+                NodeSelectionStrategy::PinUntilErrorWithoutReshuffle,
+                NodeSelectionStrategy::Balanced,
+                NodeSelectionStrategy::PinUntilError,
+            ])
+            .unwrap(),
+            "PIN_UNTIL_ERROR_WITHOUT_RESHUFFLE,BALANCED,PIN_UNTIL_ERROR",
+        );
+    }
+
+    #[test]
+    fn empty_node_selection_strategies_are_rejected() {
+        assert!(node_selection_strategy_header([]).is_err());
     }
 }
