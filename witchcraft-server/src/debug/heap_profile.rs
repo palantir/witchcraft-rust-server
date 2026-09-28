@@ -15,6 +15,7 @@
 use crate::debug::Diagnostic;
 use bytes::Bytes;
 use conjure_error::Error;
+use conjure_object::log_safety::AssertLogSafe;
 use http::HeaderValue;
 use refreshable::Refreshable;
 use std::{
@@ -42,7 +43,7 @@ where
     runtime
         .map(|r| r.as_ref().diagnostics().jemalloc().prof_active())
         .subscribe(|active| {
-            info!("setting prof.active", safe: { value: conjure_object::log_safety::AssertLogSafe(active) });
+            info!("setting prof.active", safe: { value: AssertLogSafe(active) });
             if let Err(e) = unsafe {
                 tikv_jemalloc_ctl::raw::write::<bool>(c"prof.active".to_bytes_with_nul(), *active)
             } {
@@ -54,7 +55,7 @@ where
     runtime
         .map(|r| r.as_ref().diagnostics().jemalloc().lg_prof_sample())
         .subscribe(|lg_prof_sample| {
-            info!("setting prof.reset", safe: { value: conjure_object::log_safety::AssertLogSafe(lg_prof_sample) });
+            info!("setting prof.reset", safe: { value: AssertLogSafe(lg_prof_sample) });
             if let Err(e) = unsafe {
                 tikv_jemalloc_ctl::raw::write::<usize>(
                     c"prof.reset".to_bytes_with_nul(),

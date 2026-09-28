@@ -16,6 +16,7 @@ use crate::logging::logger::{self, Appender};
 use crate::shutdown_hooks::ShutdownHooks;
 use arc_swap::ArcSwap;
 use conjure_error::Error;
+use conjure_object::log_safety::AssertLogSafe;
 use conjure_serde::json;
 use once_cell::sync::OnceCell;
 use refreshable::{Refreshable, Subscription};
@@ -134,8 +135,8 @@ fn log_panics() {
                 "thread panicked",
                 safe: {
                     // NB: these override the log's file and line params
-                    file: conjure_object::log_safety::AssertLogSafe(location.file()),
-                    line: conjure_object::log_safety::AssertLogSafe(location.line()),
+                    file: AssertLogSafe(location.file()),
+                    line: AssertLogSafe(location.line()),
                 },
                 error: error,
             ),

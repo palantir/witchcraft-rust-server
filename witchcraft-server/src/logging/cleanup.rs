@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use conjure_error::Error;
+use conjure_object::log_safety::AssertLogSafe;
 use std::path::Path;
 use std::time::{Duration, SystemTime};
 use tokio::fs;
@@ -24,7 +25,7 @@ pub async fn cleanup_logs() {
     let path = Path::new("var/log");
 
     if let Err(e) = cleanup_logs_inner(path, SystemTime::now()).await {
-        error!("error cleaning up log directory", safe: { directory: conjure_object::log_safety::AssertLogSafe(path) }, error: e);
+        error!("error cleaning up log directory", safe: { directory: AssertLogSafe(path) }, error: e);
     }
 }
 
@@ -42,7 +43,7 @@ async fn cleanup_logs_inner(path: &Path, now: SystemTime) -> Result<(), Error> {
                 error!(
                     "error statting log file",
                     safe: {
-                        directory: conjure_object::log_safety::AssertLogSafe(path),
+                        directory: AssertLogSafe(path),
                     },
                     unsafe: {
                         file: entry.file_name()
@@ -63,7 +64,7 @@ async fn cleanup_logs_inner(path: &Path, now: SystemTime) -> Result<(), Error> {
                 warn!(
                     "file modification times are not supported by the filesystem, skipping log cleanup",
                     safe: {
-                        directory: conjure_object::log_safety::AssertLogSafe(path),
+                        directory: AssertLogSafe(path),
                     },
                     error: Error::internal_safe(e),
                 );
@@ -85,9 +86,9 @@ async fn cleanup_logs_inner(path: &Path, now: SystemTime) -> Result<(), Error> {
                 info!(
                     "deleted file more than 30 days old in the log directory",
                     safe: {
-                        directory: conjure_object::log_safety::AssertLogSafe(path),
-                        size: conjure_object::log_safety::AssertLogSafe(metadata.len()),
-                        age: conjure_object::log_safety::AssertLogSafe(format_args!("{:?}", age)),
+                        directory: AssertLogSafe(path),
+                        size: AssertLogSafe(metadata.len()),
+                        age: AssertLogSafe(format_args!("{:?}", age)),
                     },
                     unsafe: {
                         file: entry.file_name(),
@@ -98,9 +99,9 @@ async fn cleanup_logs_inner(path: &Path, now: SystemTime) -> Result<(), Error> {
                 error!(
                     "error deleting file more than 30 days old from log directory",
                     safe: {
-                        directory: conjure_object::log_safety::AssertLogSafe(path),
-                        size: conjure_object::log_safety::AssertLogSafe(metadata.len()),
-                        age: conjure_object::log_safety::AssertLogSafe(format_args!("{:?}", age)),
+                        directory: AssertLogSafe(path),
+                        size: AssertLogSafe(metadata.len()),
+                        age: AssertLogSafe(format_args!("{:?}", age)),
                     },
                     unsafe: {
                         file: entry.file_name(),
