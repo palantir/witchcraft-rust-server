@@ -27,8 +27,8 @@ pub async fn log_minidump(p: &Path) -> Result<(), Error> {
     fatal!(
         "a previous instance of the process crashed",
         safe: {
-            info: info,
-            minidump: p.to_string_lossy()
+            info: conjure_object::log_safety::AssertLogSafe(info),
+            minidump: conjure_object::log_safety::AssertLogSafe(p.to_string_lossy())
         },
     );
 

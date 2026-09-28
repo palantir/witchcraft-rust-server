@@ -134,8 +134,8 @@ fn log_panics() {
                 "thread panicked",
                 safe: {
                     // NB: these override the log's file and line params
-                    file: location.file(),
-                    line: location.line(),
+                    file: conjure_object::log_safety::AssertLogSafe(location.file()),
+                    line: conjure_object::log_safety::AssertLogSafe(location.line()),
                 },
                 error: error,
             ),

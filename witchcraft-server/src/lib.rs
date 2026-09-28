@@ -785,7 +785,7 @@ async fn drain_shutdown_hooks(shutdown_hooks: ShutdownHooks, timeout: Duration) 
             info!(
                 "graceful shutdown timed out",
                 safe: {
-                    timeout: format_args!("{timeout:?}"),
+                    timeout: conjure_object::log_safety::AssertLogSafe(format_args!("{timeout:?}")),
                 },
             );
         }

@@ -85,7 +85,7 @@ fn handle_restricted_ptrace(child: u32) -> Result<(), Error> {
         debug!(
             "ptrace scope not restricted, skipping PR_SET_PTRACER",
             safe: {
-                scope: ptrace_scope
+                scope: conjure_object::log_safety::AssertLogSafe(ptrace_scope)
             }
         );
         return Ok(());
@@ -190,7 +190,7 @@ pub async fn log_dumps() -> Result<(), Error> {
             .map_err(Error::internal_safe)?;
 
         if let Err(e) = log::log_minidump(&new_path).await {
-            error!("error logging minidump", safe: { path: new_path.to_string_lossy() }, error: e);
+            error!("error logging minidump", safe: { path: conjure_object::log_safety::AssertLogSafe(new_path.to_string_lossy()) }, error: e);
         }
     }
 

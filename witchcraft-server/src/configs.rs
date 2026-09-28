@@ -110,7 +110,10 @@ fn load_key() -> Result<Option<Key<ReadOnly>>, Error> {
 }
 
 fn load_file(path: &str) -> Result<Vec<u8>, Error> {
-    fs::read(path).map_err(|e| Error::internal_safe(e).with_safe_param("path", path))
+    fs::read(path).map_err(|e| {
+        Error::internal_safe(e)
+            .with_safe_param("path", conjure_object::log_safety::AssertLogSafe(path))
+    })
 }
 
 fn parse<T>(raw: &[u8], key: Option<&Key<ReadOnly>>) -> (Result<T, Error>, ConfigFiles)

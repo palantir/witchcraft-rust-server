@@ -10,3 +10,8 @@ members = [
     "witchcraft-server-ete",
     "render-conjure",
 ]
+
+[patch.crates-io]
+witchcraft-log = { git = "https://github.com/palantir/witchcraft-rust-logging", rev = "64a0adc9c7da4564fc9d1e2f941ac56e9268a8b8" }
+witchcraft-log-util = { git = "https://github.com/palantir/witchcraft-rust-logging", rev = "64a0adc9c7da4564fc9d1e2f941ac56e9268a8b8" }
+witchcraft-logging-api = { git = "https://github.com/palantir/witchcraft-rust-logging", rev = "64a0adc9c7da4564fc9d1e2f941ac56e9268a8b8" }

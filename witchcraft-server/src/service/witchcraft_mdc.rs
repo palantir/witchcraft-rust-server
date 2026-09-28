@@ -58,16 +58,25 @@ where
         }
 
         let context = zipkin::current().expect("zipkin trace not initialized");
-        mdc::insert_safe(logging::mdc::TRACE_ID_KEY, context.trace_id().to_string());
+        mdc::insert_safe(
+            logging::mdc::TRACE_ID_KEY,
+            conjure_object::log_safety::AssertLogSafe(context.trace_id().to_string()),
+        );
         if let Some(sampled) = context.sampled() {
-            mdc::insert_safe(logging::SAMPLED_KEY, sampled);
+            mdc::insert_safe(
+                logging::SAMPLED_KEY,
+                conjure_object::log_safety::AssertLogSafe(sampled),
+            );
         }
 
         let request_id = req
             .extensions()
             .get::<RequestId>()
             .expect("RequestId missing from request extensions");
-        mdc::insert_safe(logging::REQUEST_ID_KEY, request_id.to_string());
+        mdc::insert_safe(
+            logging::REQUEST_ID_KEY,
+            conjure_object::log_safety::AssertLogSafe(request_id.to_string()),
+        );
 
         self.inner.call(req).await
     }

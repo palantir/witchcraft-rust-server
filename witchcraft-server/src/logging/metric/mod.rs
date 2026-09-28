@@ -82,7 +82,7 @@ async fn log_metrics(mut appender: Appender<MetricLogV1>, metrics: Arc<MetricReg
                         warn!(
                             "Gauge is still executing from the last report cycle and will be skipped to avoid \
                              overloading the system",
-                            safe: { gaugeName: metric_name(id) }
+                            safe: { gaugeName: conjure_object::log_safety::AssertLogSafe(metric_name(id)) }
                         );
                     }
                     continue;
