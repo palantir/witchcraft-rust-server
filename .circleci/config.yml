@@ -25,14 +25,7 @@ jobs:
       - run: cargo test --all
       - run:
           name: Test log safety
-          command: |
-            cargo test --all \
-              --features witchcraft-log/log-safety \
-              --config net.git-fetch-with-cli=true \
-              --config 'patch.crates-io.conjure-runtime.git="https://github.com/palantir/conjure-rust-runtime"' \
-              --config 'patch.crates-io.conjure-runtime.rev="833c336a294ff44565249fff2a7e3111ac7a7beb"' \
-              --config 'patch.crates-io.conjure-runtime-config.git="https://github.com/palantir/conjure-rust-runtime"' \
-              --config 'patch.crates-io.conjure-runtime-config.rev="833c336a294ff44565249fff2a7e3111ac7a7beb"'
+          command: cargo test --all --features witchcraft-log/log-safety
       - save_cache:
           key: deps-1.98.0-{{ checksum "Cargo.lock" }}
           paths:
