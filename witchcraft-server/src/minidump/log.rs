@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use conjure_error::Error;
+use conjure_object::log_safety::AssertLogSafe;
 use minidump::{Minidump, MinidumpModuleList, MinidumpSystemInfo};
 use minidump_processor::ProcessState;
 use minidump_unwind::debuginfo::DebugInfoSymbolProvider;
@@ -27,8 +28,8 @@ pub async fn log_minidump(p: &Path) -> Result<(), Error> {
     fatal!(
         "a previous instance of the process crashed",
         safe: {
-            info: info,
-            minidump: p.to_string_lossy()
+            info: AssertLogSafe(info),
+            minidump: AssertLogSafe(p.to_string_lossy())
         },
     );
 

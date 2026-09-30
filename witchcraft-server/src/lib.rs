@@ -286,6 +286,7 @@
 //! See the documentation of the [`conjure_runtime`] crate for the metrics reported by HTTP clients.
 #![warn(missing_docs)]
 
+use conjure_object::log_safety::AssertLogSafe;
 use std::path::{Path, PathBuf};
 use std::pin::pin;
 use std::process;
@@ -785,7 +786,7 @@ async fn drain_shutdown_hooks(shutdown_hooks: ShutdownHooks, timeout: Duration) 
             info!(
                 "graceful shutdown timed out",
                 safe: {
-                    timeout: format_args!("{timeout:?}"),
+                    timeout: AssertLogSafe(format_args!("{timeout:?}")),
                 },
             );
         }

@@ -17,6 +17,7 @@ use crate::logging::logger::{self, Appender};
 use crate::logging::metric::gauge_reporter::GaugeReporter;
 use crate::shutdown_hooks::ShutdownHooks;
 use conjure_error::Error;
+use conjure_object::log_safety::AssertLogSafe;
 use conjure_object::Utc;
 use futures_sink::Sink;
 use futures_util::{ready, SinkExt, Stream};
@@ -82,7 +83,7 @@ async fn log_metrics(mut appender: Appender<MetricLogV1>, metrics: Arc<MetricReg
                         warn!(
                             "Gauge is still executing from the last report cycle and will be skipped to avoid \
                              overloading the system",
-                            safe: { gaugeName: metric_name(id) }
+                            safe: { gaugeName: AssertLogSafe(metric_name(id)) }
                         );
                     }
                     continue;

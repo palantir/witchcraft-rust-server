@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use conjure_error::Error;
+use conjure_object::log_safety::AssertLogSafe;
 use refreshable::{RefreshHandle, Refreshable};
 use serde::de::DeserializeOwned;
 use serde_encrypted_value::{Key, ReadOnly};
@@ -110,7 +111,7 @@ fn load_key() -> Result<Option<Key<ReadOnly>>, Error> {
 }
 
 fn load_file(path: &str) -> Result<Vec<u8>, Error> {
-    fs::read(path).map_err(|e| Error::internal_safe(e).with_safe_param("path", path))
+    fs::read(path).map_err(|e| Error::internal_safe(e).with_safe_param("path", AssertLogSafe(path)))
 }
 
 fn parse<T>(raw: &[u8], key: Option<&Key<ReadOnly>>) -> (Result<T, Error>, ConfigFiles)

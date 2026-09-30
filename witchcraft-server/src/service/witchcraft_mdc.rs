@@ -15,6 +15,7 @@
 use crate::logging;
 use crate::service::request_id::RequestId;
 use crate::service::{Layer, Service};
+use conjure_object::log_safety::AssertLogSafe;
 use http::Request;
 use witchcraft_log::mdc;
 use witchcraft_log_util::jwt::UnverifiedJwt;
@@ -58,16 +59,22 @@ where
         }
 
         let context = zipkin::current().expect("zipkin trace not initialized");
-        mdc::insert_safe(logging::mdc::TRACE_ID_KEY, context.trace_id().to_string());
+        mdc::insert_safe(
+            logging::mdc::TRACE_ID_KEY,
+            AssertLogSafe(context.trace_id().to_string()),
+        );
         if let Some(sampled) = context.sampled() {
-            mdc::insert_safe(logging::SAMPLED_KEY, sampled);
+            mdc::insert_safe(logging::SAMPLED_KEY, AssertLogSafe(sampled));
         }
 
         let request_id = req
             .extensions()
             .get::<RequestId>()
             .expect("RequestId missing from request extensions");
-        mdc::insert_safe(logging::REQUEST_ID_KEY, request_id.to_string());
+        mdc::insert_safe(
+            logging::REQUEST_ID_KEY,
+            AssertLogSafe(request_id.to_string()),
+        );
 
         self.inner.call(req).await
     }

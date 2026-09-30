@@ -144,6 +144,7 @@ mod test {
     use super::*;
     use crate::service::test_util::service_fn;
     use bytes::Bytes;
+    use conjure_object::log_safety::AssertLogSafe;
     use http_body_util::BodyExt;
 
     #[tokio::test]
@@ -161,7 +162,7 @@ mod test {
             ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
                 if !self.0 {
                     self.0 = true;
-                    mdc::insert_safe("c", "c");
+                    mdc::insert_safe("c", AssertLogSafe("c"));
                     cx.waker().wake_by_ref();
                     Poll::Pending
                 } else {
@@ -176,14 +177,14 @@ mod test {
         }
 
         let service = MdcLayer.layer(service_fn(|()| {
-            mdc::insert_safe("a", "a");
+            mdc::insert_safe("a", AssertLogSafe("a"));
             async {
-                mdc::insert_safe("b", "b");
+                mdc::insert_safe("b", AssertLogSafe("b"));
                 Response::new(TestBody(false))
             }
         }));
 
-        mdc::insert_safe("external", "external");
+        mdc::insert_safe("external", AssertLogSafe("external"));
         let msg = service
             .call(())
             .await

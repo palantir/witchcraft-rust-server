@@ -38,9 +38,9 @@ async-compression = { version = "0.4", features = ["tokio", "gzip"] }
 async-trait = "0.1"
 bytes = "1"
 conjure-error = "5.0.0"
-conjure-http = "5.0.0"
+conjure-http = "5.18.0"
 conjure-object = "5.0.0"
-conjure-runtime = "7.0.0"
+conjure-runtime = "7.6.0"
 conjure-serde = "5.0.0"
 crash-handler = "0.8"
 flate2 = "1"
@@ -99,9 +99,9 @@ tokio = { version = "1.37", features = [
     "time",
 ] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log-util = "2.1.0"
-witchcraft-log = "5.0.0"
-witchcraft-logging-api = "2.0.0"
+witchcraft-log-util = "2.3.0"
+witchcraft-log = "5.1.0"
+witchcraft-logging-api = "2.1.0"
 witchcraft-metrics = "1"
 witchcraft-server-config = { version = "6.13.0", path = "../witchcraft-server-config" }
 witchcraft-server-macros = { version = "6.13.0", path = "../witchcraft-server-macros" }
