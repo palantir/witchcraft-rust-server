@@ -65,6 +65,49 @@ use syn::{Error, ItemFn};
 ///     witchcraft_server::init(inner_main)
 /// }
 /// ```
+///
+/// Async functions are also supported:
+///
+/// ```ignore
+/// use conjure_error::Error;
+/// use witchcraft_server::config::install::InstallConfig;
+/// use witchcraft_server::config::runtime::RuntimeConfig;
+/// use witchcraft_server::Witchcraft;
+/// use refreshable::Refreshable;
+///
+/// #[witchcraft_server::main]
+/// async fn main(
+///     install: InstallConfig,
+///     runtime: Refreshable<RuntimeConfig, Error>,
+///     wc: &mut Witchcraft,
+/// ) -> Result<(), Error> {
+///     // initialization code...
+///     Ok(())
+/// }
+/// ```
+///
+/// Expands to:
+///
+/// ```ignore
+/// use conjure_error::Error;
+/// use witchcraft_server::config::install::InstallConfig;
+/// use witchcraft_server::config::runtime::RuntimeConfig;
+/// use witchcraft_server::Witchcraft;
+/// use refreshable::Refreshable;
+///
+/// fn main() {
+///     async fn inner_main(
+///         install: InstallConfig,
+///         runtime: Refreshable<RuntimeConfig, Error>,
+///         wc: &mut Witchcraft,
+///     ) -> Result<(), Error> {
+///         // initialization code...
+///         Ok(())
+///     }
+///
+///     witchcraft_server::init_async(inner_main)
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
     if !args.is_empty() {
@@ -84,11 +127,16 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
     let vis = &function.vis;
     let name = &function.sig.ident;
 
+    let init = match function.sig.asyncness {
+        Some(_) => quote!(init_async),
+        None => quote!(init),
+    };
+
     quote! {
         #vis fn #name() {
             #function
 
-            witchcraft_server::init(#name)
+            witchcraft_server::#init(#name)
         }
     }
     .into()
