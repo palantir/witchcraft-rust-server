@@ -99,7 +99,7 @@ impl Drop for Server {
 impl Server {
     pub fn builder() -> Builder {
         Builder {
-            management_port: None,
+            management_port: Some(open_port()),
             http2: false,
         }
     }
