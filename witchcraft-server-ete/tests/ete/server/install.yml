@@ -2,7 +2,6 @@ product-name: witchcraft-example
 product-version: 0.0.0
 port: <PORT>
 management-port: <MANAGEMENT_PORT>
-client-auth-truststore: <CLIENT_AUTH_TRUSTSTORE>
 use-console-log: true
 context-path: /witchcraft-ete
 server:

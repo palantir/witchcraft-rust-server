@@ -96,8 +96,6 @@ impl TlsLayer {
                 let mut store = RootCertStore::empty();
                 store.add_parsable_certificates(certs);
                 builder.with_client_cert_verifier(
-                    // Use our provider explicitly rather than relying on rustls's process-level default,
-                    // which is ambiguous if multiple crypto backends are enabled.
                     WebPkiClientVerifier::builder_with_provider(Arc::new(store), provider)
                         .allow_unauthenticated()
                         .build()

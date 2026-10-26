@@ -61,15 +61,7 @@ fn setup_config(dir: &Path, builder: &Builder, port: u16) {
                     .management_port
                     .map_or("null".to_string(), |p| p.to_string()),
             )
-            .replace("<HTTP2>", &builder.http2.to_string())
-            .replace(
-                "<CLIENT_AUTH_TRUSTSTORE>",
-                if builder.client_auth_truststore {
-                    "{ path: var/security/cert.cer }"
-                } else {
-                    "null"
-                },
-            ),
+            .replace("<HTTP2>", &builder.http2.to_string()),
     )
     .unwrap();
     fs::write(conf.join("runtime.yml"), include_str!("runtime.yml")).unwrap();
@@ -110,7 +102,6 @@ impl Server {
         Builder {
             management_port: None,
             http2: false,
-            client_auth_truststore: false,
         }
     }
 
@@ -324,7 +315,6 @@ impl Server {
 pub struct Builder {
     management_port: Option<u16>,
     http2: bool,
-    client_auth_truststore: bool,
 }
 
 impl Builder {
@@ -335,11 +325,6 @@ impl Builder {
 
     pub fn http2(mut self, http2: bool) -> Self {
         self.http2 = http2;
-        self
-    }
-
-    pub fn client_auth_truststore(mut self) -> Self {
-        self.client_auth_truststore = true;
         self
     }
 
