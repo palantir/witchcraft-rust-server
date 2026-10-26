@@ -32,6 +32,7 @@ use tempfile::TempDir;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::{task, time};
+use tokio_rustls::rustls::crypto::aws_lc_rs;
 use tokio_rustls::rustls::{ClientConfig, KeyLogFile, RootCertStore};
 use tokio_rustls::TlsConnector;
 use witchcraft_server::logging::api::objects::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
@@ -60,7 +61,15 @@ fn setup_config(dir: &Path, builder: &Builder, port: u16) {
                     .management_port
                     .map_or("null".to_string(), |p| p.to_string()),
             )
-            .replace("<HTTP2>", &builder.http2.to_string()),
+            .replace("<HTTP2>", &builder.http2.to_string())
+            .replace(
+                "<CLIENT_AUTH_TRUSTSTORE>",
+                if builder.client_auth_truststore {
+                    "{ path: var/security/cert.cer }"
+                } else {
+                    "null"
+                },
+            ),
     )
     .unwrap();
     fs::write(conf.join("runtime.yml"), include_str!("runtime.yml")).unwrap();
@@ -101,6 +110,7 @@ impl Server {
         Builder {
             management_port: None,
             http2: false,
+            client_auth_truststore: false,
         }
     }
 
@@ -154,9 +164,13 @@ impl Server {
             .unwrap();
         roots.add_parsable_certificates(certs);
 
-        let mut client_config = ClientConfig::builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
+        // Both ring and aws-lc-rs are in the dependency graph, so rustls can't pick a default provider.
+        let mut client_config =
+            ClientConfig::builder_with_provider(Arc::new(aws_lc_rs::default_provider()))
+                .with_safe_default_protocol_versions()
+                .unwrap()
+                .with_root_certificates(roots)
+                .with_no_client_auth();
 
         if builder.http2 {
             client_config.alpn_protocols = vec![b"h2".to_vec()];
@@ -310,6 +324,7 @@ impl Server {
 pub struct Builder {
     management_port: Option<u16>,
     http2: bool,
+    client_auth_truststore: bool,
 }
 
 impl Builder {
@@ -320,6 +335,11 @@ impl Builder {
 
     pub fn http2(mut self, http2: bool) -> Self {
         self.http2 = http2;
+        self
+    }
+
+    pub fn client_auth_truststore(mut self) -> Self {
+        self.client_auth_truststore = true;
         self
     }
 

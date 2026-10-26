@@ -499,3 +499,29 @@ async fn management_port() {
         })
         .await;
 }
+
+// Both ring and aws-lc-rs are in the dependency graph, so this makes sure that the client verifier
+// doesn't rely on rustls's ambiguous process-level default provider.
+#[tokio::test]
+async fn client_auth_truststore() {
+    Server::builder()
+        .client_auth_truststore()
+        .with(|server| async move {
+            let request = Request::builder()
+                .uri("/witchcraft-ete/status/liveness")
+                .body(Empty::<Bytes>::new())
+                .unwrap();
+            let response = server
+                .client()
+                .await
+                .unwrap()
+                .send_request(request)
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+            server.shutdown().await;
+        })
+        .await;
+}
