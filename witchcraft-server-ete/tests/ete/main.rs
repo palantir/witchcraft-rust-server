@@ -27,6 +27,113 @@ use tokio::time;
 mod server;
 
 #[tokio::test]
+async fn node_selection_recommendations() {
+    for recommend in [false, true] {
+        Server::builder()
+            .recommend_node_selection(recommend)
+            .with(|server| async move {
+                let mut client = server.client().await.unwrap();
+                let request = Request::builder()
+                    .uri("/witchcraft-ete/api/test/slowBody?delayMillis=0")
+                    .body(Empty::<Bytes>::new())
+                    .unwrap();
+                let response = client.send_request(request).await.unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+                assert_node_selection_recommendation(response.headers(), recommend);
+                assert_eq!(
+                    response.headers()["content-type"],
+                    "application/octet-stream"
+                );
+                assert!(response.headers().contains_key("server"));
+                assert_eq!(
+                    response.into_body().collect().await.unwrap().to_bytes(),
+                    &[0, 0][..]
+                );
+
+                // A missing required query parameter exercises an endpoint error response.
+                let request = Request::builder()
+                    .uri("/witchcraft-ete/api/test/slowBody")
+                    .body(Empty::<Bytes>::new())
+                    .unwrap();
+                let response = client.send_request(request).await.unwrap();
+                assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+                assert_node_selection_recommendation(response.headers(), recommend);
+                assert_eq!(response.headers()["content-type"], "application/json");
+                let body = response.into_body().collect().await.unwrap().to_bytes();
+                let error: conjure_error::SerializableError =
+                    conjure_serde::json::client_from_slice(&body).unwrap();
+                assert_eq!(
+                    error.error_code(),
+                    &conjure_error::ErrorCode::InvalidArgument
+                );
+
+                // Unmatched routes also pass through the recommendation layer.
+                let request = Request::builder()
+                    .uri("/witchcraft-ete/missing")
+                    .body(Empty::<Bytes>::new())
+                    .unwrap();
+                let response = client.send_request(request).await.unwrap();
+                assert_eq!(response.status(), StatusCode::NOT_FOUND);
+                assert_node_selection_recommendation(response.headers(), recommend);
+                assert!(response
+                    .into_body()
+                    .collect()
+                    .await
+                    .unwrap()
+                    .to_bytes()
+                    .is_empty());
+
+                drop(client);
+                server.shutdown().await;
+            })
+            .await;
+    }
+}
+
+#[tokio::test]
+async fn node_selection_recommendations_on_both_listeners() {
+    Server::builder()
+        .recommend_node_selection(true)
+        .management_port()
+        .with(|server| async move {
+            for (mut client, status) in [
+                (server.client().await.unwrap(), StatusCode::NOT_FOUND),
+                (
+                    server.management_client().await.unwrap(),
+                    StatusCode::NO_CONTENT,
+                ),
+            ] {
+                let request = Request::builder()
+                    .uri("/witchcraft-ete/status/liveness")
+                    .body(Empty::<Bytes>::new())
+                    .unwrap();
+                let response = client.send_request(request).await.unwrap();
+                // The service listener has no management endpoints when a separate port is configured.
+                assert_eq!(response.status(), status);
+                assert_node_selection_recommendation(response.headers(), true);
+                assert!(response
+                    .into_body()
+                    .collect()
+                    .await
+                    .unwrap()
+                    .to_bytes()
+                    .is_empty());
+            }
+            server.shutdown().await;
+        })
+        .await;
+}
+
+fn assert_node_selection_recommendation(headers: &HeaderMap, recommend: bool) {
+    assert_eq!(
+        headers
+            .get("node-selection-strategy")
+            .map(|value| value.to_str().unwrap()),
+        recommend.then_some("BALANCED,PIN_UNTIL_ERROR,PIN_UNTIL_ERROR_WITHOUT_RESHUFFLE"),
+    );
+}
+
+#[tokio::test]
 async fn safe_params() {
     Server::with(|server| async move {
         let request = Request::builder()
