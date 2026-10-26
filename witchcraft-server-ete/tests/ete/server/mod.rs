@@ -32,6 +32,7 @@ use tempfile::TempDir;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::{task, time};
+use tokio_rustls::rustls::crypto::aws_lc_rs;
 use tokio_rustls::rustls::{ClientConfig, KeyLogFile, RootCertStore};
 use tokio_rustls::TlsConnector;
 use witchcraft_server::logging::api::objects::{AuditLogV3, LogLevel, RequestLogV2, ServiceLogV1};
@@ -154,9 +155,13 @@ impl Server {
             .unwrap();
         roots.add_parsable_certificates(certs);
 
-        let mut client_config = ClientConfig::builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
+        // Both ring and aws-lc-rs are in the dependency graph, so rustls can't pick a default provider.
+        let mut client_config =
+            ClientConfig::builder_with_provider(Arc::new(aws_lc_rs::default_provider()))
+                .with_safe_default_protocol_versions()
+                .unwrap()
+                .with_root_certificates(roots)
+                .with_no_client_auth();
 
         if builder.http2 {
             client_config.alpn_protocols = vec![b"h2".to_vec()];
