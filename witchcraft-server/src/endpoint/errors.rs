@@ -14,7 +14,7 @@ use std::sync::Arc;
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use bytes::Bytes;
-use conjure_error::{DueTo, Error, ErrorKind};
+use conjure_error::{DueTo, Error, ErrorKind, RetryHint};
 use conjure_http::server::UseLegacyErrorSerialization;
 use conjure_serde::json;
 use http::header::{CONTENT_TYPE, RETRY_AFTER};
@@ -24,6 +24,7 @@ use witchcraft_log::error;
 #[allow(clippy::declare_interior_mutable_const)]
 const APPLICATION_JSON: HeaderValue = HeaderValue::from_static("application/json");
 const QOS_DUE_TO: HeaderName = HeaderName::from_static("qos-due-to");
+const QOS_RETRY_HINT: HeaderName = HeaderName::from_static("qos-retry-hint");
 
 pub fn to_response<F, B>(
     response_extensions: &Extensions,
@@ -59,13 +60,21 @@ where
                 let header = HeaderValue::from(duration.as_secs());
                 response.headers_mut().insert(RETRY_AFTER, header);
             }
-            insert_due_to(response.headers_mut(), throttle.due_to());
+            insert_qos_headers(
+                response.headers_mut(),
+                throttle.due_to(),
+                throttle.retry_hint(),
+            );
             response
         }
         ErrorKind::Unavailable(unavailable) => {
             let mut response = Response::new(body_creator(None));
             *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-            insert_due_to(response.headers_mut(), unavailable.due_to());
+            insert_qos_headers(
+                response.headers_mut(),
+                unavailable.due_to(),
+                unavailable.retry_hint(),
+            );
             response
         }
         _ => {
@@ -80,10 +89,19 @@ where
     response
 }
 
-fn insert_due_to(headers: &mut HeaderMap, due_to: Option<&DueTo>) {
-    // DueTo values are always valid header values, but don't panic on the error path if that changes
-    if let Some(Ok(value)) = due_to.map(|d| HeaderValue::from_str(d.as_str())) {
-        headers.insert(QOS_DUE_TO, value);
+fn insert_qos_headers(
+    headers: &mut HeaderMap,
+    due_to: Option<&DueTo>,
+    retry_hint: Option<&RetryHint>,
+) {
+    insert_qos_header(headers, QOS_DUE_TO, due_to.map(DueTo::as_str));
+    insert_qos_header(headers, QOS_RETRY_HINT, retry_hint.map(RetryHint::as_str));
+}
+
+fn insert_qos_header(headers: &mut HeaderMap, name: HeaderName, value: Option<&str>) {
+    // QoS values are always valid header values, but don't panic on the error path if that changes
+    if let Some(Ok(value)) = value.map(HeaderValue::from_str) {
+        headers.insert(name, value);
     }
 }
 
@@ -92,14 +110,14 @@ mod test {
     use super::*;
     use std::time::Duration;
 
-    fn response(error: Error) -> Response<()> {
+    fn respond(error: Error) -> Response<()> {
         to_response(&Extensions::new(), error, |_| ())
     }
 
     #[test]
     fn throttle_due_to() {
         let response =
-            response(Error::throttle_for("", Duration::from_secs(5)).with_due_to(DueTo::CUSTOM));
+            respond(Error::throttle_for("", Duration::from_secs(5)).with_due_to(DueTo::CUSTOM));
         assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(response.headers()[RETRY_AFTER], "5");
         assert_eq!(response.headers()["Qos-Due-To"], "custom");
@@ -107,7 +125,7 @@ mod test {
 
     #[test]
     fn unavailable_due_to() {
-        let response = response(Error::unavailable("").with_due_to(DueTo::CUSTOM));
+        let response = respond(Error::unavailable("").with_due_to(DueTo::CUSTOM));
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(response.headers()["Qos-Due-To"], "custom");
     }
@@ -115,17 +133,35 @@ mod test {
     #[test]
     fn unknown_due_to() {
         let due_to = "some-future-cause".parse().unwrap();
-        let response = response(Error::throttle("").with_due_to(due_to));
+        let response = respond(Error::throttle("").with_due_to(due_to));
         assert_eq!(response.headers()["Qos-Due-To"], "some-future-cause");
     }
 
     #[test]
-    fn no_due_to() {
-        assert!(!response(Error::throttle(""))
-            .headers()
-            .contains_key(QOS_DUE_TO));
-        assert!(!response(Error::unavailable(""))
-            .headers()
-            .contains_key(QOS_DUE_TO));
+    fn retry_hint() {
+        let response = respond(
+            Error::throttle("")
+                .with_due_to(DueTo::CUSTOM)
+                .with_retry_hint(RetryHint::DO_NOT_RETRY),
+        );
+        assert_eq!(response.headers()["Qos-Due-To"], "custom");
+        assert_eq!(response.headers()["Qos-Retry-Hint"], "do-not-retry");
+
+        let response = respond(Error::unavailable("").with_retry_hint(RetryHint::DO_NOT_RETRY));
+        assert!(!response.headers().contains_key(QOS_DUE_TO));
+        assert_eq!(response.headers()["Qos-Retry-Hint"], "do-not-retry");
+
+        let retry_hint = "some-future-hint".parse().unwrap();
+        let response = respond(Error::throttle("").with_retry_hint(retry_hint));
+        assert_eq!(response.headers()["Qos-Retry-Hint"], "some-future-hint");
+    }
+
+    #[test]
+    fn no_qos_headers() {
+        for error in [Error::throttle(""), Error::unavailable("")] {
+            let response = respond(error);
+            assert!(!response.headers().contains_key(QOS_DUE_TO));
+            assert!(!response.headers().contains_key(QOS_RETRY_HINT));
+        }
     }
 }
