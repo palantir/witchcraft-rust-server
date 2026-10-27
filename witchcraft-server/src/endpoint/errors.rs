@@ -80,9 +80,10 @@ where
     response
 }
 
-fn insert_due_to(headers: &mut HeaderMap, due_to: Option<DueTo>) {
-    if let Some(due_to) = due_to {
-        headers.insert(QOS_DUE_TO, HeaderValue::from_static(due_to.as_str()));
+fn insert_due_to(headers: &mut HeaderMap, due_to: Option<&DueTo>) {
+    // DueTo values are always valid header values, but don't panic on the error path if that changes
+    if let Some(Ok(value)) = due_to.map(|d| HeaderValue::from_str(d.as_str())) {
+        headers.insert(QOS_DUE_TO, value);
     }
 }
 
@@ -98,7 +99,7 @@ mod test {
     #[test]
     fn throttle_due_to() {
         let response =
-            response(Error::throttle_for("", Duration::from_secs(5)).with_due_to(DueTo::Custom));
+            response(Error::throttle_for("", Duration::from_secs(5)).with_due_to(DueTo::CUSTOM));
         assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(response.headers()[RETRY_AFTER], "5");
         assert_eq!(response.headers()["Qos-Due-To"], "custom");
@@ -106,9 +107,16 @@ mod test {
 
     #[test]
     fn unavailable_due_to() {
-        let response = response(Error::unavailable("").with_due_to(DueTo::Custom));
+        let response = response(Error::unavailable("").with_due_to(DueTo::CUSTOM));
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(response.headers()["Qos-Due-To"], "custom");
+    }
+
+    #[test]
+    fn unknown_due_to() {
+        let due_to = "some-future-cause".parse().unwrap();
+        let response = response(Error::throttle("").with_due_to(due_to));
+        assert_eq!(response.headers()["Qos-Due-To"], "some-future-cause");
     }
 
     #[test]
