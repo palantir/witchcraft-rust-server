@@ -117,7 +117,7 @@ mod test {
     #[test]
     fn throttle_due_to() {
         let response =
-            respond(Error::throttle_for("", Duration::from_secs(5)).with_due_to(DueTo::CUSTOM));
+            respond(Error::throttle_for("", Duration::from_secs(5)).with_due_to(DueTo::Custom));
         assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(response.headers()[RETRY_AFTER], "5");
         assert_eq!(response.headers()["Qos-Due-To"], "custom");
@@ -125,7 +125,7 @@ mod test {
 
     #[test]
     fn unavailable_due_to() {
-        let response = respond(Error::unavailable("").with_due_to(DueTo::CUSTOM));
+        let response = respond(Error::unavailable("").with_due_to(DueTo::Custom));
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(response.headers()["Qos-Due-To"], "custom");
     }
@@ -141,13 +141,13 @@ mod test {
     fn retry_hint() {
         let response = respond(
             Error::throttle("")
-                .with_due_to(DueTo::CUSTOM)
-                .with_retry_hint(RetryHint::DO_NOT_RETRY),
+                .with_due_to(DueTo::Custom)
+                .with_retry_hint(RetryHint::DoNotRetry),
         );
         assert_eq!(response.headers()["Qos-Due-To"], "custom");
         assert_eq!(response.headers()["Qos-Retry-Hint"], "do-not-retry");
 
-        let response = respond(Error::unavailable("").with_retry_hint(RetryHint::DO_NOT_RETRY));
+        let response = respond(Error::unavailable("").with_retry_hint(RetryHint::DoNotRetry));
         assert!(!response.headers().contains_key(QOS_DUE_TO));
         assert_eq!(response.headers()["Qos-Retry-Hint"], "do-not-retry");
 
