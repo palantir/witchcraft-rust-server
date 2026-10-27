@@ -17,7 +17,11 @@
 use crate::unwind::modules::Module;
 use framehop::{CacheNative, MayAllocateDuringUnwind, ModuleSectionInfo, Unwinder, UnwinderNative};
 use memmap2::Mmap;
+use minidump_writer::module_reader::{
+    read_build_id_from_module, ModuleMemoryReadError, ReadError, ReadModuleMemory,
+};
 use object::{Object, ObjectSection};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::ops::{Deref, Range};
@@ -252,13 +256,50 @@ fn load_source(module: &Module) -> Option<Source> {
 
     // The file may have been replaced since it was loaded, in which case its unwind info would be wrong.
     if let Some(expected) = &module.build_id {
-        let object = object::File::parse(&*source).ok()?;
-        if object.build_id().ok().flatten() != Some(&**expected) {
+        if read_build_id_from_module(SliceReader(&source))
+            .ok()
+            .as_ref()
+            != Some(expected)
+        {
             return None;
         }
     }
 
     Some(source)
+}
+
+/// Reads a module from its file's contents, for minidump-writer.
+///
+/// minidump-writer generates an identifier for modules without a GNU build ID, so it's used to compute the identifier
+/// of a file in the same way.
+struct SliceReader<'a>(&'a [u8]);
+
+impl ReadModuleMemory for SliceReader<'_> {
+    fn read(&self, offset: u64, length: u64) -> Result<Cow<'_, [u8]>, ModuleMemoryReadError> {
+        usize::try_from(offset)
+            .ok()
+            .zip(usize::try_from(length).ok())
+            .and_then(|(start, len)| self.0.get(start..start.checked_add(len)?))
+            .map(Cow::Borrowed)
+            .ok_or(ModuleMemoryReadError {
+                offset,
+                length,
+                start_address: None,
+                error: ReadError::OutOfBounds,
+            })
+    }
+
+    fn absolute_to_relative(&self, addr: u64) -> Option<u64> {
+        Some(addr)
+    }
+
+    fn relative_to_absolute(&self, addr: u64) -> Option<u64> {
+        Some(addr)
+    }
+
+    fn is_process_memory(&self) -> bool {
+        false
+    }
 }
 
 /// Exposes an object's sections to framehop.
@@ -301,5 +342,75 @@ impl ModuleSectionInfo<ModuleData> for ObjectSectionInfo<'_> {
     fn section_data(&mut self, name: &[u8]) -> Option<ModuleData> {
         let section = self.object.section_by_name_bytes(name)?;
         self.module_data(section.data().ok()?)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use object::SectionKind;
+    use std::fs;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    fn module(data: &[u8], build_id: Vec<u8>) -> (NamedTempFile, Module) {
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(data).unwrap();
+        let module = Module {
+            name: "test".to_string(),
+            file: Some(file.path().to_path_buf()),
+            range: 0..0,
+            file_offset: 0,
+            text: 0..0,
+            bias: 0,
+            build_id: Some(build_id),
+            vdso: None,
+            main: false,
+        };
+        (file, module)
+    }
+
+    fn assert_checks_id(data: &[u8], id: &[u8]) {
+        let (_file, matching) = module(data, id.to_vec());
+        assert!(load_source(&matching).is_some());
+
+        let mut wrong = id.to_vec();
+        wrong[0] ^= 1;
+        let (_file, mismatched) = module(data, wrong);
+        assert!(load_source(&mismatched).is_none());
+    }
+
+    #[test]
+    fn load_source_checks_build_id() {
+        let exe = fs::read("/proc/self/exe").unwrap();
+        let object = object::File::parse(&*exe).unwrap();
+        if let Some(build_id) = object.build_id().unwrap() {
+            assert_checks_id(&exe, build_id);
+        }
+
+        // Without a build ID note, minidump-writer XORs together the first page of the first executable section.
+        let mut stripped = exe.clone();
+        if let Some(section) = object.section_by_name(".note.gnu.build-id") {
+            let (offset, _) = section.file_range().unwrap();
+            // The note's type follows its name and descriptor sizes.
+            let n_type = offset as usize + 8;
+            stripped[n_type..n_type + 4].copy_from_slice(&0u32.to_ne_bytes());
+        }
+        let object = object::File::parse(&*stripped).unwrap();
+        assert_eq!(object.build_id().unwrap(), None);
+
+        let text = object
+            .sections()
+            .find(|s| s.kind() == SectionKind::Text)
+            .unwrap();
+        let (offset, size) = text.file_range().unwrap();
+        let page = &stripped[offset as usize..][..size.min(4096) as usize];
+        let mut id = vec![0; 16];
+        for chunk in page.chunks(16) {
+            for (b, c) in id.iter_mut().zip(chunk) {
+                *b ^= c;
+            }
+        }
+        assert_checks_id(&stripped, &id);
     }
 }

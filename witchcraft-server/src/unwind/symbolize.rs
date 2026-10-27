@@ -110,18 +110,18 @@ impl ModuleSymbols {
                     }
                 }
 
-                // Without debug info, fall back to the symbol table.
-                if frames.last().is_none_or(|f| f.function.is_none()) {
-                    if let Some(name) = loader.find_symbol(svma) {
-                        let function = demangle(name);
-                        match frames.last_mut() {
-                            Some(frame) => frame.function = Some(function),
-                            None => frames.push(Frame {
-                                function: Some(function),
-                                file: None,
-                                line: None,
-                            }),
-                        }
+                // The symbol table has the fully qualified name of the function containing the address, while debug
+                // info may only have its unqualified name. Debug info names are still used for inlined functions,
+                // which don't have symbols.
+                if let Some(name) = loader.find_symbol(svma) {
+                    let function = demangle(name);
+                    match frames.last_mut() {
+                        Some(frame) => frame.function = Some(function),
+                        None => frames.push(Frame {
+                            function: Some(function),
+                            file: None,
+                            line: None,
+                        }),
                     }
                 }
 
