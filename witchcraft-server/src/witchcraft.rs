@@ -112,14 +112,16 @@ impl Witchcraft {
 
     /// Sets the node selection strategies recommended to clients calling this server, in preference order.
     ///
-    /// Call this during initialization to add a `Node-Selection-Strategy` header to responses from both the service
-    /// and management listeners, including error responses, when the response does not already contain that header.
-    /// Existing header values are preserved. By default, no recommendation header is added. Calling this method again
-    /// replaces the previous recommendation.
+    /// Call this during initialization to add a `Node-Selection-Strategy` header to endpoint responses from both the
+    /// service and management listeners, when the response does not already contain that header. This includes
+    /// endpoint error responses and routing error responses, such as `404 Not Found`. Existing header values are
+    /// preserved. By default, no recommendation header is added. Calling this method again replaces the previous
+    /// recommendation.
     ///
     /// This recommends routing for incoming requests; it does not configure the server's outbound Conjure clients.
     /// Clients may ignore the recommendation. Compatible clients select the first strategy they support according to
-    /// the [server-recommended node selection protocol].
+    /// the [server-recommended node selection protocol]. Compatible clients may retain an adopted strategy after the
+    /// header is removed, so a rollback may require an explicit replacement recommendation.
     ///
     /// Returns an error if `strategies` is empty, leaving any previous recommendation unchanged.
     ///
