@@ -32,6 +32,7 @@ use crate::service::idle_connection::IdleConnectionLayer;
 use crate::service::keep_alive_header::KeepAliveHeaderLayer;
 use crate::service::mdc::MdcLayer;
 use crate::service::no_caching::NoCachingLayer;
+use crate::service::node_selection_strategy::NodeSelectionStrategyLayer;
 use crate::service::peer_addr::PeerAddrLayer;
 use crate::service::request_id::RequestIdLayer;
 use crate::service::request_log::{RequestLogLayer, RequestLogRequestBody};
@@ -95,6 +96,9 @@ pub(crate) async fn start(
         .layer(DeprecationHeaderLayer)
         .layer(KeepAliveHeaderLayer::new(&witchcraft.install_config))
         .layer(ServerHeaderLayer::new(&witchcraft.install_config)?)
+        .layer(NodeSelectionStrategyLayer::new(
+            witchcraft.recommended_node_selection_strategies.clone(),
+        ))
         .layer(NoCachingLayer)
         .layer(WebSecurityLayer)
         .layer(TraceIdHeaderLayer)
