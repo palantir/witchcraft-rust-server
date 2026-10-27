@@ -243,8 +243,7 @@ fn sample(buffer: &SampleBuffer, ucontext: &libc::ucontext_t) {
 
     // SAFETY: the WRITING state gives us exclusive access to the sample.
     let sample = unsafe { &mut *slot.sample.get() };
-    // SAFETY: gettid is always safe to call.
-    sample.tid = unsafe { libc::gettid() };
+    sample.tid = super::gettid();
     sample.regs = regs(ucontext);
     sample.stack_len = copy_stack(buffer.pid, sample.regs.sp, &mut sample.stack);
 

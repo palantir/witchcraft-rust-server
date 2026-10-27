@@ -158,5 +158,13 @@ impl Recorder {
     }
 }
 
+/// Returns the calling thread's ID.
+///
+/// This uses the raw syscall because glibc only added a `gettid` wrapper in 2.30. It is async-signal-safe.
+fn gettid() -> libc::pid_t {
+    // SAFETY: gettid takes no arguments and can't fail.
+    unsafe { libc::syscall(libc::SYS_gettid) as libc::pid_t }
+}
+
 #[cfg(test)]
 mod test;

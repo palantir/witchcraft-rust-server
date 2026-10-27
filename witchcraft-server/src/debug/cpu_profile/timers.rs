@@ -34,8 +34,7 @@ impl Timers {
     pub fn new(period: Duration) -> Self {
         Timers {
             period,
-            // SAFETY: gettid is always safe to call.
-            self_tid: unsafe { libc::gettid() },
+            self_tid: super::gettid(),
             timers: HashMap::new(),
             names: HashMap::new(),
         }
