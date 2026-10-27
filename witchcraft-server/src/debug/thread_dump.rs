@@ -67,7 +67,7 @@ impl Diagnostic for ThreadDumpDiagnostic {
         // send_message doesn't wait for a response, so send a ping after to synchronize
         client.ping().map_err(Error::internal_safe)?;
 
-        let info = handle.block_on(log::process_minidump(target_file.path()))?;
+        let info = log::process_minidump(target_file.path())?;
 
         Ok(Bytes::from(info))
     }

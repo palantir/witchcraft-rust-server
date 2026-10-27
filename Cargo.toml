@@ -9,4 +9,5 @@ members = [
     "witchcraft-server",
     "witchcraft-server-ete",
     "render-conjure",
+    "render-pprof",
 ]

@@ -23,6 +23,11 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use regex::Regex;
 
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+pub(crate) mod cpu_profile;
 pub(crate) mod diagnostic_types;
 pub(crate) mod endpoint;
 #[cfg(all(feature = "jemalloc", not(windows)))]
@@ -30,7 +35,10 @@ pub(crate) mod heap_profile;
 #[cfg(all(feature = "jemalloc", not(windows)))]
 pub(crate) mod heap_stats;
 pub(crate) mod metric_names;
-#[cfg(target_os = "linux")]
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
 pub(crate) mod thread_dump;
 
 static TYPE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z0-9]+\.)+v[0-9]+").unwrap());

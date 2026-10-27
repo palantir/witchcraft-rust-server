@@ -1,0 +1,11 @@
+[package]
+name = "render-pprof"
+version.workspace = true
+edition = "2021"
+publish = false
+
+[dependencies]
+attohttpc = "0.31"
+prost-build = "0.14"
+protox = "0.10"
+tempfile = "3"

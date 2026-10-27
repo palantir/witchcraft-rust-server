@@ -162,7 +162,10 @@ impl ServerHandler for WitchcraftServerHandler {
     }
 
     fn on_message(&self, _kind: u32, _buffer: Vec<u8>) {
-        #[cfg(target_os = "linux")]
+        #[cfg(all(
+            target_os = "linux",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        ))]
         crate::debug::thread_dump::handle_request(_buffer);
     }
 }

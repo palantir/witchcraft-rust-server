@@ -175,7 +175,12 @@
 //!   to analyze the profile. Requires the `jemalloc` feature (enabled by default).
 //! * `metric.names.v1` - Returns a JSON-encoded list of the names of all metrics registered with the server.
 //! * `rust.thread.dump.v1` - Returns a stack trace of every thread in the process. Only supported when running on
-//!   Linux.
+//!   Linux x86_64 and aarch64.
+//! * `rust.cpu.profile.v1` - Returns a 1 minute CPU profile of the process in the gzipped pprof format, which can be
+//!   analyzed with `go tool pprof` and other tools. Each thread is sampled at 100 Hz of its CPU time, and time spent in
+//!   the kernel is attributed to the code that made the system call. Stacks are unwound and symbolized within the
+//!   server. Sampling sends `SIGPROF` to each thread, which can cause some blocking system calls to fail with `EINTR`
+//!   while a profile is being recorded. Only supported when running on Linux x86_64 and aarch64.
 //!
 //! # Logging
 //!
@@ -321,11 +326,19 @@ pub use witchcraft_server_config as config;
 #[doc(inline)]
 pub use witchcraft_server_macros::main;
 
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+use crate::debug::cpu_profile::CpuProfileDiagnostic;
 use crate::debug::diagnostic_types::DiagnosticTypesDiagnostic;
 #[cfg(all(feature = "jemalloc", not(windows)))]
 use crate::debug::heap_stats::HeapStatsDiagnostic;
 use crate::debug::metric_names::MetricNamesDiagnostic;
-#[cfg(target_os = "linux")]
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
 use crate::debug::thread_dump::ThreadDumpDiagnostic;
 use crate::debug::DiagnosticRegistry;
 use crate::health::config_reload::ConfigReloadHealthCheck;
@@ -354,6 +367,11 @@ mod service;
 mod shutdown_hooks;
 mod status;
 pub mod tls;
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+mod unwind;
 mod witchcraft;
 
 #[cfg(all(feature = "jemalloc", not(windows)))]
@@ -557,8 +575,14 @@ struct Globals {
 
 struct MinidumpGlobals {
     ok: Arc<AtomicBool>,
-    // Only read by the linux-only `ThreadDumpDiagnostic`.
-    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    // Only read by the Linux-only `ThreadDumpDiagnostic`.
+    #[cfg_attr(
+        not(all(
+            target_os = "linux",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        )),
+        allow(dead_code)
+    )]
     socket_dir: PathBuf,
 }
 
@@ -668,7 +692,10 @@ where
 
     if let Some(minidump) = &globals.minidump {
         health_checks.register(MinidumpHealthCheck::new(minidump.ok.clone()));
-        #[cfg(target_os = "linux")]
+        #[cfg(all(
+            target_os = "linux",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        ))]
         diagnostics.register(ThreadDumpDiagnostic::new(&minidump.socket_dir));
     }
 
@@ -679,6 +706,11 @@ where
     health_checks.register(ConfigReloadHealthCheck::new(runtime_config_ok));
 
     diagnostics.register(MetricNamesDiagnostic::new(&metrics));
+    #[cfg(all(
+        target_os = "linux",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ))]
+    diagnostics.register(CpuProfileDiagnostic);
     #[cfg(all(feature = "jemalloc", not(windows)))]
     {
         diagnostics.register(HeapStatsDiagnostic);
