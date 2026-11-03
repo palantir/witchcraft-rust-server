@@ -360,6 +360,109 @@ mod witchcraft;
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+/// A builder to configure a [`Witchcraft`].
+#[derive(Default)]
+pub struct Builder {
+    conjure_runtime: Arc<ConjureRuntime>,
+}
+
+impl Builder {
+    /// Creates a new builder with default settings.
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the [`ConjureRuntime`] used for application endpoints.
+    ///
+    /// This does not affect the runtime used by the server's management endpoints.
+    #[inline]
+    pub fn conjure_runtime(mut self, conjure_runtime: Arc<ConjureRuntime>) -> Self {
+        self.conjure_runtime = conjure_runtime;
+        self
+    }
+
+    /// Initializes a Witchcraft server.
+    ///
+    /// `init` is invoked with the parsed install and runtime configs as well as the [`Witchcraft`] context object. It
+    /// is expected to return quickly; any long running initialization should be spawned off into the background to run
+    /// asynchronously.
+    pub fn init<I, R, F>(self, init: F)
+    where
+        I: AsRef<InstallConfig> + DeserializeOwned,
+        R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+        F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+    {
+        self.init_with_configs(init, configs::load_install::<I>, configs::load_runtime::<R>)
+    }
+
+    /// Initializes a Witchcraft server with custom config loaders.
+    ///
+    /// `init` is invoked with the install and runtime configs from the provided loaders as well as the [`Witchcraft`]
+    /// context object. It is expected to return quickly; any long running initialization should be spawned off into
+    /// the background to run asynchronously.
+    pub fn init_with_configs<I, R, F, LI, LR>(
+        self,
+        init: F,
+        load_install: LI,
+        load_runtime: LR,
+    ) -> !
+    where
+        I: AsRef<InstallConfig> + DeserializeOwned,
+        R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+        F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
+        LI: FnOnce() -> Result<I, Error>,
+        LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
+    {
+        logging::early_init();
+
+        let args = env::args_os().collect::<Vec<_>>();
+        if args.len() == 3 && args[1] == "minidump" {
+            let ret = match minidump::server(Path::new(&args[2])) {
+                Ok(()) => 0,
+                Err(e) => {
+                    fatal!("error starting minidump server", error: e);
+                    1
+                }
+            };
+            process::exit(ret);
+        } else {
+            let mut runtime_guard = None;
+
+            let ret = match init_inner(
+                init,
+                load_install,
+                load_runtime,
+                &mut runtime_guard,
+                InitOptions {
+                    conjure_runtime: self.conjure_runtime,
+                    ..InitOptions::default()
+                },
+            ) {
+                Ok(witchcraft) => {
+                    match witchcraft.handle.block_on(shutdown(
+                        witchcraft.shutdown_hooks,
+                        witchcraft.install_config.server().shutdown_timeout(),
+                    )) {
+                        Ok(_) => 0,
+                        Err(e) => {
+                            fatal!("error after starting server", error: e);
+                            1
+                        }
+                    }
+                }
+                Err(e) => {
+                    fatal!("error starting server", error: e);
+                    1
+                }
+            };
+            drop(runtime_guard);
+
+            process::exit(ret);
+        }
+    }
+}
+
 /// Initializes a Witchcraft server.
 ///
 /// `init` is invoked with the parsed install and runtime configs as well as the [`Witchcraft`] context object. It
@@ -371,7 +474,7 @@ where
     R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
     F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>,
 {
-    init_with_configs(init, configs::load_install::<I>, configs::load_runtime::<R>)
+    Builder::new().init(init)
 }
 
 /// Initializes a Witchcraft server with custom config loaders.
@@ -387,56 +490,14 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
-    logging::early_init();
-
-    let args = env::args_os().collect::<Vec<_>>();
-    if args.len() == 3 && args[1] == "minidump" {
-        let ret = match minidump::server(Path::new(&args[2])) {
-            Ok(()) => 0,
-            Err(e) => {
-                fatal!("error starting minidump server", error: e);
-                1
-            }
-        };
-        process::exit(ret);
-    } else {
-        let mut runtime_guard = None;
-
-        let ret = match init_inner(
-            init,
-            load_install,
-            load_runtime,
-            &mut runtime_guard,
-            InitOptions::default(),
-        ) {
-            Ok(witchcraft) => {
-                match witchcraft.handle.block_on(shutdown(
-                    witchcraft.shutdown_hooks,
-                    witchcraft.install_config.server().shutdown_timeout(),
-                )) {
-                    Ok(_) => 0,
-                    Err(e) => {
-                        fatal!("error after starting server", error: e);
-                        1
-                    }
-                }
-            }
-            Err(e) => {
-                fatal!("error starting server", error: e);
-                1
-            }
-        };
-        drop(runtime_guard);
-
-        process::exit(ret);
-    }
+    Builder::new().init_with_configs(init, load_install, load_runtime)
 }
 
 #[cfg(feature = "in-memory-testing")]
 /// Variation of the Witchcraft server initialization, which can be used for testing. Allows
 /// spawning multiple instances of the server in memory.
 pub mod in_memory_testing {
-    use crate::{drain_shutdown_hooks, init_inner, InitOptions, Witchcraft};
+    use crate::{drain_shutdown_hooks, init_inner, Builder, InitOptions, Witchcraft};
     use conjure_error::Error;
     use refreshable::Refreshable;
     use serde::de::DeserializeOwned;
@@ -475,54 +536,93 @@ pub mod in_memory_testing {
             + Send
             + 'static,
     {
-        let (startup_result_sender, startup_result_receiver) = mpsc::channel::<Result<(), Error>>();
-        let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
+        Builder::new().init_with_configs_for_tests(init, load_install, load_runtime, thread_prefix)
+    }
 
-        // Dedicated thread for this server instance, allows it to create its own tokio runtime.
-        // Process-global initialization (logging appenders, minidump, heap profiling) happens inside
-        // `init_inner`: the first server to start performs it while any concurrent servers block,
-        // then every server reuses the shared globals.
-        let server_thread = thread::spawn(move || {
-            let mut runtime_guard = None;
+    impl Builder {
+        /// Initializes a Witchcraft server for testing with custom config loaders. This variation of init
+        /// spawns a Witchcraft server in a thread, rather than as a separate process. Note: because
+        /// logging infrastructure is global to a process, the first initialized server will also
+        /// initialize logging appenders; all subsequent ones will reuse the same appenders. However,
+        /// the actual service logger implementation and log level must be set globally once by the
+        /// calling test code.
+        ///
+        /// The server runs on a dedicated thread, and the returned [`RunHandle`] shuts the
+        /// server down gracefully when dropped. Note that since the first call to this init function will
+        /// also initialize the global logging appenders; the corresponding returned handle will shut down the
+        /// appenders on drop, making logging unavailable to servers initialized after the first one.
+        /// Thus, ensure that first initialized server is the last one to go out of scope.
+        pub fn init_with_configs_for_tests<I, R, F, LI, LR>(
+            self,
+            init: F,
+            load_install: LI,
+            load_runtime: LR,
+            thread_prefix: Option<String>,
+        ) -> Result<RunHandle, Error>
+        where
+            I: AsRef<InstallConfig> + DeserializeOwned,
+            R: AsRef<RuntimeConfig> + DeserializeOwned + PartialEq + 'static + Sync + Send,
+            F: FnOnce(I, Refreshable<R, Error>, &mut Witchcraft) -> Result<(), Error>
+                + Send
+                + 'static,
+            LI: FnOnce() -> Result<I, Error> + Send + 'static,
+            LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>
+                + Send
+                + 'static,
+        {
+            let (startup_result_sender, startup_result_receiver) =
+                mpsc::channel::<Result<(), Error>>();
+            let (shutdown_signal_sender, shutdown_signal_receiver) = oneshot::channel::<()>();
 
-            let witchcraft = match init_inner(
-                init,
-                load_install,
-                load_runtime,
-                &mut runtime_guard,
-                InitOptions { thread_prefix },
-            ) {
-                Ok(witchcraft) => witchcraft,
-                Err(e) => {
-                    let _ = startup_result_sender.send(Err(e));
-                    return;
-                }
-            };
-            // Startup OK, notify receiver waiting below
-            let _ = startup_result_sender.send(Ok(()));
+            // Dedicated thread for this server instance, allows it to create its own tokio runtime.
+            // Process-global initialization (logging appenders, minidump, heap profiling) happens inside
+            // `init_inner`: the first server to start performs it while any concurrent servers block,
+            // then every server reuses the shared globals.
+            let server_thread = thread::spawn(move || {
+                let mut runtime_guard = None;
 
-            let handle = witchcraft.handle.clone();
-            let timeout = witchcraft.install_config.server().shutdown_timeout();
+                let witchcraft = match init_inner(
+                    init,
+                    load_install,
+                    load_runtime,
+                    &mut runtime_guard,
+                    InitOptions {
+                        thread_prefix,
+                        conjure_runtime: self.conjure_runtime,
+                    },
+                ) {
+                    Ok(witchcraft) => witchcraft,
+                    Err(e) => {
+                        let _ = startup_result_sender.send(Err(e));
+                        return;
+                    }
+                };
+                // Startup OK, notify receiver waiting below
+                let _ = startup_result_sender.send(Ok(()));
 
-            // Block the server until shutdown is called by the RunHandle's drop
-            handle.block_on(async move {
-                let _ = shutdown_signal_receiver.await;
-                drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
+                let handle = witchcraft.handle.clone();
+                let timeout = witchcraft.install_config.server().shutdown_timeout();
+
+                // Block the server until shutdown is called by the RunHandle's drop
+                handle.block_on(async move {
+                    let _ = shutdown_signal_receiver.await;
+                    drain_shutdown_hooks(witchcraft.shutdown_hooks, timeout).await;
+                });
+                drop(runtime_guard);
             });
-            drop(runtime_guard);
-        });
 
-        // Wait for startup to finish before handing back a handle. A receive error means the thread
-        // panicked before reporting.
-        match startup_result_receiver.recv() {
-            Ok(Ok(())) => Ok(RunHandle {
-                shutdown_signal_sender: Some(shutdown_signal_sender),
-                server_thread: Some(server_thread),
-            }),
-            Ok(Err(e)) => Err(e), // Error during init_inner()
-            Err(_) => Err(Error::internal_safe(
-                "in-memory server thread panicked during initialization",
-            )),
+            // Wait for startup to finish before handing back a handle. A receive error means the thread
+            // panicked before reporting.
+            match startup_result_receiver.recv() {
+                Ok(Ok(())) => Ok(RunHandle {
+                    shutdown_signal_sender: Some(shutdown_signal_sender),
+                    server_thread: Some(server_thread),
+                }),
+                Ok(Err(e)) => Err(e), // Error during init_inner()
+                Err(_) => Err(Error::internal_safe(
+                    "in-memory server thread panicked during initialization",
+                )),
+            }
         }
     }
 
@@ -545,6 +645,7 @@ pub mod in_memory_testing {
 #[derive(Default)]
 struct InitOptions {
     thread_prefix: Option<String>,
+    conjure_runtime: Arc<ConjureRuntime>,
 }
 
 /// Process-global state
@@ -708,6 +809,7 @@ where
         thread_prefix: init_options.thread_prefix,
         endpoints: vec![],
         shutdown_hooks: ShutdownHooks::new(),
+        // intentionally using a default runtime for the management endpoints
         conjure_runtime: Arc::new(ConjureRuntime::new()),
     };
 
@@ -729,6 +831,8 @@ where
     // A bit of a dance to avoid activating the management server before init returns, which would
     // cause us to report ready too early.
     let management_endpoints = mem::take(&mut witchcraft.endpoints);
+
+    witchcraft.conjure_runtime = init_options.conjure_runtime;
 
     init(install_config, runtime_config, &mut witchcraft)?;
 
