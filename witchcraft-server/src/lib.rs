@@ -122,6 +122,34 @@
 //! [definition]: https://palantir.github.io/conjure/#/docs/spec/conjure_definitions
 //! [`conjure-codegen`]: https://docs.rs/conjure-codegen
 //!
+//! ## Recommended client routing
+//!
+//! Services can recommend how compatible clients distribute incoming requests across server instances using
+//! [`Builder::recommended_node_selection_strategies`]. This adds the standard `Node-Selection-Strategy` response
+//! header with strategies in preference order. No recommendation is sent by default. Clients may ignore the header,
+//! and the setting does not affect the server's outbound HTTP clients.
+//!
+//! The [`main`] attribute accepts the same setting:
+//!
+//! ```no_run
+//! use conjure_error::Error;
+//! use refreshable::Refreshable;
+//! use witchcraft_server::config::{install::InstallConfig, runtime::RuntimeConfig};
+//! use witchcraft_server::{NodeSelectionStrategy, Witchcraft};
+//!
+//! #[witchcraft_server::main(
+//!     recommended_node_selection_strategies = [NodeSelectionStrategy::Balanced],
+//! )]
+//! fn main(
+//!     _: InstallConfig,
+//!     _: Refreshable<RuntimeConfig, Error>,
+//!     wc: &mut Witchcraft,
+//! ) -> Result<(), Error> {
+//!     // Register application endpoints here.
+//!     Ok(())
+//! }
+//! ```
+//!
 //! # HTTP clients
 //!
 //! Remote services are configured in the `service-discovery` section of the runtime configuration, and clients can be
@@ -303,6 +331,8 @@ use debug::endpoint::DebugServiceEndpoints;
 #[cfg(all(feature = "jemalloc", not(windows)))]
 use debug::heap_profile::{self, HeapProfileDiagnostic};
 use futures_util::StreamExt;
+use http::HeaderValue;
+use itertools::Itertools;
 use refreshable::Refreshable;
 use serde::de::DeserializeOwned;
 use status::StatusResource;
@@ -360,10 +390,35 @@ mod witchcraft;
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+/// A client-side node selection strategy that a server can recommend for incoming requests.
+///
+/// See [`Builder::recommended_node_selection_strategies`].
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum NodeSelectionStrategy {
+    /// Distributes requests across nodes based on their load.
+    Balanced,
+    /// Pins requests to a node until an error, periodically reshuffling node order.
+    PinUntilError,
+    /// Pins requests to a node until an error, without periodically reshuffling node order.
+    PinUntilErrorWithoutReshuffle,
+}
+
+impl NodeSelectionStrategy {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Balanced => "BALANCED",
+            Self::PinUntilError => "PIN_UNTIL_ERROR",
+            Self::PinUntilErrorWithoutReshuffle => "PIN_UNTIL_ERROR_WITHOUT_RESHUFFLE",
+        }
+    }
+}
+
 /// A builder to configure a [`Witchcraft`].
 #[derive(Default)]
 pub struct Builder {
     conjure_runtime: Arc<ConjureRuntime>,
+    recommended_node_selection_strategies: Vec<NodeSelectionStrategy>,
 }
 
 impl Builder {
@@ -379,6 +434,42 @@ impl Builder {
     #[inline]
     pub fn conjure_runtime(mut self, conjure_runtime: Arc<ConjureRuntime>) -> Self {
         self.conjure_runtime = conjure_runtime;
+        self
+    }
+
+    /// Sets the node selection strategies recommended to clients calling this server, in preference order.
+    ///
+    /// The server adds a `Node-Selection-Strategy` header to endpoint responses that do not already contain the header.
+    /// This includes endpoint error responses and routing errors, such as `404 Not Found`, on both listeners.
+    /// Existing header values are preserved.
+    ///
+    /// By default, no recommendation header is added. An empty iterator disables the recommendation.
+    /// Calling this method again replaces the previous recommendation.
+    ///
+    /// This recommends routing for incoming requests. It does not configure the server's outbound Conjure clients.
+    /// Clients may ignore the recommendation. Compatible clients select the first strategy they support according to
+    /// the [server-recommended node selection protocol]. Clients may retain an adopted strategy after the header is
+    /// removed, so a rollback may require an explicit replacement recommendation.
+    ///
+    /// ```no_run
+    /// use conjure_error::Error;
+    /// use refreshable::Refreshable;
+    /// use witchcraft_server::config::{install::InstallConfig, runtime::RuntimeConfig};
+    /// use witchcraft_server::{Builder, NodeSelectionStrategy, Witchcraft};
+    /// # fn init(_: InstallConfig, _: Refreshable<RuntimeConfig, Error>, _: &mut Witchcraft) -> Result<(), Error> {
+    /// #     Ok(())
+    /// # }
+    /// Builder::new()
+    ///     .recommended_node_selection_strategies([NodeSelectionStrategy::Balanced])
+    ///     .init(init);
+    /// ```
+    ///
+    /// [server-recommended node selection protocol]: https://github.com/palantir/dialogue#server-recommended-node-selection-strategies
+    pub fn recommended_node_selection_strategies(
+        mut self,
+        strategies: impl IntoIterator<Item = NodeSelectionStrategy>,
+    ) -> Self {
+        self.recommended_node_selection_strategies = strategies.into_iter().collect();
         self
     }
 
@@ -436,6 +527,8 @@ impl Builder {
                 &mut runtime_guard,
                 InitOptions {
                     conjure_runtime: self.conjure_runtime,
+                    recommended_node_selection_strategies: self
+                        .recommended_node_selection_strategies,
                     ..InitOptions::default()
                 },
             ) {
@@ -589,6 +682,8 @@ pub mod in_memory_testing {
                     InitOptions {
                         thread_prefix,
                         conjure_runtime: self.conjure_runtime,
+                        recommended_node_selection_strategies: self
+                            .recommended_node_selection_strategies,
                     },
                 ) {
                     Ok(witchcraft) => witchcraft,
@@ -646,6 +741,7 @@ pub mod in_memory_testing {
 struct InitOptions {
     thread_prefix: Option<String>,
     conjure_runtime: Arc<ConjureRuntime>,
+    recommended_node_selection_strategies: Vec<NodeSelectionStrategy>,
 }
 
 /// Process-global state
@@ -677,6 +773,17 @@ where
     LI: FnOnce() -> Result<I, Error>,
     LR: FnOnce(&Handle, &Arc<AtomicBool>) -> Result<Refreshable<R, Error>, Error>,
 {
+    let recommendation = init_options
+        .recommended_node_selection_strategies
+        .into_iter()
+        .map(NodeSelectionStrategy::as_str)
+        .join(",");
+    let recommended_node_selection_strategies = if recommendation.is_empty() {
+        None
+    } else {
+        Some(HeaderValue::try_from(recommendation).map_err(Error::internal_safe)?)
+    };
+
     let install_config = load_install()?;
 
     let thread_id = AtomicUsize::new(0);
@@ -811,6 +918,7 @@ where
         shutdown_hooks: ShutdownHooks::new(),
         // intentionally using a default runtime for the management endpoints
         conjure_runtime: Arc::new(ConjureRuntime::new()),
+        recommended_node_selection_strategies,
     };
 
     let status_endpoints = StatusServiceEndpoints::new(StatusResource::new(

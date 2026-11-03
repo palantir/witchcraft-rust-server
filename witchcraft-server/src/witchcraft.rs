@@ -25,6 +25,7 @@ use crate::{blocking, RequestBody, ResponseWriter};
 use conjure_http::server::{AsyncService, BoxAsyncEndpoint, ConjureRuntime, Endpoint, Service};
 use conjure_runtime::ClientFactory;
 use futures_util::Future;
+use http::HeaderValue;
 use std::sync::Arc;
 use tokio::runtime::Handle;
 use witchcraft_metrics::MetricRegistry;
@@ -44,6 +45,7 @@ pub struct Witchcraft {
     pub(crate) endpoints: Vec<Box<dyn WitchcraftEndpoint + Sync + Send>>,
     pub(crate) shutdown_hooks: ShutdownHooks,
     pub(crate) conjure_runtime: Arc<ConjureRuntime>,
+    pub(crate) recommended_node_selection_strategies: Option<HeaderValue>,
 }
 
 impl Witchcraft {

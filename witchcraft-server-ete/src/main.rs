@@ -19,7 +19,7 @@ use refreshable::Refreshable;
 use std::env;
 use witchcraft_server::config::install::InstallConfig;
 use witchcraft_server::config::runtime::RuntimeConfig;
-use witchcraft_server::Witchcraft;
+use witchcraft_server::{NodeSelectionStrategy, Witchcraft};
 
 mod async_handler;
 mod audit_service;
@@ -30,7 +30,9 @@ mod conjure {
     include!(concat!(env!("OUT_DIR"), "/conjure/mod.rs"));
 }
 
-#[witchcraft_server::main]
+#[witchcraft_server::main(
+    recommended_node_selection_strategies = recommended_node_selection_strategies()
+)]
 fn main(
     _: InstallConfig,
     _: Refreshable<RuntimeConfig, Error>,
@@ -49,4 +51,16 @@ fn main(
     }
 
     Ok(())
+}
+
+fn recommended_node_selection_strategies() -> Vec<NodeSelectionStrategy> {
+    if env::var("RECOMMEND_NODE_SELECTION").as_deref() == Ok("true") {
+        vec![
+            NodeSelectionStrategy::Balanced,
+            NodeSelectionStrategy::PinUntilError,
+            NodeSelectionStrategy::PinUntilErrorWithoutReshuffle,
+        ]
+    } else {
+        vec![]
+    }
 }
