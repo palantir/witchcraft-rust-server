@@ -28,6 +28,8 @@ use syn::{Error, Expr, ItemFn};
 /// The attribute allows configuration of the Witchcraft builder via optional parameters:
 ///
 /// * `conjure_runtime` - An expression which creates the `Arc<ConjureRuntime>` used for application endpoints.
+/// * `recommended_node_selection_strategies` - An expression which creates an iterator of `NodeSelectionStrategy` values
+///   in preference order. An empty iterator disables the recommendation.
 ///
 /// # Examples
 ///
@@ -87,6 +89,9 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
     let name = &function.sig.ident;
 
     let conjure_runtime_call = args.conjure_runtime.map(|e| quote!(.conjure_runtime(#e)));
+    let recommended_node_selection_strategies_call = args
+        .recommended_node_selection_strategies
+        .map(|e| quote!(.recommended_node_selection_strategies(#e)));
 
     quote! {
         #vis fn #name() {
@@ -94,6 +99,7 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
 
             witchcraft_server::Builder::new()
                 #conjure_runtime_call
+                #recommended_node_selection_strategies_call
                 .init(#name)
         }
     }
@@ -103,6 +109,7 @@ pub fn main(args: TokenStream, input: TokenStream) -> TokenStream {
 #[derive(StructMeta)]
 struct MainArgs {
     conjure_runtime: Option<Expr>,
+    recommended_node_selection_strategies: Option<Expr>,
 }
 
 fn with_error(mut tokens: TokenStream, error: Error) -> TokenStream {
