@@ -133,14 +133,11 @@
 //!
 //! ```no_run
 //! use conjure_error::Error;
-//! use conjure_http::server::ConjureRuntime;
 //! use refreshable::Refreshable;
-//! use std::sync::Arc;
 //! use witchcraft_server::config::{install::InstallConfig, runtime::RuntimeConfig};
 //! use witchcraft_server::{NodeSelectionStrategy, Witchcraft};
 //!
 //! #[witchcraft_server::main(
-//!     conjure_runtime = Arc::new(ConjureRuntime::new()),
 //!     recommended_node_selection_strategies = [NodeSelectionStrategy::Balanced],
 //! )]
 //! fn main(
