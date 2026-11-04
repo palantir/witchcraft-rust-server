@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::logging::api::objects::MetricLogV1;
-use crate::logging::metric;
 use futures_util::stream::FuturesUnordered;
 use futures_util::{ready, Stream};
 use pin_project::pin_project;
@@ -26,6 +25,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::task::{self, JoinError, JoinHandle};
 use tokio::time::{self, Sleep};
 use tokio_util::sync::PollSemaphore;
+use witchcraft_log_util::metrics;
 use witchcraft_metrics::{Gauge, MetricId};
 
 const TARGET_CONCURRENT_TASKS: usize = 2;
@@ -119,14 +119,12 @@ impl Future for GaugeFuture {
                     let handle = task::spawn_blocking({
                         let id = id.clone();
                         move || {
-                            let _span = zipkin::new_trace()
-                                .with_name(&format!("record-gauge: {}", metric::metric_name(&id)));
+                            let _span = zipkin::new_trace().with_name(&format!(
+                                "record-gauge: {}",
+                                metrics::safe_metric_name_with_tags(&id).0
+                            ));
 
-                            let value = gauge.value();
-                            let builder = metric::builder(&id)
-                                .metric_type("gauge")
-                                .insert_values("value", value);
-                            metric::finish_log(&id, builder)
+                            metrics::from_gauge(&id, &*gauge)
                         }
                     });
 

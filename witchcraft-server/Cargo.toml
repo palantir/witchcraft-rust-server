@@ -81,7 +81,7 @@ serde_json = "1"
 serde_yaml = "0.9"
 sha2 = "0.11.0"
 socket2 = "0.6"
-staged-builder = "0.2.0"
+staged-builder = "0.2.2"
 subtle = "2.5"
 sync_wrapper = "1.0"
 tempfile = "3.10.1"
@@ -99,7 +99,7 @@ tokio = { version = "1.37", features = [
     "time",
 ] }
 tracing = { version = "0.1", features = ["log"] }
-witchcraft-log-util = "2.3.0"
+witchcraft-log-util = "2.4.0"
 witchcraft-log = "5.1.0"
 witchcraft-logging-api = "2.1.0"
 witchcraft-metrics = "1"
