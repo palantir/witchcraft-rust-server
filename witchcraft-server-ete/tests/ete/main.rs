@@ -295,7 +295,7 @@ async fn health_check_bad_auth() {
             .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
-            .client()
+            .management_client()
             .await
             .unwrap()
             .send_request(request)
@@ -318,7 +318,7 @@ async fn health_check() {
             .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
-            .client()
+            .management_client()
             .await
             .unwrap()
             .send_request(request)
@@ -345,7 +345,7 @@ async fn diagnostic_types_bad_auth() {
             .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
-            .client()
+            .management_client()
             .await
             .unwrap()
             .send_request(request)
@@ -368,7 +368,7 @@ async fn diagnostic_types_diagnostic() {
             .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
-            .client()
+            .management_client()
             .await
             .unwrap()
             .send_request(request)
@@ -401,7 +401,7 @@ async fn thread_dump_diagnostic() {
             .body(Empty::<Bytes>::new())
             .unwrap();
         let response = server
-            .client()
+            .management_client()
             .await
             .unwrap()
             .send_request(request)
