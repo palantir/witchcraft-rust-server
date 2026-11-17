@@ -13,7 +13,7 @@ docs = "All supported diagnostic types returnable from the server."
 
 [[package.metadata.sls.diagnostics]]
 type = "metric.names.v1"
-docs = "All currently emitted metrics and their tags."
+docs = "All registered metrics and their tags."
 
 [[package.metadata.sls.diagnostics]]
 type = "rust.heap.stats.v1"

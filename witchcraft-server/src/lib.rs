@@ -238,9 +238,17 @@
 //!
 //! ## Metric
 //!
-//! The metric log contains the values of metrics reporting the state of various components of the server. Metrics are
-//! recorded every 30 seconds. Server logic can create additional metrics with the [`MetricRegistry`] returned by the
-//! [`Witchcraft::metrics`] method. See the documentation of the [`witchcraft_metrics`] crate for more details.
+//! Metric logs report server and application metrics every 30 seconds, spread across that interval to reduce bursts.
+//! Meters, histograms, and timers are omitted while their count is exactly zero. Their first nonzero report adds a zero
+//! baseline one interval earlier so count-based rates include initial events. A baseline before reporting startup is
+//! skipped. Counters and gauges report zero values normally.
+//!
+//! The first cycle starts after 30 seconds. New metrics are picked up at the start of each cycle, so their first sample
+//! can take up to about a minute to appear. Queries involving potentially unused series, such as endpoint error rates,
+//! should treat missing series as zero where appropriate.
+//!
+//! Server logic can create additional metrics with the [`MetricRegistry`] returned by the [`Witchcraft::metrics`]
+//! method. See the documentation of the [`witchcraft_metrics`] crate for more details.
 //!
 //! # Metrics
 //!
