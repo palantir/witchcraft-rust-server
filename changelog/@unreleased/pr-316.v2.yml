@@ -1,0 +1,5 @@
+type: fix
+fix:
+  description: 'Errors from the log appender are reported on stderr instead of being dropped. The first error of a run is printed with the log type and failing operation; later errors are counted and a recovery line with the count is printed once the appender flushes successfully again.'
+  links:
+  - https://github.com/palantir/witchcraft-rust-server/pull/316
